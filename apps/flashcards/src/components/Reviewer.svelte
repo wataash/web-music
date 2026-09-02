@@ -145,7 +145,6 @@ SPDX-License-Identifier: Apache-2.0
     forgottenTodayKeys: [],
     aheadKeys: [],
   });
-  let bannerDismissed = $state(false);
   let actionsOpen = $state(false);
   const ROTATION_LABELS = {
     0: "Upright",
@@ -220,13 +219,16 @@ SPDX-License-Identifier: Apache-2.0
       extraAvailability.forgottenTodayKeys.length > 0 ||
       extraAvailability.aheadKeys.length > 0,
   );
-  // Nothing but the red (learning) queue left: the session keeps looping the
-  // same cards unless more blue/green cards are pulled in.
-  const onlyLearnLeft = $derived(
+  // Today's new cards are done while the session still has cards to loop: the
+  // point at which "ten more" is worth offering, and worth knowing whether
+  // the deck has any left to give.
+  const newExhausted = $derived(
     !finished &&
       counts.newCount === 0 &&
-      counts.dueCount === 0 &&
-      counts.learnCount > 0,
+      (counts.learnCount > 0 || counts.dueCount > 0),
+  );
+  const canAddNewNow = $derived(
+    newExhausted && extraAvailability.newRemaining > 0,
   );
   // The deck's own settings, and those of every deck under it that is being
   // asked: studying Staff → Note asks all four clefs, so the gear offers all
@@ -511,9 +513,10 @@ SPDX-License-Identifier: Apache-2.0
     void advance();
   });
 
+  // Loaded before the sheet is opened rather than when it is: a row that
+  // appears a moment late is a row pressed by accident.
   $effect(() => {
-    if (!onlyLearnLeft) return;
-    bannerDismissed = false;
+    if (!newExhausted) return;
     untrack(() => void loadExtraAvailability());
   });
 
@@ -643,7 +646,7 @@ SPDX-License-Identifier: Apache-2.0
     }
   }
 
-  // Banner shortcut: the common case is "just give me ten more new cards".
+  // Sheet shortcut: the common case is "just give me ten more new cards".
   async function addNewCardsNow(amount: number): Promise<void> {
     addNewCardsForToday(deckName, amount);
     await refreshCounts();
@@ -748,30 +751,6 @@ SPDX-License-Identifier: Apache-2.0
         {/if}
       </div>
     {:else if item}
-      {#if onlyLearnLeft && canStudyMore && !bannerDismissed}
-        <div class="only-learn">
-          <span class="only-learn-text">
-            Only cards you are still learning are left.
-          </span>
-          {#if extraAvailability.newRemaining > 0}
-            <button
-              class="banner-action new"
-              onclick={() => void addNewCardsNow(10)}
-              >+10 NEW</button
-            >
-          {/if}
-          <button
-            class="banner-action"
-            onclick={() => void openExtraOptions()}>MORE…</button
-          >
-          <button
-            class="banner-close"
-            title="Dismiss"
-            aria-label="Dismiss"
-            onclick={() => (bannerDismissed = true)}>✕</button
-          >
-        </div>
-      {/if}
       <div
         class="card-rotator"
         class:clockwise={rotation === 90}
@@ -852,6 +831,12 @@ SPDX-License-Identifier: Apache-2.0
 {#if actionsOpen}
   <DeckActionsSheet
     deckLabel={deckName}
+    onaddnew={canAddNewNow
+      ? () => {
+          closeDeckActions();
+          void addNewCardsNow(10);
+        }
+      : undefined}
     onstudymore={() => {
       leaveDeckActions();
       void openExtraOptions();
@@ -966,13 +951,6 @@ SPDX-License-Identifier: Apache-2.0
     pointer-events: auto;
   }
 
-  /* The one row of the card area that would be drawn under the buttons. It
-     starts below them instead: a banner half covered by them is worse than
-     the height it costs, and it is gone as soon as it is read. */
-  .appbar.minimal ~ .card-area .only-learn {
-    margin-top: var(--minimal-bar);
-  }
-
   .appbar.minimal .importing {
     border-radius: 10px;
     padding: 2px 8px;
@@ -1079,45 +1057,6 @@ SPDX-License-Identifier: Apache-2.0
 
   .card-rotator.anticlockwise .card-turn {
     rotate: -90deg;
-  }
-
-  .only-learn {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 8px 8px 12px;
-    border-bottom: 1px solid var(--divider);
-    background: var(--bg);
-    font-size: 13px;
-  }
-
-  .only-learn-text {
-    flex: 1;
-    color: var(--on-surface-muted);
-  }
-
-  .banner-action {
-    flex: none;
-    min-height: 32px;
-    padding: 0 10px;
-    border: 1px solid var(--divider);
-    border-radius: 16px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--count-due);
-  }
-
-  .banner-action.new {
-    color: var(--count-new);
-  }
-
-  .banner-close {
-    flex: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    color: var(--on-surface-muted);
   }
 
   .congrats {

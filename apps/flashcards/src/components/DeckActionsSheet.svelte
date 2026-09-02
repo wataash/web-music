@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
 
   let {
     deckLabel,
+    onaddnew,
     onstudymore,
     onnotesettings,
     rotate,
@@ -18,6 +19,10 @@ SPDX-License-Identifier: Apache-2.0
     onclose,
   }: {
     deckLabel: string;
+    // The one press that covers most of what the study-more dialog is opened
+    // for, offered only while today's new cards are done and the deck still
+    // has some.
+    onaddnew?: () => void;
     // Only the reviewer offers this: the deck list has nothing on screen to
     // add cards to.
     onstudymore?: () => void;
@@ -66,6 +71,11 @@ SPDX-License-Identifier: Apache-2.0
 >
   <div class="sheet" role="menu" tabindex="-1" aria-label={`${deckLabel} actions`}>
     <p class="deck-label">{deckLabel}</p>
+    {#if onaddnew}
+      <button class="action" role="menuitem" onclick={onaddnew}>
+        <span class="icon" aria-hidden="true">＋</span>10 more new cards today
+      </button>
+    {/if}
     {#if onstudymore}
       <button class="action" role="menuitem" onclick={onstudymore}>
         <span class="icon" aria-hidden="true">⊕</span>Study more today

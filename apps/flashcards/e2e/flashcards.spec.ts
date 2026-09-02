@@ -289,6 +289,45 @@ test("adds more cards from the deck's menu", async ({ page, shot }) => {
   await shot("after-add");
 });
 
+test("offers ten more new cards once the day's are done", async ({
+  page,
+  shot,
+}) => {
+  await openDeckList(page);
+  // A deck with more unstudied cards than the daily limit, so there is still
+  // something to offer once the day's twenty are done.
+  await study(page, "Intervals");
+  const newCount = page.locator(".count.new");
+  await expect(newCount).toHaveText("20");
+
+  // Nothing to shortcut while the day's new cards are still coming.
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  const shortcut = page.getByRole("menuitem", {
+    name: "10 more new cards today",
+  });
+  await expect(shortcut).toBeHidden();
+  await page.keyboard.press("Escape");
+
+  // GOOD puts a new card ten minutes out, so the twenty come one after
+  // another rather than the learning queue cutting in.
+  for (let remaining = 20; remaining > 0; remaining -= 1) {
+    await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+    await page.getByRole("button", { name: "GOOD" }).click();
+    await expect(newCount).toHaveText(String(remaining - 1));
+  }
+
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  await expect(shortcut).toBeVisible();
+  await shot("sheet-offers-ten-more");
+
+  // One press raises the limit and closes the sheet, where the study-more
+  // dialog would be three.
+  await shortcut.click();
+  await expect(page.getByRole("menu")).toBeHidden();
+  await expect(newCount).toHaveText("10");
+  await shot("after-ten-more");
+});
+
 test("picks interval cards out of the frequency grid", async ({
   page,
   shot,
