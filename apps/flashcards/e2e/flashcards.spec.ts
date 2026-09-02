@@ -600,6 +600,37 @@ test("keeps the whole actions sheet on a screen turned sideways", async ({
   await expect(last).toBeInViewport();
 });
 
+test("cuts the app bar down to its buttons", async ({ page, shot }) => {
+  await page.setViewportSize({ width: 740, height: 360 });
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  const bar = page.locator(".appbar");
+  const title = bar.locator("h1");
+  await expect(title).toHaveText("Treble Clef");
+  const full = (await bar.boundingBox())!.height;
+
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  await page
+    .getByRole("menuitemcheckbox", { name: "Minimize app bar" })
+    .click();
+  await page.keyboard.press("Escape");
+
+  // The name of the deck goes; the way back and the way to these settings
+  // stay, because on a phone the arrow may be the only way back there is.
+  await expect(title).toBeHidden();
+  await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Deck actions" })).toBeVisible();
+  expect((await bar.boundingBox())!.height).toBeLessThan(full);
+  await shot("minimal-app-bar");
+
+  // It is the reader's, not the deck's, so it holds across decks.
+  await page.getByRole("button", { name: "Back" }).click();
+  await deckRow(page, "Bass Clef").locator(".deck-study").click();
+  await expect(page.locator(".count.new")).not.toHaveText("0");
+  await expect(title).toHaveText("Bass Clef");
+  await expect(title).toBeHidden();
+});
+
 test("pushes the card down the screen, and up past the top", async ({
   page,
 }) => {
@@ -679,8 +710,7 @@ test("resets a deck from its long-press menu", async ({ page, shot }) => {
   await page.getByRole("button", { name: "SHOW ANSWER" }).click();
   await page.getByRole("button", { name: "GOOD" }).click();
   await expect(page.locator(".count.learn")).toHaveText("1");
-  // The back arrow's accessible name is its "←" text, so match its title.
-  await page.getByTitle("Back").click();
+  await page.getByRole("button", { name: "Back" }).click();
 
   // A long press is a right click on the desktop.
   await deckRow(page, "Treble Clef").click({ button: "right" });

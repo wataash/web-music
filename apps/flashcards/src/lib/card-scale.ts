@@ -59,6 +59,11 @@ export type CardScales = Readonly<{
   // a staff or a keyboard.
   board: CardScale;
   answer: number;
+  // The app bar cut down to the two buttons at its ends. A phone on its side
+  // has no height to spare, and the deck's name is the one thing up there a
+  // reader already knows. The buttons stay: on a phone the way back may be a
+  // swipe, or may be that arrow and nothing else.
+  minimalAppBar: boolean;
 }>;
 
 export const DEFAULT_CARD_SCALES: CardScales = {
@@ -66,6 +71,7 @@ export const DEFAULT_CARD_SCALES: CardScales = {
   pianoKeys: 88,
   board: 1,
   answer: 1,
+  minimalAppBar: false,
 };
 
 // What one deck draws its own way: the staff only the staff decks draw, the
@@ -149,6 +155,7 @@ export function loadCardScales(
           ? SCREEN_WIDTH
           : clampCardScale(readScale(values.board)),
       answer: clampCardScale(readScale(values.answer)),
+      minimalAppBar: readSwitch(values.minimalAppBar, false),
     };
   } catch {
     return DEFAULT_CARD_SCALES;

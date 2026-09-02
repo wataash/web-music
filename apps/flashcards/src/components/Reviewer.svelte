@@ -169,6 +169,11 @@ SPDX-License-Identifier: Apache-2.0
     saveCardScales(cardScales);
   }
 
+  function toggleMinimalAppBar(): void {
+    cardScales = { ...cardScales, minimalAppBar: !cardScales.minimalAppBar };
+    saveCardScales(cardScales);
+  }
+
   function setPianoKeys(keys: number): void {
     cardScales = { ...cardScales, pianoKeys: keys };
     saveCardScales(cardScales);
@@ -370,8 +375,19 @@ SPDX-License-Identifier: Apache-2.0
   // question names the root, so it is marked; the answer is not, unless the
   // reader is naming the interval between two notes and wants to see both.
   const cardSwitches = $derived.by(() => {
-    if (item === null || !isIntervalCard(item.note)) return [];
+    // The bar above the card is the app's, not the deck's, so this row is
+    // offered whatever is being studied — and first, because a screen with no
+    // room is what sends a reader to this sheet in the first place.
+    const appBar = [
+      {
+        label: "Minimize app bar",
+        on: cardScales.minimalAppBar,
+        ontoggle: toggleMinimalAppBar,
+      },
+    ];
+    if (item === null || !isIntervalCard(item.note)) return appBar;
     return [
+      ...appBar,
       {
         label: "Front: root note",
         on: deckSettings.frontRoot,
@@ -691,8 +707,13 @@ SPDX-License-Identifier: Apache-2.0
 <svelte:window onkeydown={handleKey} onpopstate={handlePopState} />
 
 <div class="screen">
-  <header class="appbar">
-    <button class="appbar-action" title="Back" onclick={onclose}>←</button>
+  <header class="appbar" class:minimal={cardScales.minimalAppBar}>
+    <button
+      class="appbar-action"
+      title="Back"
+      aria-label="Back"
+      onclick={onclose}><span aria-hidden="true">←</span></button
+    >
     <h1>{deckName.split("::").pop()}</h1>
     {#if importing}
       <span class="importing" role="status">Updating…</span>
@@ -904,6 +925,24 @@ SPDX-License-Identifier: Apache-2.0
     color: var(--on-primary);
     box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
     flex: none;
+  }
+
+  /* Cut down for a screen with no height to spare. The name of the deck goes:
+     the reader chose it a moment ago, and the sheet still carries it. Its
+     heading stays in the bar, hidden, so it keeps the two buttons at the two
+     ends of the row. */
+  .appbar.minimal {
+    height: 36px;
+  }
+
+  .appbar.minimal h1 {
+    visibility: hidden;
+  }
+
+  .appbar.minimal .appbar-action {
+    width: 36px;
+    height: 36px;
+    font-size: 17px;
   }
 
   .appbar h1 {

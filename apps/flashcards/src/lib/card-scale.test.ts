@@ -55,7 +55,7 @@ describe("card scales", () => {
   it("round-trips through storage and falls back to full size", () => {
     const storage = memoryStorage();
     saveCardScales(
-      { keyboard: 1.3, pianoKeys: 88, board: 1, answer: 1.5 },
+      { keyboard: 1.3, pianoKeys: 88, board: 1, answer: 1.5, minimalAppBar: true },
       storage,
     );
     expect(loadCardScales(storage)).toEqual({
@@ -63,6 +63,7 @@ describe("card scales", () => {
       pianoKeys: 88,
       board: 1,
       answer: 1.5,
+      minimalAppBar: true,
     });
 
     expect(loadCardScales(memoryStorage())).toEqual(DEFAULT_CARD_SCALES);
@@ -75,13 +76,19 @@ describe("card scales", () => {
           "music-flashcards:card-scales": '{"answer":"big","keyboard":42}',
         }),
       ),
-    ).toEqual({ keyboard: 2, pianoKeys: 88, board: 1, answer: 1 });
+    ).toEqual({
+      keyboard: 2,
+      pianoKeys: 88,
+      board: 1,
+      answer: 1,
+      minimalAppBar: false,
+    });
   });
 
   it("hands the deck stylesheet what it reads", () => {
     expect(
       cardScaleVariables(
-        { keyboard: 1, pianoKeys: 88, board: 1, answer: 1.2 },
+        { ...DEFAULT_CARD_SCALES, answer: 1.2 },
         { ...DEFAULT_DECK_CARD_SETTINGS, staff: 0.7 },
       ),
     ).toEqual({
@@ -93,7 +100,7 @@ describe("card scales", () => {
     // Either board can be asked for the width of the screen instead.
     expect(
       cardScaleVariables(
-        { keyboard: 1, pianoKeys: 88, board: "screen", answer: 1 },
+        { ...DEFAULT_CARD_SCALES, board: "screen" },
         DEFAULT_DECK_CARD_SETTINGS,
       )["--board-width"],
     ).toBe("100vw");
@@ -101,7 +108,7 @@ describe("card scales", () => {
     // than a multiple of the deck's own choice.
     expect(
       cardScaleVariables(
-        { keyboard: "screen", pianoKeys: 88, board: 1, answer: 1 },
+        { ...DEFAULT_CARD_SCALES, keyboard: "screen" },
         DEFAULT_DECK_CARD_SETTINGS,
       ),
     ).toEqual({
@@ -151,7 +158,7 @@ describe("stepping a size", () => {
   it("remembers the width of the screen", () => {
     const storage = memoryStorage();
     saveCardScales(
-      { keyboard: "screen", pianoKeys: 88, board: 1, answer: 1 },
+      { ...DEFAULT_CARD_SCALES, keyboard: "screen" },
       storage,
     );
     expect(loadCardScales(storage).keyboard).toBe("screen");
