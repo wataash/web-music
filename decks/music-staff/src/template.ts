@@ -265,6 +265,11 @@ export const CARD_CSS = `
   display: grid;
   justify-items: center;
   gap: 0.75rem;
+  /* Full size is most of the screen: a staff smaller than that is a handful of
+     lines and one note to find on them, and the keyboard under it has a
+     screen's width of its own. --staff-scale is the reader's, set from the
+     app; the deck only says what full size means. */
+  --staff-width: calc(min(88vw, 26rem) * var(--staff-scale, 1));
 }
 
 .prompt {
@@ -277,15 +282,6 @@ export const CARD_CSS = `
   display: none;
 }
 
-/* Every staff is drawn with room for six ledger lines either way, so the staff
-   itself never moves as the note changes. The app sets --staff-crop and
-   --staff-focus to the part of that image the notes it is asking about
-   actually need; without them the whole frame is shown.
-
-   --staff-scale and --keyboard-scale are the reader's, set from the app; the
-   deck only says what full size means. Full size is most of the screen: a
-   staff smaller than that is a handful of lines and one note to find on
-   them, and the keyboard under it has a screen's width of its own. */
 /* Full size already reaches the edges of the screen, so a reader who asks for
    more gets a staff wider than the card. The negative margin cancels the
    card's padding and the row scrolls, as the keyboard's does, rather than the
@@ -299,16 +295,28 @@ export const CARD_CSS = `
 .diagram > img,
 .diagram > svg {
   display: block;
-  width: calc(min(88vw, 26rem) * var(--staff-scale, 1));
+  width: var(--staff-width);
   height: auto;
   margin-inline: auto;
 }
 
+/* Every staff is drawn with room for six ledger lines either way, so the staff
+   itself never moves as the note changes. The app sets --staff-clip-top and
+   --staff-clip-bottom to the bands of that image the notes it is asking about
+   do not need; without them the whole frame is shown.
+
+   The bands are cut away rather than the image being fitted into a shorter
+   box: object-fit says what is wanted here but is not applied to an inline
+   <svg>, which letterboxes into the box instead — and the staff would then be
+   drawn larger the more of the ledger lines the reader had asked for. The
+   negative margins take the cut bands back out of the layout, so the card is
+   as tall as what is left. */
 .diagram > img.staff,
 .diagram > svg.staff {
-  aspect-ratio: var(--staff-crop, auto);
-  object-fit: cover;
-  object-position: 50% var(--staff-focus, 50%);
+  --staff-clip-top-length: calc(var(--staff-width) * var(--staff-clip-top, 0));
+  --staff-clip-bottom-length: calc(var(--staff-width) * var(--staff-clip-bottom, 0));
+  clip-path: inset(var(--staff-clip-top-length) 0 var(--staff-clip-bottom-length));
+  margin-block: calc(-1 * var(--staff-clip-top-length)) calc(-1 * var(--staff-clip-bottom-length));
 }
 
 /* The negative margin cancels the padding around the card, so a keyboard can

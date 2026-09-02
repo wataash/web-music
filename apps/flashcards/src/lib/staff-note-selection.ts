@@ -148,9 +148,10 @@ function byClef(
 
 // Deck media frames a staff for every note its clef can carry, which is more
 // sky and cellar than a reader who studies two ledger lines ever needs. The
-// card crops the image to the notes that can actually come up: `--staff-crop`
-// is the aspect ratio of the part worth showing and `--staff-focus` says where
-// in the image that part sits.
+// card crops the image to the notes that can actually come up: `--staff-clip-top`
+// and `--staff-clip-bottom` are the bands to cut off the image, each as a
+// fraction of its width — the card draws the image at a width of its own, and
+// the bands scale with it.
 export function staffCardVariables(
   note: Pick<NoteRow, "fields" | "tags">,
   selection: StaffNoteSelection,
@@ -163,16 +164,17 @@ export function staffCardVariables(
   if (steps.length === 0) return {};
   const full = staffFrame(staffNote.clef);
   const crop = staffFrame(staffNote.clef, steps);
-  const slack = full.height - crop.height;
+  const { width } = CARD_STAFF_GEOMETRY;
   return {
-    "--staff-crop": `${CARD_STAFF_GEOMETRY.width} / ${crop.height}`,
-    "--staff-focus":
-      slack <= 0 ? "50%" : `${round((crop.top - full.top) / slack * 100)}%`,
+    "--staff-clip-top": round((crop.top - full.top) / width),
+    "--staff-clip-bottom": round(
+      (full.top + full.height - crop.top - crop.height) / width,
+    ),
   };
 }
 
-function round(value: number): number {
-  return Math.round(value * 10) / 10;
+function round(value: number): string {
+  return String(Math.round(value * 10000) / 10000);
 }
 
 function staffNoteFromNote(

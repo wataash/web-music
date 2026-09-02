@@ -527,6 +527,27 @@ test("sizes the staff, the keyboard and the answer", async ({ page }) => {
   await expect.poll(staffWidth).toBeCloseTo(staffBefore * 1.2, 0);
 });
 
+test("draws the staff at one size however many notes it asks", async ({
+  page,
+}) => {
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  const card = page.frameLocator('iframe[title="card"]');
+  const line = card.locator('svg.staff .staff__line[data-line="1"]');
+  const lineWidth = async () => (await line.boundingBox())?.width ?? 0;
+  const basic = await lineWidth();
+  expect(basic).toBeGreaterThan(0);
+
+  await openNoteSettings(page);
+  await page.getByRole("radio", { name: /^All/ }).check();
+  await page.getByRole("button", { name: "APPLY" }).click();
+
+  // The card trims the image to the notes that can come up, and trimming is
+  // all it does: a reader who takes on the far ledger lines gets a taller
+  // staff, not a larger one.
+  await expect.poll(lineWidth).toBeCloseTo(basic, 0);
+});
+
 test("pushes the card down the screen, and up past the top", async ({
   page,
 }) => {

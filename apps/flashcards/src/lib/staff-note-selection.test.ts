@@ -155,14 +155,14 @@ describe("cropping the staff image to the notes in play", () => {
     const everything = staffCardVariables(card, ALL_STAFF_NOTES);
 
     // The deck frames every clef for six ledger lines either way; two ledger
-    // lines need well under half of that.
-    expect(basic["--staff-crop"]).toBe("260 / 192");
-    expect(everything["--staff-crop"]).toBe("260 / 304");
-    // The whole image is the whole image, so there is nowhere to focus; the
-    // basic notes reach as far above the staff as below, so they sit in the
-    // middle of it.
-    expect(everything["--staff-focus"]).toBe("50%");
-    expect(basic["--staff-focus"]).toBe("50%");
+    // lines need well under half of that, and reach as far above the staff as
+    // below, so the same band comes off each end. 56 of the image's 304 rows,
+    // against the 260 it is drawn across.
+    expect(basic["--staff-clip-top"]).toBe("0.2154");
+    expect(basic["--staff-clip-bottom"]).toBe("0.2154");
+    // The whole image is the whole image, so there is nothing to cut.
+    expect(everything["--staff-clip-top"]).toBe("0");
+    expect(everything["--staff-clip-bottom"]).toBe("0");
   });
 
   it("looks where the notes are when they are all high or all low", () => {
@@ -175,8 +175,12 @@ describe("cropping the staff image to the notes in play", () => {
       treble: ["G2", "A2", "B2", "C3"],
     });
 
-    expect(high["--staff-focus"]).toBe("0%");
-    expect(low["--staff-focus"]).toBe("100%");
+    // High notes reach the top of the frame, low ones the bottom, so the cut
+    // is all at the other end.
+    expect(high["--staff-clip-top"]).toBe("0");
+    expect(high["--staff-clip-bottom"]).toBe("0.3022");
+    expect(low["--staff-clip-top"]).toBe("0.3175");
+    expect(low["--staff-clip-bottom"]).toBe("0");
   });
 
   it("leaves a card it does not recognise alone", () => {
