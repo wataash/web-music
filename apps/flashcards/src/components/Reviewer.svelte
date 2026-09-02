@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 <script lang="ts">
   import { untrack } from "svelte";
 
+  import AnswerPlacementPicker from "./AnswerPlacementPicker.svelte";
   import CardFrame from "./CardFrame.svelte";
   import DeckActionsSheet from "./DeckActionsSheet.svelte";
   import ResetProgressDialog from "./ResetProgressDialog.svelte";
@@ -52,6 +53,8 @@ SPDX-License-Identifier: Apache-2.0
     stepCardScale,
     stepKeyboardKeys,
     stepPianoKeys,
+    answerAnchorParts,
+    ANSWER_ANCHOR_LABELS,
     stepTopSpace,
     type CardRotation,
     type CardScale,
@@ -85,8 +88,10 @@ SPDX-License-Identifier: Apache-2.0
   } from "../lib/template";
   import type { Grade } from "../lib/scheduler";
   import {
+    answerPlacementFromHistoryState,
     deckActionsFromHistoryState,
     extraStudyDeckFromHistoryState,
+    historyStateForAnswerPlacement,
     historyStateForDeckActions,
     historyStateForExtraStudyDeck,
     historyStateForResetDeck,
@@ -146,6 +151,7 @@ SPDX-License-Identifier: Apache-2.0
     aheadKeys: [],
   });
   let actionsOpen = $state(false);
+  let placementOpen = $state(false);
   const ROTATION_LABELS = {
     0: "Upright",
     90: "Clockwise",
@@ -162,6 +168,19 @@ SPDX-License-Identifier: Apache-2.0
   let cardSettingsByDeck = $state<CardSettingsByDeck>(loadCardSettingsByDeck());
   const deckSettings = $derived(deckCardSettings(cardSettingsByDeck, deckName));
   const rotation = $derived(deckSettings.rotation);
+  const answerAnchor = $derived(deckSettings.answerAnchor);
+  const answerPlace = $derived(answerAnchorParts(answerAnchor));
+  // Down a side the buttons stand on end. Beside a card on its side they face
+  // the way it does, so the two are read the same way round; beside an upright
+  // one there is no such card to follow, and they stand on the edge they are
+  // on as though it were the foot of the screen — the phone turned to bring
+  // that edge down reads them straight, AGAIN where the left of the row lands.
+  const answerTurn = $derived.by(() => {
+    const { edge } = answerPlace;
+    if (edge !== "left" && edge !== "right") return 0;
+    if (rotation === 90 || rotation === -90) return rotation;
+    return edge === "left" ? 90 : -90;
+  });
 
   function setScale(kind: CardScaleKind, scale: CardScale): void {
     cardScales = { ...cardScales, [kind]: scale };
@@ -509,6 +528,7 @@ SPDX-License-Identifier: Apache-2.0
     untrack(() => {
       applyExtraOptionsHistory(history.state);
       applyResetHistory(history.state);
+      applyAnswerPlacementHistory(history.state);
     });
     void advance();
   });
@@ -586,6 +606,23 @@ SPDX-License-Identifier: Apache-2.0
     actionsOpen = false;
   }
 
+  function openAnswerPlacement(): void {
+    leaveDeckActions();
+    history.pushState(
+      historyStateForAnswerPlacement(history.state, deckName),
+      "",
+    );
+    placementOpen = true;
+  }
+
+  function closeAnswerPlacement(): void {
+    if (answerPlacementFromHistoryState(history.state) === deckName) {
+      history.back();
+    } else {
+      placementOpen = false;
+    }
+  }
+
   async function openResetDialog(): Promise<void> {
     leaveDeckActions();
     history.pushState(historyStateForResetDeck(history.state, deckName), "");
@@ -617,6 +654,10 @@ SPDX-License-Identifier: Apache-2.0
 
   function applyResetHistory(state: unknown): void {
     resetOpen = resetDeckFromHistoryState(state) === deckName;
+  }
+
+  function applyAnswerPlacementHistory(state: unknown): void {
+    placementOpen = answerPlacementFromHistoryState(state) === deckName;
   }
 
   function applyExtraOptionsHistory(state: unknown): void {
@@ -674,10 +715,13 @@ SPDX-License-Identifier: Apache-2.0
     actionsOpen = deckActionsFromHistoryState(event.state) === deckName;
     applyExtraOptionsHistory(event.state);
     applyResetHistory(event.state);
+    applyAnswerPlacementHistory(event.state);
   }
 
   function handleKey(event: KeyboardEvent): void {
     if (event.repeat) return;
+    // The picker listens for Escape itself; the card behind it must not.
+    if (placementOpen) return;
     if (settingsOpen) {
       if (event.key === "Escape") closeNoteSettings();
       return;
@@ -786,37 +830,58 @@ SPDX-License-Identifier: Apache-2.0
   </main>
 
   {#if !finished}
-    <footer class="bottom">
+    <footer
+      class="bottom"
+      class:anchored={answerAnchor !== "bottom"}
+      class:left={answerPlace.edge === "left" || answerPlace.end === "left"}
+      class:right={answerPlace.edge === "right" || answerPlace.end === "right"}
+      class:top={answerPlace.edge === "top" || answerPlace.end === "top"}
+      class:full={answerPlace.end === undefined}
+      class:turned={answerTurn !== 0}
+      class:anticlockwise={answerTurn === -90}
+    >
       <div class="counts">
-        <span class="count new" class:current={currentQueue === "new"}>
-          {counts.newCount}
-        </span>
-        <span class="count learn" class:current={currentQueue === "learn"}>
-          {counts.learnCount}
-        </span>
-        <span class="count due" class:current={currentQueue === "due"}>
-          {counts.dueCount}
+        <span class="counts-body">
+          <span class="count new" class:current={currentQueue === "new"}>
+            {counts.newCount}
+          </span>
+          <span class="count learn" class:current={currentQueue === "learn"}>
+            {counts.learnCount}
+          </span>
+          <span class="count due" class:current={currentQueue === "due"}>
+            {counts.dueCount}
+          </span>
         </span>
       </div>
       {#if phase === "question"}
-        <button class="show-answer" onclick={showAnswer}>SHOW ANSWER</button>
+        <button class="show-answer" onclick={showAnswer}>
+          <span class="answer-label">SHOW ANSWER</span>
+        </button>
       {:else if labels}
         <div class="eases">
           <button class="ease again" onclick={() => rate(Rating.Again)}>
-            <span class="ivl">{labels[Rating.Again]}</span>
-            <span class="ease-label">AGAIN</span>
+            <span class="ease-body">
+              <span class="ivl">{labels[Rating.Again]}</span>
+              <span class="ease-label">AGAIN</span>
+            </span>
           </button>
           <button class="ease hard" onclick={() => rate(Rating.Hard)}>
-            <span class="ivl">{labels[Rating.Hard]}</span>
-            <span class="ease-label">HARD</span>
+            <span class="ease-body">
+              <span class="ivl">{labels[Rating.Hard]}</span>
+              <span class="ease-label">HARD</span>
+            </span>
           </button>
           <button class="ease good" onclick={() => rate(Rating.Good)}>
-            <span class="ivl">{labels[Rating.Good]}</span>
-            <span class="ease-label">GOOD</span>
+            <span class="ease-body">
+              <span class="ivl">{labels[Rating.Good]}</span>
+              <span class="ease-label">GOOD</span>
+            </span>
           </button>
           <button class="ease easy" onclick={() => rate(Rating.Easy)}>
-            <span class="ivl">{labels[Rating.Easy]}</span>
-            <span class="ease-label">EASY</span>
+            <span class="ease-body">
+              <span class="ivl">{labels[Rating.Easy]}</span>
+              <span class="ease-label">EASY</span>
+            </span>
           </button>
         </div>
       {/if}
@@ -853,10 +918,22 @@ SPDX-License-Identifier: Apache-2.0
       onstep: (steps) =>
         setDeckSettings({ rotation: stepCardRotation(rotation, steps) }),
     }}
+    answerPlacement={{
+      label: ANSWER_ANCHOR_LABELS[answerAnchor],
+      onopen: openAnswerPlacement,
+    }}
     sizes={cardSizes}
     switches={cardSwitches}
     onreset={() => void openResetDialog()}
     onclose={closeDeckActions}
+  />
+{/if}
+
+{#if placementOpen}
+  <AnswerPlacementPicker
+    current={answerAnchor}
+    onpick={(anchor) => setDeckSettings({ answerAnchor: anchor })}
+    onclose={closeAnswerPlacement}
   />
 {/if}
 
@@ -901,6 +978,7 @@ SPDX-License-Identifier: Apache-2.0
     /* The minimized bar hangs over the card rather than sitting above it. */
     position: relative;
     --minimal-bar: 36px;
+    --app-bar: 56px;
   }
 
   .appbar {
@@ -908,7 +986,7 @@ SPDX-License-Identifier: Apache-2.0
     align-items: center;
     gap: 4px;
     padding: 0 8px;
-    height: 56px;
+    height: var(--app-bar);
     background: var(--primary);
     color: var(--on-primary);
     box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
@@ -949,6 +1027,13 @@ SPDX-License-Identifier: Apache-2.0
     color: #fff;
     font-size: 17px;
     pointer-events: auto;
+  }
+
+  /* Cut down, the bar is two buttons over the top corners of the card rather
+     than a row above it, and that is all a strip down the edge has to start
+     below. */
+  .appbar.minimal ~ .bottom {
+    --app-bar: var(--minimal-bar);
   }
 
   .appbar.minimal .importing {
@@ -1104,13 +1189,200 @@ SPDX-License-Identifier: Apache-2.0
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
 
+  /* Anchored to an edge rather than lying across the foot of the screen.
+     Like the minimized bar, the row comes out of the column and hangs over
+     the card, so the card keeps the height the bar would have cost. */
+  .bottom.anchored {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    background: transparent;
+    border-top: none;
+    /* Only the buttons take a tap: the rest of the row is the card. */
+    pointer-events: none;
+  }
+
+  .bottom.anchored > * {
+    pointer-events: auto;
+  }
+
+  /* Each control carries its own ground, since what is behind it is now the
+     card and not the bar's colour. */
+  .bottom.anchored .counts {
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgb(0 0 0 / 0.4);
+  }
+
+  .bottom.anchored .show-answer {
+    width: auto;
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 22px;
+    background: rgb(0 0 0 / 0.4);
+    color: #fff;
+  }
+
+  .bottom.anchored .eases {
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgb(0 0 0 / 0.4);
+  }
+
+  .bottom.anchored .ease {
+    flex: none;
+    width: 60px;
+    height: 54px;
+    border-left-color: rgb(255 255 255 / 0.3);
+  }
+
+  .bottom.anchored .ivl {
+    color: rgb(255 255 255 / 0.7);
+  }
+
+  .bottom.anchored .show-answer:active,
+  .bottom.anchored .ease:active {
+    background: rgb(0 0 0 / 0.55);
+  }
+
+  /* The counts keep the far end of the edge, so the buttons keep the hand's. */
+  .bottom.anchored.left {
+    flex-direction: row-reverse;
+  }
+
+  .bottom.anchored.top {
+    top: var(--app-bar);
+    bottom: auto;
+    align-items: flex-start;
+    padding-bottom: 8px;
+  }
+
+  /* Down a side: the row stands up into a strip from under the app bar to the
+     foot of the screen, and its labels stand with it. A phone held upright can
+     then be answered beside a card on its side, without the two facing
+     different ways. */
+  .bottom.anchored.turned {
+    top: var(--app-bar);
+    bottom: 0;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* Which end of the strip the buttons are at; the counts take the other. */
+  .bottom.anchored.turned.top {
+    flex-direction: column-reverse;
+  }
+
+  .bottom.anchored.turned.left {
+    right: auto;
+    left: 0;
+  }
+
+  .bottom.anchored.turned.right {
+    right: 0;
+    left: auto;
+    align-items: flex-end;
+  }
+
+  /* AGAIN to EASY runs the way it does on the card: down the strip beside a
+     card turned clockwise, up it beside one turned the other way. */
+  .bottom.anchored.turned .eases {
+    flex-direction: column;
+  }
+
+  .bottom.anchored.turned.anticlockwise .eases {
+    flex-direction: column-reverse;
+  }
+
+  .bottom.anchored.turned .ease {
+    height: 64px;
+    border-left: none;
+    border-top: 1px solid rgb(255 255 255 / 0.3);
+  }
+
+  .bottom.anchored.turned .ease:first-child {
+    border-top: none;
+  }
+
+  /* Stacked the other way up, it is the last button that is at the top of the
+     strip and wants no line above it. */
+  .bottom.anchored.turned.anticlockwise .ease:first-child {
+    border-top: 1px solid rgb(255 255 255 / 0.3);
+  }
+
+  .bottom.anchored.turned.anticlockwise .ease:last-child {
+    border-top: none;
+  }
+
+  .bottom.anchored.turned .show-answer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 170px;
+    padding: 0;
+    border-radius: 30px;
+  }
+
+  .bottom.anchored.turned .ease-body,
+  .bottom.anchored.turned .counts-body,
+  .bottom.anchored.turned .answer-label {
+    rotate: 90deg;
+  }
+
+  .bottom.anchored.turned.anticlockwise .ease-body,
+  .bottom.anchored.turned.anticlockwise .counts-body,
+  .bottom.anchored.turned.anticlockwise .answer-label {
+    rotate: -90deg;
+  }
+
+  /* The ground goes on the numbers themselves once they are turned: a box the
+     size the row left behind would sit crooked behind them. */
+  .bottom.anchored.turned .counts {
+    align-items: center;
+    width: 2.2em;
+    height: 5.5em;
+    padding: 0;
+    background: none;
+  }
+
+  .bottom.anchored.turned .counts-body {
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgb(0 0 0 / 0.4);
+  }
+
+  /* An edge on its own rather than one end of it: the buttons spread along the
+     whole of it, as they do across the foot of the screen, and the counts take
+     the near end. */
+  .bottom.anchored.turned.full .eases,
+  .bottom.anchored.turned.full .ease,
+  .bottom.anchored.turned.full .show-answer {
+    flex: 1;
+    height: auto;
+  }
+
   .counts {
     display: flex;
     justify-content: center;
-    gap: 12px;
     padding: 4px 0 0;
     font-size: 13px;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* The three numbers as one block, so a strip down the edge turns them
+     together, the way it turns an ease's two lines. */
+  .counts-body {
+    display: flex;
+    gap: 12px;
   }
 
   .count.new {
@@ -1127,6 +1399,11 @@ SPDX-License-Identifier: Apache-2.0
 
   .count.current {
     text-decoration: underline;
+  }
+
+  .answer-label {
+    display: block;
+    white-space: nowrap;
   }
 
   .show-answer {
@@ -1152,12 +1429,19 @@ SPDX-License-Identifier: Apache-2.0
   .ease {
     flex: 1;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
     height: 60px;
     border-left: 1px solid var(--divider);
+  }
+
+  /* The interval and the label as one block, so a strip down the edge turns
+     the two together. */
+  .ease-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
   }
 
   .ease:first-child {

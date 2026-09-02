@@ -58,7 +58,10 @@ async function settleDeckImports(page: Page): Promise<void> {
 
 // The reviewer keeps one menu, so what it offers is a row in the sheet rather
 // than a button of its own.
-async function openSheetAction(page: Page, name: string): Promise<void> {
+async function openSheetAction(
+  page: Page,
+  name: string | RegExp,
+): Promise<void> {
   await page.getByRole("button", { name: "Deck actions" }).click();
   await page.getByRole("menuitem", { name }).click();
 }
@@ -69,6 +72,12 @@ async function openNoteSettings(page: Page): Promise<void> {
 
 async function openStudyMore(page: Page): Promise<void> {
   await openSheetAction(page, "Study more today");
+}
+
+// Where the answer buttons go is chosen on a screen of its own, which the
+// sheet hands over to.
+async function openPlacementPicker(page: Page): Promise<void> {
+  await openSheetAction(page, /^Answer buttons/);
 }
 
 async function study(page: Page, deck: string): Promise<void> {
@@ -515,6 +524,134 @@ test("turns the card sideways from the deck's menu", async ({ page, shot }) => {
   // The app bar and the answer buttons never turn with it.
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "SHOW ANSWER" })).toBeVisible();
+});
+
+test("puts the answer buttons where the picker is tapped", async ({
+  page,
+  shot,
+}) => {
+  // A phone held upright, which is what a card turned sideways is read on.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  const cardArea = page.locator(".card-area");
+  const acrossTheBottom = (await cardArea.boundingBox())!;
+  const showAnswer = page.getByRole("button", { name: "SHOW ANSWER" });
+  const picker = page.getByRole("radiogroup");
+  const done = page.getByRole("button", { name: "Done" });
+
+  // Eleven places, each pointed at where it would be rather than stepped
+  // through: the cells of the picker stand where the buttons would stand.
+  await openPlacementPicker(page);
+  await expect(
+    page.getByRole("radio", { name: "Bottom", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
+  await shot("placement-picker");
+
+  // One end of the foot rather than the whole of it: the row leaves the
+  // column, so the card has the height it was costing. The picker stays up,
+  // with the buttons themselves showing through the cell that was tapped.
+  await page.getByRole("radio", { name: "Bottom left" }).click();
+  await expect(picker).toBeVisible();
+  await expect(
+    page.getByRole("radio", { name: "Bottom left" }),
+  ).toHaveAttribute("aria-checked", "true");
+  const flat = (await showAnswer.boundingBox())!;
+  expect((await cardArea.boundingBox())!.height).toBeGreaterThan(
+    acrossTheBottom.height,
+  );
+  expect(flat.width).toBeGreaterThan(flat.height);
+  expect(flat.x).toBeLessThan(195);
+  await shot("previewing-bottom-left");
+  await done.click();
+  await expect(picker).toBeHidden();
+
+  // Turning the card leaves them where they are — the edge is asked for, not
+  // taken from the turn.
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  await page.getByRole("button", { name: "Rotate clockwise" }).click();
+  await page.keyboard.press("Escape");
+  const turned = (await showAnswer.boundingBox())!;
+  expect(turned.width).toBeGreaterThan(turned.height);
+
+  // A side on its own stands them on end and spreads them down the whole of
+  // it, with the counts at the near end.
+  await openPlacementPicker(page);
+  await page.getByRole("radio", { name: "Left", exact: true }).click();
+  const rail = (await showAnswer.boundingBox())!;
+  expect(rail.x).toBeLessThan(100);
+  expect(rail.height).toBeGreaterThan(400);
+  const railCounts = (await page.locator(".counts").boundingBox())!;
+  expect(railCounts.y).toBeLessThan(rail.y);
+  await shot("previewing-rail-left");
+
+  // Another tap in the same sitting: one end of that side instead, the
+  // buttons packed into the corner and the counts at the other end.
+  await page.getByRole("radio", { name: "Left bottom" }).click();
+  const strip = (await showAnswer.boundingBox())!;
+  expect(strip.height).toBeGreaterThan(strip.width);
+  expect(strip.height).toBeLessThan(400);
+  expect(strip.x).toBeLessThan(100);
+  expect(strip.y + strip.height).toBeGreaterThan(700);
+  expect((await page.locator(".counts").boundingBox())!.y).toBeLessThan(
+    strip.y,
+  );
+
+  // And across to the top of the other side, in one tap rather than four.
+  await page.getByRole("radio", { name: "Right top" }).click();
+  const topRight = (await showAnswer.boundingBox())!;
+  expect(topRight.x).toBeGreaterThan(290);
+  // Below the app bar, not under it.
+  expect(topRight.y).toBeGreaterThanOrEqual(56);
+  expect(topRight.y).toBeLessThan(200);
+  await done.click();
+  await shot("strip-right-top");
+
+  // The eases stand in the strip too, AGAIN at the end the card's own bottom
+  // left corner is at.
+  await showAnswer.click();
+  const eases = (await page.locator(".eases").boundingBox())!;
+  expect(eases.height).toBeGreaterThan(eases.width);
+  expect(eases.x).toBeGreaterThan(290);
+  expect((await page.locator(".ease.again").boundingBox())!.y).toBeLessThan(
+    (await page.locator(".ease.easy").boundingBox())!.y,
+  );
+  await shot("eases-right-top");
+
+  // A side on its own shares itself between the four of them, as the foot
+  // shares its width.
+  await openPlacementPicker(page);
+  await page.getByRole("radio", { name: "Left", exact: true }).click();
+  const railEases = (await page.locator(".eases").boundingBox())!;
+  expect(railEases.height).toBeGreaterThan(400);
+  // A quarter each, but for the lines between them.
+  const share = (await page.locator(".ease.again").boundingBox())!.height;
+  expect(Math.abs(share - railEases.height / 4)).toBeLessThan(2);
+  await shot("eases-rail-left");
+
+  // Beside an upright card they stand on the edge they are on, as though it
+  // were the foot of the screen: down the right, AGAIN is at the bottom,
+  // which is where the left of the row lands when the phone is turned to
+  // bring that edge down.
+  await page.getByRole("radio", { name: "Right bottom" }).click();
+  await done.click();
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  await page.getByRole("button", { name: "Rotate anticlockwise" }).click();
+  await expect(page.getByRole("group", { name: "Rotate card" })).toContainText(
+    "Upright",
+  );
+  await page.keyboard.press("Escape");
+  expect((await page.locator(".ease.again").boundingBox())!.y).toBeGreaterThan(
+    (await page.locator(".ease.easy").boundingBox())!.y,
+  );
+  await shot("upright-right-bottom");
+
+  // The picker is a history entry, so the back button closes it and leaves
+  // the card where it was.
+  await openPlacementPicker(page);
+  await page.goBack();
+  await expect(picker).toBeHidden();
+  await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
 });
 
 test("sizes the staff, the keyboard and the answer", async ({ page }) => {

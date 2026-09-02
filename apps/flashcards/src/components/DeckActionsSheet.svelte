@@ -13,6 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     onstudymore,
     onnotesettings,
     rotate,
+    answerPlacement,
     switches = [],
     sizes = [],
     onreset,
@@ -31,6 +32,11 @@ SPDX-License-Identifier: Apache-2.0
     // open when pressed, like the sizes: turning the card is something to do
     // two or three times in a row.
     rotate?: Readonly<{ label: string; onstep: (steps: 1 | -1) => void }>;
+    // Where the answer buttons are. Beside the turn, since a card is turned
+    // and then answered from wherever that leaves the hand — but pointed at
+    // on a screen of its own rather than stepped through here: there are
+    // eleven places and no room to say which is which in a row.
+    answerPlacement?: Readonly<{ label: string; onopen: () => void }>;
     // What the card draws or leaves out, each a row that stays where it is
     // when pressed: the card behind the sheet is the answer to it.
     switches?: readonly Readonly<{
@@ -101,6 +107,12 @@ SPDX-License-Identifier: Apache-2.0
           >
         </span>
       </div>
+    {/if}
+    {#if answerPlacement}
+      <button class="action" role="menuitem" onclick={answerPlacement.onopen}>
+        <span class="icon" aria-hidden="true">◱</span>Answer buttons
+        <span class="value">{answerPlacement.label}</span>
+      </button>
     {/if}
     {#each sizes as size (size.label)}
       <div class="action size" role="group" aria-label={size.label}>

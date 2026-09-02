@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  answerAnchorParts,
   cardScaleVariables,
   clampCardScale,
   clampKeyboardKeys,
@@ -249,5 +250,42 @@ describe("what each deck draws its own way", () => {
     expect(stepCardRotation(-90, 1)).toBe(0);
     expect(stepCardRotation(0, -1)).toBe(-90);
     expect(stepCardRotation(180, -1)).toBe(90);
+  });
+
+  it("names the answer buttons' place by edge, and by end where there is one", () => {
+    // An edge on its own has no end; the rest name one.
+    expect(answerAnchorParts("bottom")).toEqual({ edge: "bottom" });
+    expect(answerAnchorParts("right")).toEqual({ edge: "right" });
+    expect(answerAnchorParts("left-top")).toEqual({
+      edge: "left",
+      end: "top",
+    });
+    expect(answerAnchorParts("top-right")).toEqual({
+      edge: "top",
+      end: "right",
+    });
+
+    const storage = memoryStorage();
+    saveCardSettingsByDeck(
+      withDeckCardSettings({}, "Guitar Intervals", {
+        ...DEFAULT_DECK_CARD_SETTINGS,
+        answerAnchor: "top-left",
+      }),
+      storage,
+    );
+    expect(
+      deckCardSettings(loadCardSettingsByDeck(storage), "Guitar Intervals"),
+    ).toEqual({ ...DEFAULT_DECK_CARD_SETTINGS, answerAnchor: "top-left" });
+    expect(
+      deckCardSettings(
+        loadCardSettingsByDeck(
+          memoryStorage({
+            "music-flashcards:deck-card-settings":
+              '{"Guitar Intervals":{"answerAnchor":"corner"}}',
+          }),
+        ),
+        "Guitar Intervals",
+      ).answerAnchor,
+    ).toBe("bottom");
   });
 });

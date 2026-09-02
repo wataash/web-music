@@ -6,6 +6,7 @@ const NOTE_SETTINGS_DECK_KEY = "musicFlashcardsNoteSettingsDeck";
 const EXTRA_STUDY_DECK_KEY = "musicFlashcardsExtraStudyDeck";
 const RESET_DECK_KEY = "musicFlashcardsResetDeck";
 const DECK_ACTIONS_DECK_KEY = "musicFlashcardsDeckActionsDeck";
+const ANSWER_PLACEMENT_DECK_KEY = "musicFlashcardsAnswerPlacementDeck";
 const DECK_CHOOSER_KEY = "musicFlashcardsDeckChooser";
 const BACKUP_KEY = "musicFlashcardsBackup";
 const DECK_LIST_SCROLL_TOP_KEY = "musicFlashcardsDeckListScrollTop";
@@ -36,6 +37,7 @@ const settingsDeck = deckHistoryKey(NOTE_SETTINGS_DECK_KEY);
 const extraStudyDeck = deckHistoryKey(EXTRA_STUDY_DECK_KEY);
 const resetDeck = deckHistoryKey(RESET_DECK_KEY);
 const deckActionsDeck = deckHistoryKey(DECK_ACTIONS_DECK_KEY);
+const answerPlacementDeck = deckHistoryKey(ANSWER_PLACEMENT_DECK_KEY);
 
 export const deckFromHistoryState = studyDeck.read;
 export const historyStateForDeck = studyDeck.write;
@@ -47,6 +49,8 @@ export const resetDeckFromHistoryState = resetDeck.read;
 export const historyStateForResetDeck = resetDeck.write;
 export const deckActionsFromHistoryState = deckActionsDeck.read;
 export const historyStateForDeckActions = deckActionsDeck.write;
+export const answerPlacementFromHistoryState = answerPlacementDeck.read;
+export const historyStateForAnswerPlacement = answerPlacementDeck.write;
 
 // The deck chooser and the backup dialog belong to the list rather than to a
 // deck, so they have no name to keep — only whether they are open.

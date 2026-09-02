@@ -48,6 +48,58 @@ export type CardRotation = (typeof CARD_ROTATIONS)[number];
 // screen, which is not a multiple of anything: a board is read across, and how
 // much of it a screen can hold is the question, not how large it is against
 // some other card.
+// Where the answer buttons are: the edge of the screen they lie along, and
+// which end of it they are at. An edge on its own spreads them along the whole
+// of it, the way they spread across the foot of the screen; an end packs them
+// into that corner and leaves the rest of the edge to the card.
+//
+// The edge is also which way they face — down a side they stand on end, so a
+// card turned sideways can be read and answered without the two facing
+// different ways. There is no top edge on its own: the app bar is already
+// there.
+const ANSWER_ANCHORS = [
+  "bottom",
+  "bottom-left",
+  "bottom-right",
+  "left",
+  "left-bottom",
+  "left-top",
+  "right",
+  "right-bottom",
+  "right-top",
+  "top-left",
+  "top-right",
+] as const;
+
+export type AnswerAnchor = (typeof ANSWER_ANCHORS)[number];
+
+// Named where they are pointed at, so the sheet, the picker and the reader
+// all call a place the same thing.
+export const ANSWER_ANCHOR_LABELS: Readonly<Record<AnswerAnchor, string>> = {
+  bottom: "Bottom",
+  "bottom-left": "Bottom left",
+  "bottom-right": "Bottom right",
+  left: "Left",
+  "left-bottom": "Left bottom",
+  "left-top": "Left top",
+  right: "Right",
+  "right-bottom": "Right bottom",
+  "right-top": "Right top",
+  "top-left": "Top left",
+  "top-right": "Top right",
+};
+
+// The two halves of the name: which edge, and which end of it if the name
+// gives one.
+export type AnswerEdge = "bottom" | "left" | "right" | "top";
+
+export function answerAnchorParts(
+  anchor: AnswerAnchor,
+): Readonly<{ edge: AnswerEdge; end?: AnswerEdge }> {
+  const [edge, end] = anchor.split("-") as [AnswerEdge, AnswerEdge?];
+  return { edge, end };
+}
+
 export const SCREEN_WIDTH = "screen";
 
 export type CardScale = number | typeof SCREEN_WIDTH;
@@ -87,6 +139,7 @@ export type DeckCardSettings = Readonly<{
   keyboardKeys: number;
   topSpace: number;
   rotation: CardRotation;
+  answerAnchor: AnswerAnchor;
   frontRoot: boolean;
   frontAnswer: boolean;
 }>;
@@ -96,6 +149,7 @@ export const DEFAULT_DECK_CARD_SETTINGS: DeckCardSettings = {
   keyboardKeys: MAX_KEYBOARD_KEYS,
   topSpace: 0,
   rotation: 0,
+  answerAnchor: "bottom",
   frontRoot: true,
   frontAnswer: false,
 };
@@ -176,6 +230,10 @@ function clampCardRotation(value: unknown): CardRotation {
   return CARD_ROTATIONS.find((rotation) => rotation === value) ?? 0;
 }
 
+function clampAnswerAnchor(value: unknown): AnswerAnchor {
+  return ANSWER_ANCHORS.find((anchor) => anchor === value) ?? "bottom";
+}
+
 export function loadCardSettingsByDeck(
   storage: StorageLike | undefined = browserStorage(),
 ): CardSettingsByDeck {
@@ -231,6 +289,7 @@ function parseDeckCardSettings(value: unknown): DeckCardSettings {
     keyboardKeys: clampKeyboardKeys(values.keyboardKeys),
     topSpace: clampTopSpace(values.topSpace),
     rotation: clampCardRotation(values.rotation),
+    answerAnchor: clampAnswerAnchor(values.answerAnchor),
     frontRoot: readSwitch(values.frontRoot, true),
     frontAnswer: readSwitch(values.frontAnswer, false),
   };
