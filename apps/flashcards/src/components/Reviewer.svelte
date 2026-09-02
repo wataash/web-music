@@ -913,6 +913,8 @@ SPDX-License-Identifier: Apache-2.0
     height: 100%;
     display: flex;
     flex-direction: column;
+    /* The minimized bar hangs over the card rather than sitting above it. */
+    position: relative;
   }
 
   .appbar {
@@ -927,12 +929,25 @@ SPDX-License-Identifier: Apache-2.0
     flex: none;
   }
 
-  /* Cut down for a screen with no height to spare. The name of the deck goes:
-     the reader chose it a moment ago, and the sheet still carries it. Its
-     heading stays in the bar, hidden, so it keeps the two buttons at the two
-     ends of the row. */
+  /* Cut down for a screen with no height to spare: the bar comes out of the
+     column altogether and its two buttons hang over the top corners of the
+     card, so the whole screen is the card's. The name of the deck goes — the
+     reader chose it a moment ago, and the sheet still carries it — but its
+     heading stays in the row, hidden, to hold the buttons at the two ends.
+
+     Nothing but the buttons takes a tap: the card underneath is answered by
+     tapping what it draws, and a strip across the top of it that swallowed
+     that would cost more than the bar did. */
   .appbar.minimal {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 5;
     height: 36px;
+    background: transparent;
+    box-shadow: none;
+    pointer-events: none;
   }
 
   .appbar.minimal h1 {
@@ -942,7 +957,19 @@ SPDX-License-Identifier: Apache-2.0
   .appbar.minimal .appbar-action {
     width: 36px;
     height: 36px;
+    /* Its own ground, since what is behind it is now the card and not the
+       bar's colour. */
+    background: rgb(0 0 0 / 0.4);
+    color: #fff;
     font-size: 17px;
+    pointer-events: auto;
+  }
+
+  .appbar.minimal .importing {
+    border-radius: 10px;
+    padding: 2px 8px;
+    background: rgb(0 0 0 / 0.4);
+    color: #fff;
   }
 
   .appbar h1 {

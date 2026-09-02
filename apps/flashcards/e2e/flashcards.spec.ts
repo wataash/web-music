@@ -607,7 +607,8 @@ test("cuts the app bar down to its buttons", async ({ page, shot }) => {
   const bar = page.locator(".appbar");
   const title = bar.locator("h1");
   await expect(title).toHaveText("Treble Clef");
-  const full = (await bar.boundingBox())!.height;
+  const cardArea = page.locator(".card-area");
+  const before = (await cardArea.boundingBox())!;
 
   await page.getByRole("button", { name: "Deck actions" }).click();
   await page
@@ -620,7 +621,12 @@ test("cuts the app bar down to its buttons", async ({ page, shot }) => {
   await expect(title).toBeHidden();
   await expect(page.getByRole("button", { name: "Back" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Deck actions" })).toBeVisible();
-  expect((await bar.boundingBox())!.height).toBeLessThan(full);
+  // The bar is out of the column now, so the card has the screen from the top
+  // down — the whole bar's worth of height, not just the title's.
+  const after = (await cardArea.boundingBox())!;
+  expect(after.y).toBe(0);
+  expect(after.height).toBeGreaterThan(before.height);
+  expect((await bar.boundingBox())!.y).toBe(0);
   await shot("minimal-app-bar");
 
   // It is the reader's, not the deck's, so it holds across decks.
