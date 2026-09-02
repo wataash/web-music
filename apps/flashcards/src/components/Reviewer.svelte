@@ -915,6 +915,7 @@ SPDX-License-Identifier: Apache-2.0
     flex-direction: column;
     /* The minimized bar hangs over the card rather than sitting above it. */
     position: relative;
+    --minimal-bar: 36px;
   }
 
   .appbar {
@@ -944,7 +945,7 @@ SPDX-License-Identifier: Apache-2.0
     right: 0;
     left: 0;
     z-index: 5;
-    height: 36px;
+    height: var(--minimal-bar);
     background: transparent;
     box-shadow: none;
     pointer-events: none;
@@ -955,14 +956,21 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .appbar.minimal .appbar-action {
-    width: 36px;
-    height: 36px;
+    width: var(--minimal-bar);
+    height: var(--minimal-bar);
     /* Its own ground, since what is behind it is now the card and not the
        bar's colour. */
     background: rgb(0 0 0 / 0.4);
     color: #fff;
     font-size: 17px;
     pointer-events: auto;
+  }
+
+  /* The one row of the card area that would be drawn under the buttons. It
+     starts below them instead: a banner half covered by them is worse than
+     the height it costs, and it is gone as soon as it is read. */
+  .appbar.minimal ~ .card-area .only-learn {
+    margin-top: var(--minimal-bar);
   }
 
   .appbar.minimal .importing {
