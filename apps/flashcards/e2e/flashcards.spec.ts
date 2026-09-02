@@ -578,6 +578,28 @@ test("frames the staff for every clef the deck asks", async ({ page }) => {
   await expect(clef).toHaveAttribute("data-clef", "bass");
 });
 
+test("keeps the whole actions sheet on a screen turned sideways", async ({
+  page,
+}) => {
+  // A phone on its side: the sheet has more rows than fit.
+  await page.setViewportSize({ width: 740, height: 360 });
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  await page.getByRole("button", { name: "Deck actions" }).click();
+
+  const sheet = page.getByRole("menu");
+  const box = (await sheet.boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(0);
+
+  // The sheet opens on its first row, and what does not fit is scrolled to
+  // rather than lost off the top of the screen.
+  const first = page.getByRole("menuitem", { name: "Study more today" });
+  const last = page.getByRole("menuitem", { name: "Reset study progress" });
+  await expect(first).toBeInViewport();
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport();
+});
+
 test("pushes the card down the screen, and up past the top", async ({
   page,
 }) => {

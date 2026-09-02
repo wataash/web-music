@@ -146,6 +146,12 @@ SPDX-License-Identifier: Apache-2.0
 
   .sheet {
     width: min(100%, 520px);
+    /* A phone on its side has room for three or four of these rows, and a
+       sheet taller than the screen would otherwise run off the top of it with
+       no way to reach what is up there. */
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 8px 0 env(safe-area-inset-bottom, 8px);
     border-radius: 12px 12px 0 0;
     background: var(--surface);
