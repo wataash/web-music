@@ -183,6 +183,29 @@ describe("cropping the staff image to the notes in play", () => {
     expect(low["--staff-clip-bottom"]).toBe("0");
   });
 
+  it("frames every clef the deck asks alike, so the staff stays put", () => {
+    // Treble taken out to four ledger lines, bass left at two.
+    const selection = {
+      ...DEFAULT_STAFF_NOTE_SELECTION,
+      treble: selectionForPreset("advanced").treble,
+    };
+    const asked = ["treble", "bass"] as const;
+    const treble = staffCardVariables(staffNote("treble", "C4"), selection, asked);
+    const bass = staffCardVariables(staffNote("bass", "C4"), selection, asked);
+
+    // A deck asking both puts one in front of the other, so both are framed
+    // for the room the treble notes need.
+    expect(bass).toEqual(treble);
+    expect(treble["--staff-clip-top"]).toBe("0.0923");
+    expect(treble["--staff-clip-bottom"]).toBe("0.0923");
+
+    // A deck asking the bass clef alone keeps the tighter framing.
+    const alone = staffCardVariables(staffNote("bass", "C4"), selection, [
+      "bass",
+    ]);
+    expect(alone["--staff-clip-top"]).toBe("0.2154");
+  });
+
   it("leaves a card it does not recognise alone", () => {
     expect(
       staffCardVariables(

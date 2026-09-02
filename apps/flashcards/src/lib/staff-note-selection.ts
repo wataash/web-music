@@ -152,24 +152,38 @@ function byClef(
 // and `--staff-clip-bottom` are the bands to cut off the image, each as a
 // fraction of its width — the card draws the image at a width of its own, and
 // the bands scale with it.
+//
+// `clefs` is every clef the deck being studied asks, not just this card's: a
+// deck that asks two of them puts a treble card in front of a bass one, and
+// cropping each to its own notes would slide the staff up and down the screen
+// between them. Every clef is drawn on the same lines, so cropping them all to
+// what the widest of them needs leaves the staff where it is. Left out, only
+// the card's own clef counts, which is what a single-clef deck asks for.
 export function staffCardVariables(
   note: Pick<NoteRow, "fields" | "tags">,
   selection: StaffNoteSelection,
+  clefs?: readonly Clef[],
 ): Readonly<Record<string, string>> {
   const staffNote = staffNoteFromNote(note);
   if (staffNote === null) return {};
-  const steps = selection[staffNote.clef].map((pitch) =>
-    staffStep(staffNote.clef, parsePitch(pitch)),
-  );
-  if (steps.length === 0) return {};
+  const inPlay = clefs === undefined || clefs.length === 0
+    ? [staffNote.clef]
+    : clefs;
+  const crops = inPlay.flatMap((clef) => {
+    const steps = selection[clef].map((pitch) =>
+      staffStep(clef, parsePitch(pitch)),
+    );
+    return steps.length === 0 ? [] : [staffFrame(clef, steps)];
+  });
+  if (crops.length === 0) return {};
+  // Every clef frames the same image, so the card's own is the one to cut.
   const full = staffFrame(staffNote.clef);
-  const crop = staffFrame(staffNote.clef, steps);
+  const top = Math.min(...crops.map((crop) => crop.top));
+  const bottom = Math.max(...crops.map((crop) => crop.top + crop.height));
   const { width } = CARD_STAFF_GEOMETRY;
   return {
-    "--staff-clip-top": round((crop.top - full.top) / width),
-    "--staff-clip-bottom": round(
-      (full.top + full.height - crop.top - crop.height) / width,
-    ),
+    "--staff-clip-top": round((top - full.top) / width),
+    "--staff-clip-bottom": round((full.top + full.height - bottom) / width),
   };
 }
 

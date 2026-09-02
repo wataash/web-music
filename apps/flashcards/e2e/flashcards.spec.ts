@@ -548,6 +548,36 @@ test("draws the staff at one size however many notes it asks", async ({
   await expect.poll(lineWidth).toBeCloseTo(basic, 0);
 });
 
+test("frames the staff for every clef the deck asks", async ({ page }) => {
+  await openDeckList(page);
+  await study(page, "Staff → Note");
+  const card = page.frameLocator('iframe[title="card"]');
+  const staff = card.locator("svg.staff");
+  // The image keeps its own height and the bands cut off it are taken out of
+  // the layout, so it is the row around it that says how much is shown.
+  const shownHeight = async () =>
+    (await card.locator(".diagram").first().boundingBox())?.height ?? 0;
+  const clef = staff.locator(".staff__clef");
+
+  // Both clefs start on Basic, and this card is a bass one.
+  await expect(clef).toHaveAttribute("data-clef", "bass");
+  const basic = await shownHeight();
+
+  // Taking the treble clef out to every note it can carry makes room on the
+  // bass cards too: the two clefs follow one another in this deck, and a
+  // staff cropped to each clef's own notes would jump between them.
+  await openNoteSettings(page);
+  await page
+    .locator(".deck-section")
+    .first()
+    .getByRole("radio", { name: /^All/ })
+    .check();
+  await page.getByRole("button", { name: "APPLY" }).click();
+
+  await expect.poll(shownHeight).toBeGreaterThan(basic);
+  await expect(clef).toHaveAttribute("data-clef", "bass");
+});
+
 test("pushes the card down the screen, and up past the top", async ({
   page,
 }) => {

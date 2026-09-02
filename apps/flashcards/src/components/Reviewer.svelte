@@ -236,6 +236,14 @@ SPDX-License-Identifier: Apache-2.0
       )
       .flatMap(({ name }) => deckSettingsTarget(name) ?? []);
   });
+  // The clefs this deck asks, which is what the staff cards are cropped to:
+  // one clef's notes must not decide the framing of another's, or the staff
+  // would move as the deck went from one to the next.
+  const staffClefs = $derived(
+    settingsTargets.flatMap((target) =>
+      target.kind === "staff" ? [target.setting.clef] : [],
+    ),
+  );
   // What the settings dialog is dragging, before it is applied: only the
   // drawing follows it, so the card on screen does not change under the
   // reader while they look at what a window does.
@@ -409,7 +417,7 @@ SPDX-License-Identifier: Apache-2.0
           : undefined,
       variables: {
         ...fretWindowVariables(drawnFretWindow),
-        ...staffCardVariables(item.note, noteSelections.staff),
+        ...staffCardVariables(item.note, noteSelections.staff, staffClefs),
         ...cardScaleVariables(cardScales, deckSettings),
       },
     });
