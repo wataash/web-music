@@ -647,11 +647,14 @@ test("puts the answer buttons where the picker is tapped", async ({
   await shot("upright-right-bottom");
 
   // The picker is a history entry, so the back button closes it and leaves
-  // the card where it was.
+  // the card where it was — and the next press leaves the deck, since the
+  // picker took the sheet's entry rather than pushing one behind itself.
   await openPlacementPicker(page);
   await page.goBack();
   await expect(picker).toBeHidden();
   await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
+  await page.goBack();
+  await expect(deckRow(page, "Treble Clef")).toBeVisible();
 });
 
 test("sizes the staff, the keyboard and the answer", async ({ page }) => {
@@ -1069,6 +1072,12 @@ test("closes the note settings with the browser back button", async ({
   await expect(
     page.getByRole("heading", { name: "Treble Clef" }),
   ).toBeVisible();
+
+  // A screen opened from the sheet takes the sheet's history entry rather
+  // than pushing a second one, so the next press leaves the deck instead of
+  // landing on an entry with nothing on it.
+  await page.goBack();
+  await expect(deckRow(page, "Treble Clef")).toBeVisible();
 });
 
 test("carries the study progress out to a file and back in", async ({

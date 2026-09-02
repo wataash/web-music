@@ -566,10 +566,7 @@ SPDX-License-Identifier: Apache-2.0
   // Pushed onto the history stack like the note settings, so the back button
   // closes the dialog instead of leaving the deck.
   async function openExtraOptions(): Promise<void> {
-    history.pushState(
-      historyStateForExtraStudyDeck(history.state, deckName),
-      "",
-    );
+    openOverDeckActions(historyStateForExtraStudyDeck);
     extraOptionsOpen = true;
     await loadExtraAvailability();
   }
@@ -597,21 +594,24 @@ SPDX-License-Identifier: Apache-2.0
     if (deckActionsFromHistoryState(history.state) === deckName) history.back();
   }
 
-  // Handing the sheet over to another screen, rather than closing it: the
-  // entry it is on becomes the one behind that screen, so the back button
-  // goes straight there instead of stepping through the sheet again — and so
-  // that going back does not race the entry the screen is about to push.
-  function leaveDeckActions(): void {
-    history.replaceState(historyStateForDeckActions(history.state, null), "");
+  // Every screen the back button should close is a history entry. One opened
+  // from the sheet takes the entry the sheet is on rather than pushing a
+  // second: the sheet is gone the moment it hands over, and an entry with
+  // nothing on it is a press of the back button that does nothing.
+  function openOverDeckActions(
+    write: (state: unknown, deckName: string) => Record<string, unknown>,
+  ): void {
+    const state = write(
+      historyStateForDeckActions(history.state, null),
+      deckName,
+    );
+    if (actionsOpen) history.replaceState(state, "");
+    else history.pushState(state, "");
     actionsOpen = false;
   }
 
   function openAnswerPlacement(): void {
-    leaveDeckActions();
-    history.pushState(
-      historyStateForAnswerPlacement(history.state, deckName),
-      "",
-    );
+    openOverDeckActions(historyStateForAnswerPlacement);
     placementOpen = true;
   }
 
@@ -624,8 +624,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   async function openResetDialog(): Promise<void> {
-    leaveDeckActions();
-    history.pushState(historyStateForResetDeck(history.state, deckName), "");
+    openOverDeckActions(historyStateForResetDeck);
     resetOpen = true;
     resetPreviewCounts = EMPTY_RESET_PREVIEW;
     resetPreviewLoading = true;
@@ -694,10 +693,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function openNoteSettings(): void {
-    history.pushState(
-      historyStateForSettingsDeck(history.state, deckName),
-      "",
-    );
+    openOverDeckActions(historyStateForSettingsDeck);
     settingsOpen = true;
   }
 
@@ -902,16 +898,10 @@ SPDX-License-Identifier: Apache-2.0
           void addNewCardsNow(10);
         }
       : undefined}
-    onstudymore={() => {
-      leaveDeckActions();
-      void openExtraOptions();
-    }}
+    onstudymore={() => void openExtraOptions()}
     onnotesettings={settingsTargets.length === 0
       ? undefined
-      : () => {
-          leaveDeckActions();
-          openNoteSettings();
-        }}
+      : openNoteSettings}
     rotate={{
       label: ROTATION_LABELS[rotation],
       // The sheet stays open: the next turn is usually one press away.
