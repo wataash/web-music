@@ -154,7 +154,10 @@ export function drawIntervalKeyboard(
       .replaceAll('"', "&quot;");
   }
 
-  const rootSemitone = 60 + notePitchClass(rootName);
+  // Middle C through the B above it, which is where every root is placed.
+  const rootOctaveFirstSemitone = 60;
+  const rootOctaveLastSemitone = 71;
+  const rootSemitone = rootOctaveFirstSemitone + notePitchClass(rootName);
   const rootMark: Mark = {
     key: keyAtSemitone(rootSemitone),
     text: formatName(rootName),
@@ -236,11 +239,21 @@ export function drawIntervalKeyboard(
   const toneByKey = new Map(
     visibleMarks.map((mark) => [keyId(mark.key), mark.tone]),
   );
+  // Every root is drawn in the octave from middle C up, whichever note it is,
+  // so that octave is shaded: a reader who has turned the marks off is
+  // otherwise looking at a bare keyboard with nothing to say which C is the C
+  // the card means, and reads the answer an octave from where they expected.
+  const inRootOctave = (key: Key): boolean => {
+    const semitone = pitchSemitoneAtIndex(key.index) + (key.black ? 1 : 0);
+    return (
+      semitone >= rootOctaveFirstSemitone &&
+      semitone <= rootOctaveLastSemitone
+    );
+  };
   const modifier = (key: Key): string => {
     const tone = toneByKey.get(keyId(key));
-    return tone === undefined
-      ? ""
-      : tone === "given" ? " is-given" : " is-highlighted";
+    if (tone === undefined) return inRootOctave(key) ? " is-root-octave" : "";
+    return tone === "given" ? " is-given" : " is-highlighted";
   };
   const keyX = (index: number): number =>
     geometry.padding + index * drawnWhiteKeyWidth;
@@ -297,6 +310,10 @@ export function drawIntervalKeyboard(
     `.keyboard__black-key{fill:#111827;stroke:#4b5563;stroke-width:${geometry.outlineWidth}}`,
     ".keyboard__white-key.is-highlighted,.keyboard__black-key.is-highlighted{fill:#fcd34d}",
     ".keyboard__white-key.is-given,.keyboard__black-key.is-given{fill:#8ab4f8}",
+    // The same blue as a marked key, faint enough to read as ground rather
+    // than as an answer.
+    ".keyboard__white-key.is-root-octave{fill:#cbd9ef}",
+    ".keyboard__black-key.is-root-octave{fill:#293751}",
     "</style>",
     `<rect x="0" y="0" width="${round(fullWidth)}" height="${round(height)}" fill="#111827"/>`,
     `<g class="keyboard__keys">${whiteKeys}${blackKeys}</g>`,

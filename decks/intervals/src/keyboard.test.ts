@@ -63,6 +63,29 @@ describe("the keyboard on an interval card", () => {
     expect(front.svg).not.toMatch(/class="keyboard__\w+-key is-highlighted"/);
   });
 
+  it("shades the octave every root is drawn in", () => {
+    const { front } = intervalKeyboards(M3);
+
+    // A reader who studies with the marks turned off has only this to say
+    // which C the card means.
+    expect(front.svg).toContain(
+      'class="keyboard__white-key is-root-octave" data-note="D4"',
+    );
+    expect(front.svg).toContain(
+      'class="keyboard__black-key is-root-octave" data-key="C#4"',
+    );
+    expect(front.svg).toContain(
+      'class="keyboard__white-key is-root-octave" data-note="B4"',
+    );
+    // The octaves either side of it are left alone, and the root itself is
+    // marked rather than shaded.
+    expect(front.svg).toContain('class="keyboard__white-key" data-note="B3"');
+    expect(front.svg).toContain('class="keyboard__white-key" data-note="C5"');
+    expect(front.svg).toContain(
+      'class="keyboard__white-key is-given" data-note="C4"',
+    );
+  });
+
   it("puts the answer below and above the given note on the back", () => {
     const { back } = intervalKeyboards({
       root: "G",
