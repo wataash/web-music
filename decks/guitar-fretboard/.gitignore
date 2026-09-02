@@ -1,0 +1,5 @@
+*.tsbuildinfo
+/dist/guitar-fretboard-notes.apkg
+/dist/preview/
+coverage/
+node_modules/

@@ -1,0 +1,14 @@
+{
+  "name": "@web-music/ireal-analysis",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "analyze": "node src/cli.js",
+    "test": "node --test src/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

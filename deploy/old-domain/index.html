@@ -1,0 +1,418 @@
+<!doctype html>
+<!--
+SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+
+What learnmusic.wataash.com serves now that Music Flashcards is at
+mf.wataash.com. It redirects, but not before taking the study progress with
+it: what the reader built up is held in this origin's IndexedDB and
+localStorage, and a browser hands none of that to another origin, so a plain
+redirect would leave every card behind. This page reads it, packs it into the
+URL fragment — never sent to a server — and the app unpacks it on arrival.
+
+The backup format is the app's own, and this duplicates the small part of
+apps/flashcards/src/lib/backup.ts that writes it: nothing of the app is
+deployed here any more. apps/flashcards/src/lib/handoff.ts reads what this
+sends, and apps/flashcards/e2e/old-domain-handoff.spec.ts drives both halves.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Music Flashcards has moved</title>
+    <style>
+      :root {
+        --bg: #f5f5f5;
+        --surface: #ffffff;
+        --on-surface: #212121;
+        --on-surface-muted: #757575;
+        --divider: #e0e0e0;
+        --accent: #2196f3;
+        --on-accent: #ffffff;
+        --warn: #e53935;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #121212;
+          --surface: #1e1e1e;
+          --on-surface: #eceff1;
+          --on-surface-muted: #9e9e9e;
+          --divider: #333333;
+          --accent: #64b5f6;
+          --on-accent: #0b1720;
+          --warn: #ef5350;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px 16px 48px;
+        background: var(--bg);
+        color: var(--on-surface);
+        font-family: Roboto, "Noto Sans", system-ui, sans-serif;
+        line-height: 1.6;
+      }
+
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+        font-weight: 500;
+      }
+
+      h2 {
+        margin: 32px 0 8px;
+        font-size: 17px;
+        font-weight: 500;
+      }
+
+      p,
+      li {
+        font-size: 15px;
+      }
+
+      a {
+        color: var(--accent);
+      }
+
+      .new-home {
+        margin: 16px 0 0;
+        padding: 16px;
+        border: 1px solid var(--divider);
+        border-radius: 8px;
+        background: var(--surface);
+        font-size: 17px;
+      }
+
+      #status {
+        color: var(--on-surface-muted);
+      }
+
+      #status.failed {
+        color: var(--warn);
+      }
+
+      ol {
+        margin: 0;
+        padding-left: 24px;
+      }
+
+      li + li {
+        margin-top: 8px;
+      }
+
+      .export {
+        margin: 16px 0 0;
+        padding: 16px;
+        border: 1px solid var(--divider);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .counts {
+        margin: 0 0 12px;
+        color: var(--on-surface-muted);
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      button {
+        min-height: 42px;
+        padding: 0 18px;
+        border: 0;
+        border-radius: 4px;
+        background: var(--accent);
+        color: var(--on-accent);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+      }
+
+      .note {
+        margin: 12px 0 0;
+        color: var(--on-surface-muted);
+        font-size: 13px;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Music Flashcards has moved</h1>
+      <p class="new-home">
+        The app is now at <a id="home" href="https://mf.wataash.com/">mf.wataash.com</a>.
+      </p>
+      <p id="status">Checking this browser for study progress…</p>
+
+      <section id="manual" hidden>
+        <h2>Bringing your progress with you</h2>
+        <p>
+          Everything you studied — the schedule, the answers behind it, and the
+          deck settings — was stored by your browser under this domain, and a
+          browser keeps each domain's storage to itself. It is too much to send
+          along in a link, so it takes a file:
+        </p>
+        <ol>
+          <li>Export it from this page. It downloads a single JSON file.</li>
+          <li>
+            Open <a href="https://mf.wataash.com/">mf.wataash.com</a>, press
+            <b>BACKUP</b> at the top of the deck list, then
+            <b>CHOOSE BACKUP FILE…</b>, pick that file, and press
+            <b>RESTORE</b>.
+          </li>
+        </ol>
+
+        <div class="export">
+          <p class="counts" id="counts"></p>
+          <button id="export" type="button">EXPORT PROGRESS</button>
+          <p class="note">
+            Do this on every browser and device you studied on: each one has
+            its own progress, and restoring them one after another merges them.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const NEW_HOME = "https://mf.wataash.com/";
+
+      // The app's IndexedDB database, and the localStorage keys it saves the
+      // deck settings under.
+      const DATABASE_NAME = "music-flashcards";
+      const SETTINGS_PREFIX = "music-flashcards:";
+
+      // Settings that describe this browser rather than what was chosen: the
+      // deck files it had already imported, and the id it signed answers with.
+      const LOCAL_ONLY_SETTINGS = new Set([
+        SETTINGS_PREFIX + "bundled-deck-versions",
+        SETTINGS_PREFIX + "dev-deck-versions",
+        SETTINGS_PREFIX + "review-device-id",
+      ]);
+
+      // How long a fragment to trust. No browser documents its URL limit, and
+      // Safari has historically refused URLs an order of magnitude shorter
+      // than Chrome's, so this stays well under the shortest of them; a reader
+      // whose progress does not fit is walked through the file instead.
+      const MAX_PAYLOAD = 60000;
+
+      const statusElement = document.getElementById("status");
+      const manualElement = document.getElementById("manual");
+      const countsElement = document.getElementById("counts");
+      const exportButton = document.getElementById("export");
+
+      // Opening without a version number opens whatever is there — and creates
+      // an empty database when there is nothing, which is how a browser that
+      // never studied here is told apart.
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DATABASE_NAME);
+          let missing = false;
+          request.onupgradeneeded = () => {
+            missing = true;
+            request.transaction.abort();
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () =>
+            missing ? resolve(null) : reject(request.error);
+          request.onblocked = () => reject(new Error("the database is busy"));
+        });
+      }
+
+      function readAll(database, storeName) {
+        if (!database.objectStoreNames.contains(storeName)) {
+          return Promise.resolve([]);
+        }
+        return new Promise((resolve, reject) => {
+          const request = database
+            .transaction(storeName, "readonly")
+            .objectStore(storeName)
+            .getAll();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function readSettings() {
+        const settings = {};
+        try {
+          for (let index = 0; index < localStorage.length; index += 1) {
+            const key = localStorage.key(index);
+            if (key === null) continue;
+            if (!key.startsWith(SETTINGS_PREFIX)) continue;
+            if (LOCAL_ONLY_SETTINGS.has(key)) continue;
+            const value = localStorage.getItem(key);
+            if (value !== null) settings[key] = value;
+          }
+        } catch {
+          // Storage the browser will not open holds nothing to carry over.
+        }
+        return settings;
+      }
+
+      async function collect() {
+        const database = await openDatabase();
+        if (database === null) return { states: [], revlog: [], settings: {} };
+        try {
+          const [states, revlog] = await Promise.all([
+            readAll(database, "states"),
+            readAll(database, "revlog"),
+          ]);
+          return {
+            states,
+            // The row id is this database's own counter and means nothing in
+            // another one; eventId is what identifies an answer.
+            revlog: revlog.map((review) => ({
+              eventId: review.eventId,
+              deviceId: review.deviceId,
+              key: review.key,
+              rating: review.rating,
+              ts: review.ts,
+            })),
+            settings: readSettings(),
+          };
+        } finally {
+          database.close();
+        }
+      }
+
+      function backupOf(collected) {
+        return {
+          format: "music-flashcards-backup",
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          states: collected.states,
+          revlog: collected.revlog,
+          settings: collected.settings,
+        };
+      }
+
+      function toBase64Url(bytes) {
+        let binary = "";
+        // In chunks: the whole array as arguments overflows the call stack.
+        const CHUNK = 0x8000;
+        for (let index = 0; index < bytes.length; index += CHUNK) {
+          binary += String.fromCharCode.apply(
+            null,
+            bytes.subarray(index, index + CHUNK),
+          );
+        }
+        return btoa(binary)
+          .replaceAll("+", "-")
+          .replaceAll("/", "_")
+          .replace(/=+$/, "");
+      }
+
+      async function packed(text) {
+        if (typeof CompressionStream === "undefined") {
+          return toBase64Url(new TextEncoder().encode(text));
+        }
+        const stream = new Blob([text])
+          .stream()
+          .pipeThrough(new CompressionStream("gzip"));
+        const buffer = await new Response(stream).arrayBuffer();
+        return toBase64Url(new Uint8Array(buffer));
+      }
+
+      function counted(amount, noun) {
+        return amount + " " + noun + (amount === 1 ? "" : "s");
+      }
+
+      function download(backup) {
+        const url = URL.createObjectURL(
+          new Blob([JSON.stringify(backup)], { type: "application/json" }),
+        );
+        const link = document.createElement("a");
+        link.href = url;
+        const stamp = backup.exportedAt
+          .slice(0, 19)
+          .replace("T", "-")
+          .replaceAll(":", "");
+        link.download = "music-flashcards-" + stamp + ".json";
+        link.click();
+        // The click starts the download asynchronously, so the URL has to
+        // outlive this turn of the event loop.
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
+
+      // Replace rather than assign: the back button should leave this page
+      // behind rather than bounce off it again.
+      function moveOn(fragment) {
+        location.replace(NEW_HOME + fragment);
+      }
+
+      function askForTheFile(collected, reason) {
+        statusElement.className = reason === null ? "" : "failed";
+        statusElement.textContent =
+          reason === null
+            ? "Your progress is too large to send in a link."
+            : "Your progress could not be moved automatically: " + reason;
+        countsElement.textContent =
+          counted(collected.states.length, "card") +
+          " studied, " +
+          counted(collected.revlog.length, "answer") +
+          " recorded.";
+        exportButton.addEventListener("click", () =>
+          download(backupOf(collected)),
+        );
+        manualElement.hidden = false;
+      }
+
+      (async () => {
+        let collected;
+        try {
+          collected = await collect();
+        } catch (error) {
+          statusElement.className = "failed";
+          statusElement.textContent =
+            "Your progress could not be read: " +
+            (error instanceof Error ? error.message : String(error)) +
+            ". Nothing has been lost — it is still stored under this domain.";
+          return;
+        }
+
+        if (collected.states.length === 0 && collected.revlog.length === 0) {
+          statusElement.textContent = "Taking you there…";
+          moveOn("");
+          return;
+        }
+
+        let payload;
+        try {
+          payload = await packed(JSON.stringify(backupOf(collected)));
+        } catch (error) {
+          askForTheFile(
+            collected,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
+        }
+        if (payload.length > MAX_PAYLOAD) {
+          askForTheFile(collected, null);
+          return;
+        }
+
+        statusElement.textContent =
+          "Taking " +
+          counted(collected.states.length, "card") +
+          " and " +
+          counted(collected.revlog.length, "answer") +
+          " with you…";
+        moveOn("#import=" + payload);
+      })();
+    </script>
+  </body>
+</html>

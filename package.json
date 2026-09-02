@@ -1,0 +1,32 @@
+{
+  "name": "web-music-workspace",
+  "private": true,
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@11.17.0",
+  "scripts": {
+    "dev": "pnpm --dir apps/flashcards dev",
+    "dev:circle-of-fifths": "pnpm --dir apps/circle-of-fifths-playground dev",
+    "dev:flashcards": "pnpm --dir apps/flashcards dev",
+    "dev:fretboard": "pnpm --dir apps/fretboard dev",
+    "build": "pnpm generate:decks && pnpm stage:decks && pnpm --dir apps/flashcards build && pnpm --dir apps/circle-of-fifths-playground build && pnpm --dir apps/fretboard build && pnpm --dir tools/circle-of-fifths-cli build",
+    "build:flashcards": "pnpm generate:decks && pnpm stage:decks && pnpm --dir apps/flashcards build",
+    "build:circle-of-fifths": "pnpm --dir apps/circle-of-fifths-playground build",
+    "deploy:workers": "pnpm build:flashcards && wrangler deploy",
+    "deploy:old-domain": "wrangler pages deploy deploy/old-domain --project-name watalearn",
+    "lint": "pnpm --dir apps/fretboard lint",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test:e2e": "pnpm --dir apps/fretboard test:e2e && pnpm --dir apps/flashcards test:e2e",
+    "generate:decks": "pnpm --dir decks/circle-of-fifths generate && pnpm --dir decks/guitar-fretboard generate && pnpm --dir decks/guitar-intervals generate && pnpm --dir decks/intervals generate && pnpm --dir decks/music-staff generate",
+    "generate:anki": "pnpm --dir decks/circle-of-fifths generate:anki && pnpm --dir decks/guitar-fretboard generate:anki && pnpm --dir decks/guitar-intervals generate:anki && pnpm --dir decks/intervals generate:anki && pnpm --dir decks/music-staff generate:anki",
+    "stage:decks": "rm -rf -- apps/flashcards/public/decks && mkdir -p apps/flashcards/public/decks && cp decks/circle-of-fifths/dist/circle-of-fifths-intervals.json decks/guitar-fretboard/dist/guitar-fretboard-notes.json decks/guitar-intervals/dist/guitar-intervals.json decks/intervals/dist/intervals.json decks/music-staff/dist/music-staff.json apps/flashcards/public/decks/",
+    "generate:svg": "pnpm --dir tools/circle-of-fifths-cli generate --output ../../dist/circle-of-fifths.svg",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "devDependencies": {
+    "wrangler": "^4.123.0"
+  }
+}

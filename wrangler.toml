@@ -1,0 +1,11 @@
+name = "music-flashcards"
+compatibility_date = "2026-08-16"
+
+# The DNS record is created and kept by the deploy, since wataash.com is on
+# this account.
+routes = [{ pattern = "mf.wataash.com", custom_domain = true }]
+
+# A Worker with nothing but static assets: the app is a SPA that talks to
+# nobody, so there is no script to run in front of the files.
+[assets]
+directory = "./apps/flashcards/dist"
