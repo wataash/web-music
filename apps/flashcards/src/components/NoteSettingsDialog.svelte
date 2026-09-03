@@ -119,7 +119,7 @@ SPDX-License-Identifier: Apache-2.0
 </script>
 
 <SettingsDialog
-  title="Settings"
+  title="What to ask"
   titleId="note-settings-title"
   onapply={apply}
   oncancel={onclose}

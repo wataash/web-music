@@ -106,7 +106,7 @@ SPDX-License-Identifier: Apache-2.0
     {/if}
     {#if onnotesettings}
       <button class="action" role="menuitem" onclick={onnotesettings}>
-        <span class="icon" aria-hidden="true">⚙</span>Note settings
+        <span class="icon" aria-hidden="true">?</span>What to ask
       </button>
     {/if}
     {#if rotate}

@@ -471,8 +471,8 @@ SPDX-License-Identifier: Apache-2.0
           {#if deckSettings !== null}
             <button
               class="deck-settings"
-              title="Note settings"
-              aria-label={`${deck.baseName} note settings`}
+              title="What to ask"
+              aria-label={`What ${deck.baseName} asks`}
               onclick={() => openNoteSettings(deck.name)}
               ><span aria-hidden="true">⚙</span></button
             >

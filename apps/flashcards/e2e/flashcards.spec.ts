@@ -67,7 +67,7 @@ async function openSheetAction(
 }
 
 async function openNoteSettings(page: Page): Promise<void> {
-  await openSheetAction(page, "Note settings");
+  await openSheetAction(page, "What to ask");
 }
 
 async function openStudyMore(page: Page): Promise<void> {
@@ -1062,7 +1062,7 @@ test("closes the deck chooser and the actions sheet with back", async ({
   // The sheet hands over to the settings rather than stacking under them, so
   // one press of back from there lands on the list.
   await deckRow(page, "Intervals").click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Note settings" }).click();
+  await page.getByRole("menuitem", { name: "What to ask" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("dialog")).toBeHidden();
