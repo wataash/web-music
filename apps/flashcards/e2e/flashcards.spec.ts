@@ -149,6 +149,92 @@ test("shows a card, its answer, and moves the counts", async ({
   await shot("after-good");
 });
 
+test("undoes the last answer, and redoes it", async ({ page, shot }) => {
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  const newCount = page.locator(".count.new");
+  const learnCount = page.locator(".count.learn");
+  await expect(newCount).toHaveText("19");
+
+  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+  await page.getByRole("button", { name: "GOOD" }).click();
+  await expect(newCount).toHaveText("18");
+  await expect(learnCount).toHaveText("1");
+
+  // The sheet names the operation, as Anki's undo does: "Undo Answer Card".
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  await shot("undo-in-the-sheet");
+  await page.getByRole("menuitem", { name: "Undo Answer Card" }).click();
+  await expect(page.locator(".undone")).toHaveText("Answer Card undone");
+  await expect(newCount).toHaveText("19");
+  await expect(learnCount).toHaveText("0");
+  await expect(page.getByRole("button", { name: "SHOW ANSWER" })).toBeVisible();
+  await shot("answer-undone");
+
+  await openSheetAction(page, "Redo Answer Card");
+  await expect(page.locator(".undone")).toHaveText("Answer Card redone");
+  await expect(newCount).toHaveText("18");
+  await expect(learnCount).toHaveText("1");
+
+  // Ctrl+Z reaches it without the sheet, as it does in Anki.
+  await page.keyboard.press("Control+z");
+  await expect(newCount).toHaveText("19");
+  await expect(learnCount).toHaveText("0");
+
+  // And with nothing left to undo, the sheet stops offering it.
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  await expect(
+    page.getByRole("menuitem", { name: /^Undo/ }),
+  ).toHaveCount(0);
+  await page.keyboard.press("Escape");
+});
+
+test("undoes a deck reset, cards and reviews together", async ({ page }) => {
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+  await page.getByRole("button", { name: "GOOD" }).click();
+  await expect(page.locator(".count.learn")).toHaveText("1");
+
+  await openSheetAction(page, "Reset study progress");
+  await page.getByRole("button", { name: "RESET" }).click();
+  await expect(page.locator(".count.learn")).toHaveText("0");
+  await expect(page.locator(".count.new")).toHaveText("19");
+
+  // The whole deck's rows come back, so the card studied a moment ago is in
+  // learning again.
+  await openSheetAction(page, "Undo Reset study progress");
+  await expect(page.locator(".undone")).toHaveText(
+    "Reset study progress undone",
+  );
+  await expect(page.locator(".count.learn")).toHaveText("1");
+  await expect(page.locator(".count.new")).toHaveText("18");
+});
+
+test("undoes from the deck list what was done in the reviewer", async ({
+  page,
+  shot,
+}) => {
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+  await page.getByRole("button", { name: "GOOD" }).click();
+  await expect(page.locator(".count.learn")).toHaveText("1");
+
+  // The queue is the collection's, not the screen's: the answer given in the
+  // reviewer is on offer in the list's own menu.
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(deckRow(page, "Treble Clef")).toBeVisible();
+  await deckRow(page, "Treble Clef").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Undo Answer Card" }).click();
+
+  await expect(page.getByRole("status")).toContainText("Answer Card undone");
+  await expect(
+    deckRow(page, "Treble Clef").locator(".count.learn"),
+  ).toHaveText("0");
+  await shot("undone-from-the-deck-list");
+});
+
 test("reveals the answer when the keyboard is tapped", async ({ page }) => {
   await openDeckList(page);
   await study(page, "Treble Clef");

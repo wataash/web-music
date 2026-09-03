@@ -9,6 +9,8 @@ SPDX-License-Identifier: Apache-2.0
 
   let {
     deckLabel,
+    undo,
+    redo,
     onaddnew,
     onstudymore,
     onnotesettings,
@@ -20,6 +22,11 @@ SPDX-License-Identifier: Apache-2.0
     onclose,
   }: {
     deckLabel: string;
+    // The last operation, named, and the one undoing it would put back —
+    // offered only while there is one, since a row that does nothing is worse
+    // than no row at all.
+    undo?: Readonly<{ label: string; onchoose: () => void }>;
+    redo?: Readonly<{ label: string; onchoose: () => void }>;
     // The one press that covers most of what the study-more dialog is opened
     // for, offered only while today's new cards are done and the deck still
     // has some.
@@ -77,6 +84,16 @@ SPDX-License-Identifier: Apache-2.0
 >
   <div class="sheet" role="menu" tabindex="-1" aria-label={`${deckLabel} actions`}>
     <p class="deck-label">{deckLabel}</p>
+    {#if undo}
+      <button class="action" role="menuitem" onclick={undo.onchoose}>
+        <span class="icon" aria-hidden="true">↶</span>{undo.label}
+      </button>
+    {/if}
+    {#if redo}
+      <button class="action" role="menuitem" onclick={redo.onchoose}>
+        <span class="icon" aria-hidden="true">↷</span>{redo.label}
+      </button>
+    {/if}
     {#if onaddnew}
       <button class="action" role="menuitem" onclick={onaddnew}>
         <span class="icon" aria-hidden="true">＋</span>10 more new cards today

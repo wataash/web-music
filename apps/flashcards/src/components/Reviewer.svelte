@@ -88,6 +88,14 @@ SPDX-License-Identifier: Apache-2.0
   } from "../lib/template";
   import type { Grade } from "../lib/scheduler";
   import {
+    describeUndoOp,
+    redo,
+    subscribeUndoStatus,
+    undo,
+    undoStatus,
+    type UndoStatus,
+  } from "../lib/undo";
+  import {
     answerPlacementFromHistoryState,
     deckActionsFromHistoryState,
     extraStudyDeckFromHistoryState,
@@ -152,6 +160,14 @@ SPDX-License-Identifier: Apache-2.0
   });
   let actionsOpen = $state(false);
   let placementOpen = $state(false);
+  // The queue is the collection's rather than this screen's, as it is in
+  // Anki, so what it holds is asked for and subscribed to.
+  let undoable = $state<UndoStatus>(undoStatus());
+  $effect(() => subscribeUndoStatus(() => (undoable = undoStatus())));
+  // What AnkiDroid says after the same press, and for about as long.
+  let undoneNotice = $state<string | null>(null);
+  let undoneTimer: number | undefined;
+  $effect(() => () => clearTimeout(undoneTimer));
   const ROTATION_LABELS = {
     0: "Upright",
     90: "Clockwise",
@@ -540,6 +556,28 @@ SPDX-License-Identifier: Apache-2.0
     untrack(() => void loadExtraAvailability());
   });
 
+  function sayUndone(text: string): void {
+    undoneNotice = text;
+    clearTimeout(undoneTimer);
+    undoneTimer = window.setTimeout(() => (undoneNotice = null), 3000);
+  }
+
+  // The card the operation was on comes back with it: the queue is asked
+  // again, and what it hands back is what was just put back.
+  async function undoLast(): Promise<void> {
+    const op = await undo();
+    if (op === null) return;
+    sayUndone(`${describeUndoOp(op)} undone`);
+    await advance();
+  }
+
+  async function redoLast(): Promise<void> {
+    const op = await redo();
+    if (op === null) return;
+    sayUndone(`${describeUndoOp(op)} redone`);
+    await advance();
+  }
+
   function showAnswer(): void {
     if (item) phase = "answer";
   }
@@ -670,7 +708,7 @@ SPDX-License-Identifier: Apache-2.0
     selection: ExtraStudySelection,
   ): Promise<void> {
     closeExtraOptions();
-    if (selection.new > 0) addNewCardsForToday(deckName, selection.new);
+    if (selection.new > 0) await addNewCardsForToday(deckName, selection.new);
     for (const key of [
       ...extraAvailability.forgottenTodayKeys.slice(0, selection.forgotten),
       ...extraAvailability.aheadKeys.slice(0, selection.ahead),
@@ -688,7 +726,7 @@ SPDX-License-Identifier: Apache-2.0
 
   // Sheet shortcut: the common case is "just give me ten more new cards".
   async function addNewCardsNow(amount: number): Promise<void> {
-    addNewCardsForToday(deckName, amount);
+    await addNewCardsForToday(deckName, amount);
     await refreshCounts();
   }
 
@@ -732,6 +770,11 @@ SPDX-License-Identifier: Apache-2.0
     }
     if (actionsOpen) {
       if (event.key === "Escape") closeDeckActions();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      void (event.shiftKey ? redoLast() : undoLast());
       return;
     }
     if (event.key === " " || event.key === "Enter") {
@@ -823,6 +866,9 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </div>
     {/if}
+    {#if undoneNotice}
+      <p class="undone" role="status">{undoneNotice}</p>
+    {/if}
   </main>
 
   {#if !finished}
@@ -892,6 +938,24 @@ SPDX-License-Identifier: Apache-2.0
 {#if actionsOpen}
   <DeckActionsSheet
     deckLabel={deckName}
+    undo={undoable.undo === null
+      ? undefined
+      : {
+          label: `Undo ${describeUndoOp(undoable.undo)}`,
+          onchoose: () => {
+            closeDeckActions();
+            void undoLast();
+          },
+        }}
+    redo={undoable.redo === null
+      ? undefined
+      : {
+          label: `Redo ${describeUndoOp(undoable.redo)}`,
+          onchoose: () => {
+            closeDeckActions();
+            void redoLast();
+          },
+        }}
     onaddnew={canAddNewNow
       ? () => {
           closeDeckActions();
@@ -1060,6 +1124,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .card-area {
+    position: relative;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -1177,6 +1242,25 @@ SPDX-License-Identifier: Apache-2.0
     background: var(--surface);
     border-top: 1px solid var(--divider);
     padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* What was undone, said over the foot of the card for a moment and then
+     gone. It is the card's own area rather than the screen's, so it sits
+     above the answer buttons rather than over them, and it takes no tap. */
+  .undone {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    z-index: 6;
+    margin: 0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    background: rgb(0 0 0 / 0.8);
+    color: #fff;
+    font-size: 13px;
+    text-align: center;
+    pointer-events: none;
   }
 
   /* Anchored to an edge rather than lying across the foot of the screen.

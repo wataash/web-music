@@ -52,6 +52,8 @@ SPDX-License-Identifier: Apache-2.0
     error,
     notice,
     onstudy,
+    undo,
+    redo,
     onresetdeck,
     oncollapseddecknameschange,
     onhiddendecknameschange,
@@ -73,6 +75,10 @@ SPDX-License-Identifier: Apache-2.0
     // carried over from the domain the app used to be served from.
     notice: string | null;
     onstudy: (name: string, scrollTop: number) => void;
+    // The last operation and the one that would put it back, named — the
+    // same queue the reviewer offers, since a reset done here is undone here.
+    undo?: Readonly<{ label: string; onchoose: () => void }>;
+    redo?: Readonly<{ label: string; onchoose: () => void }>;
     onresetdeck: (name: string) => void;
     oncollapseddecknameschange: (names: readonly string[]) => void;
     onhiddendecknameschange: (names: readonly string[] | null) => void;
@@ -536,6 +542,26 @@ SPDX-License-Identifier: Apache-2.0
 {#if actionsDeckName !== null}
   <DeckActionsSheet
     deckLabel={actionsDeckName}
+    undo={undo === undefined
+      ? undefined
+      : {
+          label: undo.label,
+          // Nothing is handed over: the sheet closes and the list behind it
+          // is what changes.
+          onchoose: () => {
+            closeDeckActions();
+            undo.onchoose();
+          },
+        }}
+    redo={redo === undefined
+      ? undefined
+      : {
+          label: redo.label,
+          onchoose: () => {
+            closeDeckActions();
+            redo.onchoose();
+          },
+        }}
     onnotesettings={deckSettingsTarget(actionsDeckName) === null
       ? undefined
       : () => runDeckAction(openNoteSettings)}

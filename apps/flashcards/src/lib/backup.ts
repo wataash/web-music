@@ -8,6 +8,7 @@
 // the app downloads the decks again on its own, and study state is keyed by
 // note guid, so it lands back on the same cards.
 
+import { clearUndoQueue } from "./undo";
 import { db, type RevlogRow, type StateRow } from "./db";
 
 export const BACKUP_FORMAT = "music-flashcards-backup";
@@ -174,6 +175,10 @@ export function reviewsToAdd(
 export async function restoreBackup(
   backup: BackupDocument,
 ): Promise<RestoreSummary> {
+  // The rows the undo queue holds before-images of are about to be written
+  // from elsewhere, and undoing to them afterwards would put the reader back
+  // somewhere they never were.
+  clearUndoQueue();
   let statesWritten = 0;
   let reviewsAdded = 0;
   await db.transaction("rw", [db.states, db.revlog], async () => {

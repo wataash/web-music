@@ -68,6 +68,14 @@ SPDX-License-Identifier: Apache-2.0
     type DeckInfo,
     type ResetPreview,
   } from "./lib/study";
+  import {
+    describeUndoOp,
+    redo,
+    subscribeUndoStatus,
+    undo,
+    undoStatus,
+    type UndoStatus,
+  } from "./lib/undo";
 
   let decks = $state<readonly DeckInfo[]>([]);
   let studyDeck = $state<string | null>(null);
@@ -76,6 +84,10 @@ SPDX-License-Identifier: Apache-2.0
   let initializing = $state(true);
   let error = $state<string | null>(null);
   let notice = $state<string | null>(null);
+  // The queue is the collection's: a reset undone from the list is the same
+  // step the reviewer would have offered.
+  let undoable = $state<UndoStatus>(undoStatus());
+  $effect(() => subscribeUndoStatus(() => (undoable = undoStatus())));
   let collapsedDeckNames = $state<readonly string[]>([]);
   // null until the reader has chosen: the packages' own defaults stand in.
   let hiddenDeckNames = $state<readonly string[] | null>(null);
@@ -146,6 +158,20 @@ SPDX-License-Identifier: Apache-2.0
     } else {
       resetDeckName = null;
     }
+  }
+
+  async function undoLast(): Promise<void> {
+    const op = await undo();
+    if (op === null) return;
+    notice = `${describeUndoOp(op)} undone`;
+    await refresh();
+  }
+
+  async function redoLast(): Promise<void> {
+    const op = await redo();
+    if (op === null) return;
+    notice = `${describeUndoOp(op)} redone`;
+    await refresh();
   }
 
   async function confirmReset(): Promise<void> {
@@ -558,6 +584,18 @@ SPDX-License-Identifier: Apache-2.0
     {error}
     {notice}
     onstudy={startStudy}
+    undo={undoable.undo === null
+      ? undefined
+      : {
+          label: `Undo ${describeUndoOp(undoable.undo)}`,
+          onchoose: () => void undoLast(),
+        }}
+    redo={undoable.redo === null
+      ? undefined
+      : {
+          label: `Redo ${describeUndoOp(undoable.redo)}`,
+          onchoose: () => void redoLast(),
+        }}
     onresetdeck={(name) => void openResetDialog(name)}
     oncollapseddecknameschange={setCollapsedDeckNames}
     onhiddendecknameschange={setHiddenDeckNames}

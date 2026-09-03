@@ -35,6 +35,14 @@ import {
   DEFAULT_NEW_PER_DAY,
 } from "./daily-limits";
 import { localDeviceId, newReviewEventId } from "./review-log";
+import {
+  addRevlogUndoable,
+  deleteRevlogUndoable,
+  deleteStatesUndoable,
+  putStateUndoable,
+  saveDailyLimitsUndo,
+  undoableOp,
+} from "./undo";
 import { effectiveHiddenDeckNames } from "./deck-hiding";
 import { compareDeckNames } from "./deck-visibility";
 
@@ -365,21 +373,27 @@ export async function resetPreview(scopeName: string): Promise<ResetPreview> {
 export async function resetDeckProgress(scopeName: string): Promise<void> {
   const cards = await scopedCards(scopeName);
   const keys = cards.map(({ card }) => card.key);
-  await db.transaction("rw", [db.states, db.revlog], async () => {
-    await db.states.bulkDelete([...keys]);
-    // Reviews of a card that is new again would otherwise resurface it as
-    // "forgotten today" in the study-more dialog.
-    await db.revlog.where("key").anyOf(keys).delete();
-  });
-  clearDailyNewLimits(scopeName);
+  await undoableOp("resetProgress", () =>
+    db.transaction("rw", [db.states, db.revlog], async () => {
+      await deleteStatesUndoable(keys);
+      // Reviews of a card that is new again would otherwise resurface it as
+      // "forgotten today" in the study-more dialog.
+      await deleteRevlogUndoable(keys);
+      saveDailyLimitsUndo();
+      clearDailyNewLimits(scopeName);
+    }),
+  );
 }
 
-export function addNewCardsForToday(
+export async function addNewCardsForToday(
   scopeName: string,
   amount: number,
   now: Date = new Date(),
-): number {
-  return addToDailyNewLimit(scopeName, amount, now);
+): Promise<number> {
+  return undoableOp("customStudy", async () => {
+    saveDailyLimitsUndo();
+    return addToDailyNewLimit(scopeName, amount, now);
+  });
 }
 
 function fsrsCardOf(state: StateRow | undefined, now: Date): FsrsCard {
@@ -403,16 +417,18 @@ export async function answerCard(
     updatedAt: now.getTime(),
     updatedBy: eventId,
   };
-  await db.transaction("rw", [db.states, db.revlog], async () => {
-    await db.states.put(stateRow);
-    await db.revlog.add({
-      eventId,
-      deviceId: localDeviceId(),
-      key: item.card.key,
-      rating: grade,
-      ts: now.getTime(),
-    });
-  });
+  await undoableOp("answerCard", () =>
+    db.transaction("rw", [db.states, db.revlog], async () => {
+      await putStateUndoable(stateRow);
+      await addRevlogUndoable({
+        eventId,
+        deviceId: localDeviceId(),
+        key: item.card.key,
+        rating: grade,
+        ts: now.getTime(),
+      });
+    }),
+  );
 }
 
 export function answerButtonLabels(

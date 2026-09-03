@@ -85,6 +85,22 @@ export function clearDailyNewLimits(
   storage.setItem(STORAGE_KEY, JSON.stringify(kept));
 }
 
+// What the undo queue keeps and puts back: the item as it stands, rather than
+// one deck's entry, since a limit that was never raised has no entry at all.
+export function dailyLimitsSnapshot(
+  storage: StorageLike | undefined = browserStorage(),
+): string | null {
+  return storage?.getItem(STORAGE_KEY) ?? null;
+}
+
+export function restoreDailyLimits(
+  value: string | null,
+  storage: StorageLike | undefined = browserStorage(),
+): void {
+  // An item that was not there reads the same as one holding no limits.
+  storage?.setItem(STORAGE_KEY, value ?? "{}");
+}
+
 export function exportDailyLimits(
   storage: StorageLike | undefined = browserStorage(),
 ): StoredDailyLimits {
