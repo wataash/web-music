@@ -131,6 +131,48 @@ html, body { margin: 0; min-height: 100%; }
 /* A tap on a diagram is an answer, never a text selection: a phone that takes
    it for one puts its own menu over the card. */
 body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* Where the reader has put each part of the card, as a share of the card's own
+   width and height — which inside the card's frame is what vw and vh measure,
+   so a card turned on its side moves its parts along its own edges. Written
+   here rather than in each deck's stylesheet, and hung on the attribute that
+   names the part: a class the deck uses for the row it draws in can be the
+   same class the drawing inside carries, and the part would then be moved
+   once for the row and once again for what is in it. */
+[data-card-part="text"] { translate: var(--text-x, 0) var(--text-y, 0); }
+[data-card-part="staff"] { translate: var(--staff-x, 0) var(--staff-y, 0); }
+[data-card-part="keyboard"] {
+  translate: var(--keyboard-x, 0) var(--keyboard-y, 0);
+}
+[data-card-part="board"] { translate: var(--board-x, 0) var(--board-y, 0); }
+/* The card is a frame rather than a page: a part moved off its edge is cut off
+   there instead of making the card wide enough to hold it. Sideways only, so a
+   card drawn taller than the screen can still be scrolled down. */
+html { overflow-x: clip; }
+/* Setting the card out: while the app has put the card in that mode, every
+   part it can move takes the drag itself and the card is not turned over by
+   the finger. A part is not held down, though: a card turned sideways can be
+   longer than the frame it is turned inside, and a part past the end of it has
+   to be reachable to be moved back. Every part refuses the scroll itself, so
+   dragging one moves it and dragging the card between them scrolls to what is
+   past the edge. */
+/* Either way, since a card turned on its side scrolls along the screen's
+   other axis, and the card's own pinch is not the browser's. */
+[data-positioning] body { touch-action: pan-x pan-y; }
+[data-positioning] [data-card-part] {
+  cursor: move;
+  touch-action: none;
+}
+/* Around what is drawn, not around the row it sits in: a keyboard is centred
+   in a row as wide as the card, and a box that size says nothing about where
+   the keyboard is. A part whose content is words has no such drawing in it and
+   is outlined itself. */
+[data-positioning] [data-card-part]
+  > :is(img, svg, .keyboard-frame, .fret-window),
+[data-positioning]
+  [data-card-part]:not(:has(> :is(img, svg, .keyboard-frame, .fret-window))) {
+  outline: 2px dashed rgb(252 211 77 / 0.85);
+  outline-offset: 3px;
+}
 ${variables === "" ? "" : `:root { ${variables} }\n`}${options.css}
 </style>
 </head>

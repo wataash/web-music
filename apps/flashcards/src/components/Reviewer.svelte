@@ -5,7 +5,6 @@ SPDX-License-Identifier: Apache-2.0
 <script lang="ts">
   import { untrack } from "svelte";
 
-  import AnswerPlacementPicker from "./AnswerPlacementPicker.svelte";
   import CardFrame from "./CardFrame.svelte";
   import DeckActionsSheet from "./DeckActionsSheet.svelte";
   import ResetProgressDialog from "./ResetProgressDialog.svelte";
@@ -41,7 +40,9 @@ SPDX-License-Identifier: Apache-2.0
     type StaffNoteSelection,
   } from "../lib/staff-note-selection";
   import {
-    cardScaleVariables,
+    answerAnchorAt,
+    cardLiveVariables,
+    cardPartScales,
     deckCardSettings,
     formatCardScale,
     loadCardScales,
@@ -55,7 +56,13 @@ SPDX-License-Identifier: Apache-2.0
     stepPianoKeys,
     answerAnchorParts,
     ANSWER_ANCHOR_LABELS,
-    stepTopSpace,
+    CARD_PART_LABELS,
+    DEFAULT_CARD_OFFSETS,
+    DEFAULT_CARD_SCALES,
+    DEFAULT_DECK_CARD_SETTINGS,
+    formatCardOffset,
+    type CardOffset,
+    type CardPart,
     type CardRotation,
     type CardScale,
     type CardScaleKind,
@@ -64,6 +71,12 @@ SPDX-License-Identifier: Apache-2.0
     type DeckCardSettings,
     withDeckCardSettings,
   } from "../lib/card-scale";
+  import {
+    answerSound,
+    tapSound,
+    type CardTap,
+  } from "../lib/card-audio";
+  import { playSemitones } from "../lib/tones";
   import {
     addNewCardsForToday,
     answerButtonLabels,
@@ -96,10 +109,10 @@ SPDX-License-Identifier: Apache-2.0
     type UndoStatus,
   } from "../lib/undo";
   import {
-    answerPlacementFromHistoryState,
+    cardLayoutFromHistoryState,
     deckActionsFromHistoryState,
     extraStudyDeckFromHistoryState,
-    historyStateForAnswerPlacement,
+    historyStateForCardLayout,
     historyStateForDeckActions,
     historyStateForExtraStudyDeck,
     historyStateForResetDeck,
@@ -159,7 +172,19 @@ SPDX-License-Identifier: Apache-2.0
     aheadKeys: [],
   });
   let actionsOpen = $state(false);
-  let placementOpen = $state(false);
+  // Setting the card out rather than studying it: the parts are outlined and
+  // dragged where the reader wants them, and nothing on the card answers.
+  // Stepping them from the sheet meant setting a card that the sheet was
+  // covering; here the card is the whole screen and the part is under the
+  // finger that is moving it.
+  let positioning = $state(false);
+  // What was last taken hold of and where it now is, said back to the reader:
+  // under a finger it is the finger that says where a part is, but a part
+  // nudged a little needs a number to say how far it went.
+  let arranged = $state<CardPart | "answer" | null>(null);
+  // The screen the answer row is dragged around, so where it is let go can be
+  // turned into one of the places it may sit.
+  let screenElement = $state<HTMLElement | undefined>(undefined);
   // The queue is the collection's rather than this screen's, as it is in
   // Anki, so what it holds is asked for and subscribed to.
   let undoable = $state<UndoStatus>(undoStatus());
@@ -174,8 +199,8 @@ SPDX-License-Identifier: Apache-2.0
     180: "Upside down",
     "-90": "Anticlockwise",
   } as const;
-  // So the space left above the card reads as part of it rather than as a
-  // band of app behind it.
+  // The deck's own colour behind the card, so whatever the app leaves around
+  // it reads as part of it rather than as a band of app.
   let cardBackground = $state("");
   let cardScales = $state<CardScales>(loadCardScales());
   // Stored rather than held here, so what the reader set stays set when they
@@ -198,9 +223,29 @@ SPDX-License-Identifier: Apache-2.0
     return edge === "left" ? 90 : -90;
   });
 
-  function setScale(kind: CardScaleKind, scale: CardScale): void {
+  function setScale(
+    kind: CardScaleKind,
+    scale: CardScale,
+    save = true,
+  ): void {
     cardScales = { ...cardScales, [kind]: scale };
+    if (save) saveCardScales(cardScales);
+  }
+
+  // Which part a pinch is on decides where its size is kept: what the deck
+  // draws is the deck's, what the reader wants a keyboard to look like is
+  // theirs wherever they are.
+  const partScales = $derived(cardPartScales(cardScales, deckSettings));
+
+  function setPartScale(part: CardPart, scale: number): void {
+    arranged = part;
+    if (part === "keyboard" || part === "board") setScale(part, scale, false);
+    else setDeckSettings({ [part]: scale }, false);
+  }
+
+  function settleCardParts(): void {
     saveCardScales(cardScales);
+    saveCardSettingsByDeck(cardSettingsByDeck);
   }
 
   function toggleMinimalAppBar(): void {
@@ -213,12 +258,111 @@ SPDX-License-Identifier: Apache-2.0
     saveCardScales(cardScales);
   }
 
-  function setDeckSettings(changes: Partial<DeckCardSettings>): void {
+  // A part follows the finger: written down as it moves so the card keeps up,
+  // and only committed to storage once the finger is off. The rest of the card
+  // stays where it is — a reader lines up the question, then the keyboard,
+  // rather than watching the whole card slide about under them.
+  function moveCardPart(part: CardPart, offset: CardOffset): void {
+    arranged = part;
+    setDeckSettings(
+      { offsets: { ...deckSettings.offsets, [part]: offset } },
+      false,
+    );
+  }
+
+  // Everything this mode sets, back to how the deck draws it: where the parts
+  // are, how large, which way the card is turned and where it is answered.
+  function resetCardParts(): void {
+    arranged = null;
+    setDeckSettings({
+      offsets: DEFAULT_CARD_OFFSETS,
+      text: DEFAULT_DECK_CARD_SETTINGS.text,
+      staff: DEFAULT_DECK_CARD_SETTINGS.staff,
+      rotation: DEFAULT_DECK_CARD_SETTINGS.rotation,
+      answerAnchor: DEFAULT_DECK_CARD_SETTINGS.answerAnchor,
+    });
+    cardScales = {
+      ...cardScales,
+      keyboard: DEFAULT_CARD_SCALES.keyboard,
+      board: DEFAULT_CARD_SCALES.board,
+    };
+    saveCardScales(cardScales);
+  }
+
+  function turnCard(steps: 1 | -1): void {
+    setDeckSettings({ rotation: stepCardRotation(rotation, steps) });
+  }
+
+  // Dragged rather than pointed at on a screen of its own: where it is let go
+  // decides which edge it lies along and which end of it it is at.
+  function startAnswerDrag(event: PointerEvent): void {
+    if (!positioning) return;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    event.preventDefault();
+    dragAnswerTo(event);
+  }
+
+  function dragAnswerTo(event: PointerEvent): void {
+    if (!positioning || screenElement === undefined) return;
+    if (!(event.currentTarget as HTMLElement).hasPointerCapture(event.pointerId)) {
+      return;
+    }
+    const box = screenElement.getBoundingClientRect();
+    arranged = "answer";
+    setDeckSettings(
+      {
+        answerAnchor: answerAnchorAt(
+          { x: event.clientX - box.left, y: event.clientY - box.top },
+          { width: box.width, height: box.height },
+        ),
+      },
+      false,
+    );
+  }
+
+  // Turned off, a card says nothing: not the answer, not what is under a
+  // finger. Kept per deck, since a staff card's answer is a note's name and
+  // hearing it every time is practice at a skill the deck is not teaching.
+  function sound(
+    semitones: readonly number[],
+    instrument: "piano" | "guitar",
+  ): void {
+    if (!deckSettings.sound || semitones.length === 0) return;
+    playSemitones(semitones, instrument);
+  }
+
+  // Every card sounds what a finger lands on, and the answer as it is turned
+  // over: a tap on a keyboard is both a guess to hear and the answer to hear
+  // it against.
+  function handleCardTap(
+    taps: readonly CardTap[],
+    onDiagram: boolean,
+  ): void {
+    if (item === null) return;
+    const revealing =
+      onDiagram && phase === "question" && revealAnswerOnDiagramTap;
+    const answer = revealing ? answerSound(item.note) : null;
+    const tapped = taps.flatMap((tap) => tapSound(tap) ?? []);
+    // One call, so a tapped note and the answer are spread apart rather than
+    // struck together and heard as one. They are the same instrument: what a
+    // deck is played on is the deck's, not the finger's.
+    const semitones = [
+      ...tapped.flatMap(({ semitones: played }) => played),
+      ...(answer?.semitones ?? []),
+    ];
+    sound(semitones, (answer ?? tapped[0])?.instrument ?? "piano");
+    if (revealing) showAnswer(false);
+  }
+
+  function setDeckSettings(
+    changes: Partial<DeckCardSettings>,
+    save = true,
+  ): void {
     cardSettingsByDeck = withDeckCardSettings(cardSettingsByDeck, deckName, {
       ...deckSettings,
       ...changes,
     });
-    saveCardSettingsByDeck(cardSettingsByDeck);
+    if (save) saveCardSettingsByDeck(cardSettingsByDeck);
   }
   let resetOpen = $state(false);
   let resetPreviewCounts = $state<ResetPreview>(EMPTY_RESET_PREVIEW);
@@ -310,71 +454,17 @@ SPDX-License-Identifier: Apache-2.0
   // decks draw a staff and a keyboard; the interval decks draw a keyboard
   // beside the answer, so there is no staff to size; the guitar deck draws a
   // fretboard and neither.
+  // What is left to step from the sheet: how many keys a keyboard draws, and
+  // the answer's name. Everything else about the size of a card is pinched on
+  // the card itself.
   const cardSizes = $derived.by(() => {
     if (item === null) return [];
     const staff = isStaffReadingCard(item.note);
-    const board = isGuitarIntervalCard(item.note);
-    const diagram = staff || isIntervalCard(item.note);
+    if (!staff && !isGuitarIntervalCard(item.note) && !isIntervalCard(item.note)) {
+      return [];
+    }
     return [
-      {
-        label: "Top space",
-        value: formatCardScale(deckSettings.topSpace),
-        onstep: (steps: 1 | -1) =>
-          setDeckSettings({ topSpace: stepTopSpace(deckSettings.topSpace, steps) }),
-      },
-      ...(board ? boardSizes() : []),
-      ...(diagram ? diagramSizes(staff) : []),
-    ];
-  });
-
-  function boardSizes() {
-    return [
-      {
-        label: "Board size",
-        value: formatCardScale(cardScales.board),
-        onstep: (steps: 1 | -1) =>
-          setScale("board", stepCardScale(cardScales.board, steps)),
-        option: {
-          label: "Screen width",
-          active: cardScales.board === SCREEN_WIDTH,
-          onselect: () => setScale("board", SCREEN_WIDTH),
-        },
-      },
-      {
-        label: "Answer size",
-        value: formatCardScale(cardScales.answer),
-        onstep: (steps: 1 | -1) =>
-          setScale("answer", stepCardScale(cardScales.answer, steps)),
-      },
-    ];
-  }
-
-  function diagramSizes(staff: boolean) {
-    return [
-      ...(staff
-        ? [
-            {
-              label: "Staff size",
-              value: formatCardScale(deckSettings.staff),
-              onstep: (steps: 1 | -1) =>
-                setDeckSettings({
-                  staff: stepCardScale(deckSettings.staff, steps),
-                }),
-            },
-          ]
-        : []),
-      {
-        label: "Keyboard size",
-        value: formatCardScale(cardScales.keyboard),
-        onstep: (steps: 1 | -1) =>
-          setScale("keyboard", stepCardScale(cardScales.keyboard, steps)),
-        option: {
-          label: "Screen width",
-          active: cardScales.keyboard === SCREEN_WIDTH,
-          onselect: () => setScale("keyboard", SCREEN_WIDTH),
-        },
-      },
-      ...(staff && item !== null && isPianoKeyboardCard(item.note)
+      ...(staff && isPianoKeyboardCard(item.note)
         ? [
             {
               label: "Piano keys",
@@ -384,9 +474,8 @@ SPDX-License-Identifier: Apache-2.0
             },
           ]
         : []),
-      ...(staff
-        ? []
-        : [
+      ...(isIntervalCard(item.note)
+        ? [
             {
               label: "Keyboard keys",
               value: String(deckSettings.keyboardKeys),
@@ -398,7 +487,11 @@ SPDX-License-Identifier: Apache-2.0
                   ),
                 }),
             },
-          ]),
+          ]
+        : []),
+      // Not a part of its own: the answer's name is written over the drawing,
+      // on whichever key or fret it belongs to, and a question side has none
+      // at all to take hold of. It is stepped here rather than pinched there.
       {
         label: "Answer size",
         value: formatCardScale(cardScales.answer),
@@ -406,7 +499,7 @@ SPDX-License-Identifier: Apache-2.0
           setScale("answer", stepCardScale(cardScales.answer, steps)),
       },
     ];
-  }
+  });
 
   // What an interval keyboard marks before the card is turned over. The
   // question names the root, so it is marked; the answer is not, unless the
@@ -416,6 +509,14 @@ SPDX-License-Identifier: Apache-2.0
     // offered whatever is being studied — and first, because a screen with no
     // room is what sends a reader to this sheet in the first place.
     const appBar = [
+      // What a deck sounds is the deck's: a staff card answers with a note's
+      // name, and it starts silent so a reader is not drilled at naming
+      // pitches by ear without having asked to be.
+      {
+        label: "Sound",
+        on: deckSettings.sound,
+        ontoggle: () => setDeckSettings({ sound: !deckSettings.sound }),
+      },
       {
         label: "Minimize app bar",
         on: cardScales.minimalAppBar,
@@ -471,7 +572,6 @@ SPDX-License-Identifier: Apache-2.0
       variables: {
         ...fretWindowVariables(drawnFretWindow),
         ...staffCardVariables(item.note, noteSelections.staff, staffClefs),
-        ...cardScaleVariables(cardScales, deckSettings),
       },
     });
   });
@@ -544,7 +644,7 @@ SPDX-License-Identifier: Apache-2.0
     untrack(() => {
       applyExtraOptionsHistory(history.state);
       applyResetHistory(history.state);
-      applyAnswerPlacementHistory(history.state);
+      applyCardLayoutHistory(history.state);
     });
     void advance();
   });
@@ -578,8 +678,13 @@ SPDX-License-Identifier: Apache-2.0
     await advance();
   }
 
-  function showAnswer(): void {
-    if (item) phase = "answer";
+  // The answer sounds as it is shown — except where the tap that showed it has
+  // already played it along with what was under the finger.
+  function showAnswer(sounded = true): void {
+    if (!item) return;
+    phase = "answer";
+    const answer = sounded ? answerSound(item.note) : null;
+    if (answer !== null) sound(answer.semitones, answer.instrument);
   }
 
   async function rate(grade: Grade): Promise<void> {
@@ -648,16 +753,17 @@ SPDX-License-Identifier: Apache-2.0
     actionsOpen = false;
   }
 
-  function openAnswerPlacement(): void {
-    openOverDeckActions(historyStateForAnswerPlacement);
-    placementOpen = true;
+  function openCardLayout(): void {
+    openOverDeckActions(historyStateForCardLayout);
+    arranged = null;
+    positioning = true;
   }
 
-  function closeAnswerPlacement(): void {
-    if (answerPlacementFromHistoryState(history.state) === deckName) {
+  function closeCardLayout(): void {
+    if (cardLayoutFromHistoryState(history.state) === deckName) {
       history.back();
     } else {
-      placementOpen = false;
+      positioning = false;
     }
   }
 
@@ -693,8 +799,8 @@ SPDX-License-Identifier: Apache-2.0
     resetOpen = resetDeckFromHistoryState(state) === deckName;
   }
 
-  function applyAnswerPlacementHistory(state: unknown): void {
-    placementOpen = answerPlacementFromHistoryState(state) === deckName;
+  function applyCardLayoutHistory(state: unknown): void {
+    positioning = cardLayoutFromHistoryState(state) === deckName;
   }
 
   function applyExtraOptionsHistory(state: unknown): void {
@@ -749,13 +855,15 @@ SPDX-License-Identifier: Apache-2.0
     actionsOpen = deckActionsFromHistoryState(event.state) === deckName;
     applyExtraOptionsHistory(event.state);
     applyResetHistory(event.state);
-    applyAnswerPlacementHistory(event.state);
+    applyCardLayoutHistory(event.state);
   }
 
   function handleKey(event: KeyboardEvent): void {
     if (event.repeat) return;
-    // The picker listens for Escape itself; the card behind it must not.
-    if (placementOpen) return;
+    if (positioning) {
+      if (event.key === "Escape") closeCardLayout();
+      return;
+    }
     if (settingsOpen) {
       if (event.key === "Escape") closeNoteSettings();
       return;
@@ -792,7 +900,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <svelte:window onkeydown={handleKey} onpopstate={handlePopState} />
 
-<div class="screen">
+<div class="screen" bind:this={screenElement}>
   <header class="appbar" class:minimal={cardScales.minimalAppBar}>
     <button
       class="appbar-action"
@@ -840,28 +948,24 @@ SPDX-License-Identifier: Apache-2.0
         class:anticlockwise={rotation === -90}
         class:upside-down={rotation === 180}
       >
-        <!-- The space and the card are inside the turn, so the space is at
-             the top of the card rather than the top of the phone: a card read
-             sideways is pushed away from its own top edge. The grow factors
-             split the card's height, so no length has to be guessed; a share
-             below zero leaves none, and the card takes it from beyond its top
-             instead. -->
-        <div
-          class="card-turn"
-          style:--top-space={deckSettings.topSpace}
-          style:background={cardBackground}
-        >
-          <div
-            class="top-space"
-            style:flex-grow={Math.max(deckSettings.topSpace, 0)}
-          ></div>
+        <!-- The card fills its frame, and what the reader wanted pushed down
+             the screen is pushed there part by part, inside the card itself:
+             the question can come down to the thumb without the keyboard
+             following it off the bottom. -->
+        <div class="card-turn" style:background={cardBackground}>
           <CardFrame
             {doc}
+            {positioning}
+            offsets={deckSettings.offsets}
+            scales={partScales}
+            variables={cardLiveVariables(cardScales, deckSettings)}
             onbackground={(color) => (cardBackground = color)}
             oncardkeydown={handleKey}
-            ondiagramtap={phase === "question" && revealAnswerOnDiagramTap
-              ? showAnswer
-              : undefined}
+            oncardtap={handleCardTap}
+            onpartmove={moveCardPart}
+            onpartscale={setPartScale}
+            oncardturn={turnCard}
+            onpartsettled={settleCardParts}
           />
         </div>
       </div>
@@ -869,11 +973,60 @@ SPDX-License-Identifier: Apache-2.0
     {#if undoneNotice}
       <p class="undone" role="status">{undoneNotice}</p>
     {/if}
+    {#if positioning}
+      <!-- Over the card rather than beside it: the card is the whole screen
+           while it is being set out, and this says so and gets out of the
+           way. -->
+      <!-- Out of the way of the row it is talking about: the answer buttons
+           are dragged like a part of the card, and a bar sitting on top of
+           them is a bar that cannot be dragged out from under. -->
+      <div
+        class="laying-out"
+        class:high={answerPlace.edge === "bottom" ||
+          answerPlace.end === "bottom"}
+        role="group"
+        aria-label="Arrange card"
+      >
+        <p>
+          {#if arranged === null}
+            Drag to move, pinch to size, twist to turn.
+          {:else if arranged === "answer"}
+            Answer buttons {ANSWER_ANCHOR_LABELS[answerAnchor]}
+          {:else}
+            {CARD_PART_LABELS[arranged]}
+            {formatCardScale(partScales[arranged])}
+            · {formatCardOffset(deckSettings.offsets[arranged])}
+          {/if}
+        </p>
+        <button
+          aria-label="Rotate anticlockwise"
+          title={ROTATION_LABELS[rotation]}
+          onclick={() => turnCard(-1)}><span aria-hidden="true">⟲</span></button
+        >
+        <button
+          aria-label="Rotate clockwise"
+          title={ROTATION_LABELS[rotation]}
+          onclick={() => turnCard(1)}><span aria-hidden="true">⟳</span></button
+        >
+        {#if arranged === "keyboard" || arranged === "board"}
+          <!-- Not a multiple of anything, so a pinch cannot reach it. -->
+          <button onclick={() => setScale(arranged as CardScaleKind, SCREEN_WIDTH)}>
+            Screen width
+          </button>
+        {/if}
+        <button onclick={resetCardParts}>Reset</button>
+        <button class="done" onclick={closeCardLayout}>DONE</button>
+      </div>
+    {/if}
   </main>
 
   {#if !finished}
     <footer
       class="bottom"
+      class:arranging={positioning}
+      onpointerdown={startAnswerDrag}
+      onpointermove={dragAnswerTo}
+      onpointerup={settleCardParts}
       class:anchored={answerAnchor !== "bottom"}
       class:left={answerPlace.edge === "left" || answerPlace.end === "left"}
       class:right={answerPlace.edge === "right" || answerPlace.end === "right"}
@@ -896,7 +1049,7 @@ SPDX-License-Identifier: Apache-2.0
         </span>
       </div>
       {#if phase === "question"}
-        <button class="show-answer" onclick={showAnswer}>
+        <button class="show-answer" onclick={() => showAnswer()}>
           <span class="answer-label">SHOW ANSWER</span>
         </button>
       {:else if labels}
@@ -966,28 +1119,11 @@ SPDX-License-Identifier: Apache-2.0
     onnotesettings={settingsTargets.length === 0
       ? undefined
       : openNoteSettings}
-    rotate={{
-      label: ROTATION_LABELS[rotation],
-      // The sheet stays open: the next turn is usually one press away.
-      onstep: (steps) =>
-        setDeckSettings({ rotation: stepCardRotation(rotation, steps) }),
-    }}
-    answerPlacement={{
-      label: ANSWER_ANCHOR_LABELS[answerAnchor],
-      onopen: openAnswerPlacement,
-    }}
     sizes={cardSizes}
+    arrange={{ onopen: openCardLayout }}
     switches={cardSwitches}
     onreset={() => void openResetDialog()}
     onclose={closeDeckActions}
-  />
-{/if}
-
-{#if placementOpen}
-  <AnswerPlacementPicker
-    current={answerAnchor}
-    onpick={(anchor) => setDeckSettings({ answerAnchor: anchor })}
-    onclose={closeAnswerPlacement}
   />
 {/if}
 
@@ -1138,10 +1274,6 @@ SPDX-License-Identifier: Apache-2.0
     height: auto;
   }
 
-  .top-space {
-    flex: 0 0 0;
-  }
-
   /* Only the card turns; the app bar and the answer buttons stay where the
      hands are. What the turn overruns is cropped here, in the area's own
      shape. */
@@ -1169,10 +1301,6 @@ SPDX-License-Identifier: Apache-2.0
     flex: 1;
     width: 100%;
     min-height: 0;
-    /* A negative top space is a negative margin: flex hands the card back
-       what the margin takes away, so it grows past the top of its frame.
-       `cqh` is the frame's height — the card is not its own container. */
-    margin-top: calc(min(var(--top-space, 0), 0) * 100cqh);
   }
 
   .card-rotator.clockwise .card-turn,
@@ -1261,6 +1389,66 @@ SPDX-License-Identifier: Apache-2.0
     font-size: 13px;
     text-align: center;
     pointer-events: none;
+  }
+
+  /* What is said while the card is being set out, over the foot of the card
+     as the undo notice is: the card keeps the size it is studied at, so a part
+     is put where it will be, and nothing else takes a tap meant for a part. */
+  .laying-out {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    z-index: 6;
+    /* Only what it says takes a tap: a drag begun over the rest of it is one
+       on whatever is underneath. */
+    pointer-events: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    border-radius: 12px;
+    padding: 8px 14px;
+    background: rgb(0 0 0 / 0.72);
+    color: #fff;
+    font-size: 13px;
+  }
+
+  .laying-out.high {
+    top: 8px;
+    bottom: auto;
+  }
+
+  .laying-out p {
+    flex: 1 0 100%;
+    margin: 0;
+  }
+
+  .laying-out button {
+    pointer-events: auto;
+    flex: none;
+    min-height: 40px;
+    padding: 0 14px;
+    margin-left: auto;
+    border-radius: 20px;
+    background: rgb(255 255 255 / 0.15);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  .laying-out button ~ button {
+    margin-left: 0;
+  }
+
+  .laying-out button.done {
+    background: var(--count-new);
+    color: #0b1720;
+  }
+
+  .laying-out button:active {
+    filter: brightness(0.9);
   }
 
   /* Anchored to an edge rather than lying across the foot of the screen.
@@ -1442,6 +1630,22 @@ SPDX-License-Identifier: Apache-2.0
   .bottom.anchored.turned.full .show-answer {
     flex: 1;
     height: auto;
+  }
+
+  /* Taken hold of like a part of the card: it lies along an edge rather than
+     anywhere the finger stops, so what it takes is the drag itself and not the
+     press of an answer. Anchored to an edge it hands its taps to its buttons;
+     while it is being arranged it keeps them, or there would be nothing left
+     to take hold of. */
+  .bottom.arranging {
+    outline: 2px dashed rgb(252 211 77 / 0.85);
+    outline-offset: -2px;
+    touch-action: none;
+    pointer-events: auto;
+  }
+
+  .bottom.arranging > * {
+    pointer-events: none;
   }
 
   .counts {

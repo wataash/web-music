@@ -52,10 +52,10 @@ export const FIELD_NAMES = [
 // in the keyboard already on screen instead of moving the card around.
 export const FRONT_TEMPLATE = `
 <main class="staff-card">
-  <div class="prompt">{{Prompt}}</div>
-  <div class="diagram">{{QuestionImage}}</div>
-  {{#Prompt}}<div class="diagram keyboard">{{KeyboardImage}}</div>{{/Prompt}}
-  {{^Prompt}}<div class="diagram keyboard">{{BlankKeyboardImage}}</div>{{/Prompt}}
+  <div class="prompt" data-card-part="text">{{Prompt}}</div>
+  <div class="diagram" data-card-part="staff">{{QuestionImage}}</div>
+  {{#Prompt}}<div class="diagram keyboard" data-card-part="keyboard">{{KeyboardImage}}</div>{{/Prompt}}
+  {{^Prompt}}<div class="diagram keyboard" data-card-part="keyboard">{{BlankKeyboardImage}}</div>{{/Prompt}}
 </main>
 `.trim();
 
@@ -63,9 +63,9 @@ export const FRONT_TEMPLATE = `
 // twice only pushed the keyboard down the card.
 export const BACK_TEMPLATE = `
 <main class="staff-card">
-  <div class="prompt">{{Prompt}}</div>
-  <div class="diagram">{{AnswerImage}}</div>
-  <div class="diagram keyboard">{{KeyboardImage}}</div>
+  <div class="prompt" data-card-part="text">{{Prompt}}</div>
+  <div class="diagram" data-card-part="staff">{{AnswerImage}}</div>
+  <div class="diagram keyboard" data-card-part="keyboard">{{KeyboardImage}}</div>
 </main>
 `.trim();
 
@@ -232,19 +232,19 @@ const WEB_DIAGRAM_SCRIPT = `
 
 export const WEB_FRONT_TEMPLATE = `
 <main class="staff-card">
-  <div class="prompt">{{Prompt}}</div>
-  <div class="diagram" data-staff="{{QuestionImage}}"></div>
-  {{#Prompt}}<div class="diagram keyboard" data-keyboard="{{KeyboardImage}}"></div>{{/Prompt}}
-  {{^Prompt}}<div class="diagram keyboard" data-keyboard="{{BlankKeyboardImage}}"></div>{{/Prompt}}
+  <div class="prompt" data-card-part="text">{{Prompt}}</div>
+  <div class="diagram" data-card-part="staff" data-staff="{{QuestionImage}}"></div>
+  {{#Prompt}}<div class="diagram keyboard" data-card-part="keyboard" data-keyboard="{{KeyboardImage}}"></div>{{/Prompt}}
+  {{^Prompt}}<div class="diagram keyboard" data-card-part="keyboard" data-keyboard="{{BlankKeyboardImage}}"></div>{{/Prompt}}
 </main>
 ${WEB_DIAGRAM_SCRIPT}
 `.trim();
 
 export const WEB_BACK_TEMPLATE = `
 <main class="staff-card">
-  <div class="prompt">{{Prompt}}</div>
-  <div class="diagram" data-staff="{{AnswerImage}}"></div>
-  <div class="diagram keyboard" data-keyboard="{{KeyboardImage}}"></div>
+  <div class="prompt" data-card-part="text">{{Prompt}}</div>
+  <div class="diagram" data-card-part="staff" data-staff="{{AnswerImage}}"></div>
+  <div class="diagram keyboard" data-card-part="keyboard" data-keyboard="{{KeyboardImage}}"></div>
 </main>
 ${WEB_DIAGRAM_SCRIPT}
 `.trim();
@@ -268,12 +268,18 @@ export const CARD_CSS = `
   /* Full size is most of the screen: a staff smaller than that is a handful of
      lines and one note to find on them, and the keyboard under it has a
      screen's width of its own. --staff-scale is the reader's, set from the
-     app; the deck only says what full size means. */
-  --staff-width: calc(min(88vw, 26rem) * var(--staff-scale, 1));
+     app; the deck only says what full size means.
+
+     Bounded by the height of the card as well as its width: a card turned
+     sideways is as wide as the screen is long, and a staff that took that
+     width would be drawn taller than the turned card and push the keyboard off
+     the end of it. Upright there is height to spare and the bound never
+     binds. */
+  --staff-width: calc(min(88vw, 26rem, 62vh) * var(--staff-scale, 1));
 }
 
 .prompt {
-  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-size: calc(clamp(2rem, 8vw, 3.5rem) * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.2;
 }
@@ -282,14 +288,12 @@ export const CARD_CSS = `
   display: none;
 }
 
-/* Full size already reaches the edges of the screen, so a reader who asks for
-   more gets a staff wider than the card. The negative margin cancels the
-   card's padding and the row scrolls, as the keyboard's does, rather than the
-   staff spilling off one side of a grid that is centring it. */
+/* Cancel the card padding so drawings reach its edges. Clip oversized
+   drawings to avoid scrollbars interfering with playback and placement. */
 .diagram {
   width: 100vw;
   margin-inline: -1rem;
-  overflow-x: auto;
+  overflow: clip;
 }
 
 .diagram > img,
@@ -319,16 +323,7 @@ export const CARD_CSS = `
   margin-block: calc(-1 * var(--staff-clip-top-length)) calc(-1 * var(--staff-clip-bottom-length));
 }
 
-/* The negative margin cancels the padding around the card, so a keyboard can
-   reach the edges of the screen — and scroll past them, since a reader may ask
-   for one larger than the screen. */
-.keyboard {
-  width: 100vw;
-  margin-inline: -1rem;
-  overflow-x: auto;
-}
-
-.keyboard img {
+.diagram.keyboard img {
   display: block;
   height: auto;
   margin-inline: auto;
@@ -340,14 +335,22 @@ export const CARD_CSS = `
 .keyboard-frame {
   position: relative;
   display: block;
-  margin-inline: auto;
+  /* Centred even when it is wider than the card, so the middle of a keyboard
+     stays in the middle of the card and both edges are cut off alike. Auto
+     margins give a block wider than its container nothing, which would leave
+     it against one side. */
+  left: 50%;
+  translate: -50%;
   /* A container sized by its own contents measures zero to the units inside
      it, so the frame is given a width and the image fills it. */
   container-type: inline-size;
   line-height: 0;
 }
 
+/* A name lies over the key it names, and a tap on it is a tap on that key:
+   the app plays what is under the finger. */
 .key-name {
+  pointer-events: none;
   position: absolute;
   left: var(--key-x);
   top: var(--key-y);

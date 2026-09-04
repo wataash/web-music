@@ -22,10 +22,10 @@ export const FIELD_NAMES = [
 // question mark holds the place it will take.
 export const FRONT_TEMPLATE = `
 <main class="interval-card">
-  <div class="prompt-line">
+  <div class="prompt-line" data-card-part="text">
     <span class="question">{{Question}}</span><span class="answer-arrow">→</span><span class="answer-value">?</span>
   </div>
-  <div class="diagram keyboard">{{Keyboard}}</div>
+  <div class="diagram keyboard" data-card-part="keyboard">{{Keyboard}}</div>
 </main>
 `.trim();
 
@@ -33,10 +33,10 @@ export const FRONT_TEMPLATE = `
 // front keyboard's: nothing on the card moves as it is turned over.
 export const BACK_TEMPLATE = `
 <main class="interval-card">
-  <div class="prompt-line">
+  <div class="prompt-line" data-card-part="text">
     <span class="question">{{Question}}</span><span class="answer-arrow">→</span><span class="answer-value">{{Answer}}</span>
   </div>
-  <div class="diagram keyboard">{{AnswerKeyboard}}</div>
+  <div class="diagram keyboard" data-card-part="keyboard">{{AnswerKeyboard}}</div>
 </main>
 `.trim();
 
@@ -45,20 +45,20 @@ export const BACK_TEMPLATE = `
 // only the answer note name in that package; the front never expands it.
 export const WEB_FRONT_TEMPLATE = `
 <main class="interval-card">
-  <div class="prompt-line">
+  <div class="prompt-line" data-card-part="text">
     <span class="question">{{Question}}</span><span class="answer-arrow">→</span><span class="answer-value">?</span>
   </div>
-  <div class="diagram keyboard" data-interval-keyboard data-root="{{Root}}"></div>
+  <div class="diagram keyboard" data-card-part="keyboard" data-interval-keyboard data-root="{{Root}}"></div>
 </main>
 ${WEB_INTERVAL_KEYBOARD_SCRIPT}
 `.trim();
 
 export const WEB_BACK_TEMPLATE = `
 <main class="interval-card">
-  <div class="prompt-line">
+  <div class="prompt-line" data-card-part="text">
     <span class="question">{{Question}}</span><span class="answer-arrow">→</span><span class="answer-value">{{Answer}}</span>
   </div>
-  <div class="diagram keyboard" data-interval-keyboard data-root="{{Root}}" data-answer="{{AnswerKeyboard}}"></div>
+  <div class="diagram keyboard" data-card-part="keyboard" data-interval-keyboard data-root="{{Root}}" data-answer="{{AnswerKeyboard}}"></div>
 </main>
 ${WEB_INTERVAL_KEYBOARD_SCRIPT}
 `.trim();
@@ -91,7 +91,7 @@ export const CARD_CSS = `
 .question,
 .answer-arrow,
 .answer-value {
-  font-size: clamp(2.4rem, 10vw, 4rem);
+  font-size: calc(clamp(2.4rem, 10vw, 4rem) * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
@@ -117,13 +117,12 @@ export const CARD_CSS = `
   color: #fcd34d;
 }
 
-/* The negative margin cancels the padding around the card, so a wide interval
-   can reach the edges of the screen — and scroll past them, since a reader may
-   ask for a keyboard larger than the screen. */
+/* Cancel the card padding so drawings reach its edges. Clip oversized
+   drawings to avoid scrollbars interfering with playback and placement. */
 .keyboard {
   width: 100vw;
   margin-inline: -1rem;
-  overflow-x: auto;
+  overflow: clip;
 }
 
 /* The names are written over the keyboard rather than drawn into it, so they
@@ -132,7 +131,12 @@ export const CARD_CSS = `
 .keyboard-frame {
   position: relative;
   display: block;
-  margin-inline: auto;
+  /* Centred even when it is wider than the card, so the middle of a keyboard
+     stays in the middle of the card and both edges are cut off alike. Auto
+     margins give a block wider than its container nothing, which would leave
+     it against one side. */
+  left: 50%;
+  translate: -50%;
   /* A container sized by its own contents measures zero to the units inside
      it, so the frame is given a width and the image fills it. */
   container-type: inline-size;
@@ -155,7 +159,10 @@ export const CARD_CSS = `
   height: auto;
 }
 
+/* A name lies over the key it names, and a tap on it is a tap on that key:
+   the app plays what is under the finger. */
 .key-name {
+  pointer-events: none;
   position: absolute;
   left: var(--key-x);
   top: var(--key-y);

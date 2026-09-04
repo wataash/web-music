@@ -3,7 +3,10 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { watchForServiceWorkerUpdate } from "./app-update";
+import {
+  checkForUpdateOnResume,
+  watchForServiceWorkerUpdate,
+} from "./app-update";
 
 function fakeContainer(controller: object | null) {
   const listeners: (() => void)[] = [];
@@ -17,6 +20,71 @@ function fakeContainer(controller: object | null) {
     listenerCount: () => listeners.length,
   };
 }
+
+function fakePage(visibilityState: DocumentVisibilityState = "visible") {
+  const listeners: (() => void)[] = [];
+  return {
+    visibilityState,
+    addEventListener: (_: string, listener: () => void) =>
+      listeners.push(listener),
+    removeEventListener: (_: string, listener: () => void) =>
+      listeners.splice(listeners.indexOf(listener), 1),
+    comeBack: () => listeners.forEach((listener) => listener()),
+    listenerCount: () => listeners.length,
+  };
+}
+
+// A phone resumes a PWA rather than reloading it, so nothing else asks.
+describe("asking on the way back into the app", () => {
+  it("checks for a new worker when the app is shown again", async () => {
+    const update = vi.fn(() => Promise.resolve());
+    const container = {
+      getRegistration: () => Promise.resolve({ update }),
+    } as unknown as ServiceWorkerContainer;
+    const page = fakePage();
+    let clock = 0;
+
+    const stop = checkForUpdateOnResume(
+      container,
+      page as unknown as Document,
+      () => clock,
+    );
+    clock += 60_001;
+    page.comeBack();
+    await Promise.resolve();
+    expect(update).toHaveBeenCalledTimes(1);
+
+    // Away and back again a moment later asks nothing: the question costs a
+    // request, and the answer can hardly have changed.
+    clock += 1_000;
+    page.comeBack();
+    await Promise.resolve();
+    expect(update).toHaveBeenCalledTimes(1);
+
+    stop();
+    expect(page.listenerCount()).toBe(0);
+  });
+
+  it("says nothing while the app is out of sight", async () => {
+    const update = vi.fn(() => Promise.resolve());
+    const container = {
+      getRegistration: () => Promise.resolve({ update }),
+    } as unknown as ServiceWorkerContainer;
+    const page = fakePage("hidden");
+
+    checkForUpdateOnResume(container, page as unknown as Document, () => 60_001);
+    page.comeBack();
+    await Promise.resolve();
+
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("does nothing where there are no service workers", () => {
+    expect(() =>
+      checkForUpdateOnResume(undefined, fakePage() as unknown as Document)(),
+    ).not.toThrow();
+  });
+});
 
 describe("watching for a deployed update", () => {
   it("reports a worker taking over from another one", () => {

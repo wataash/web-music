@@ -104,7 +104,8 @@ of the staff instead. A keyboard does not depend on the clef, so the four clefs
 share one.
 
 Both keyboards are diagrams, so tapping one reveals the answer the way tapping
-the staff does.
+the staff does. A key sounds as it is tapped, and the answer sounds with it:
+naming a note is easier for having heard it.
 
 A `Staff → Note` question already shows the keyboard, bare: the same frame at
 the same size with no key marked, so revealing the answer fills in the keyboard

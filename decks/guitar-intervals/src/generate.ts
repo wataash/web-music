@@ -12,9 +12,11 @@ import {
   type PackageNote,
 } from "@web-music/anki-apkg/package";
 
-import { labelPosition, renderBoardSvg } from "./board";
+import { BOARD_COLUMNS, labelPosition, renderBoardSvg } from "./board";
 import {
   GUITAR_INTERVAL_CARDS,
+  MAX_FRET_REACH,
+  STRING_COUNT,
   formatOffset,
   type GuitarIntervalCard,
 } from "./cards";
@@ -91,7 +93,12 @@ function renderBoard(
   const root = labelPosition(card.rootString, 0);
   const target = labelPosition(card.targetString, card.fretOffset);
   return [
-    '<span class="fret-window"><span class="fret-window-board">',
+    '<span class="fret-window">',
+    // The board's own shape, so the app can tell which cell a finger landed on
+    // and play it: the drawing is one image, and an image has no cells to
+    // take a tap. The origin says which column the root's own fret is.
+    `<span class="fret-window-board" data-strings="${STRING_COUNT}"`,
+    ` data-frets="${BOARD_COLUMNS}" data-fret-origin="${MAX_FRET_REACH}">`,
     `<img src="${BOARD_FILENAME}" alt="">`,
     label("root", "1", root),
     label(kind, text, target),

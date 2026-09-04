@@ -262,7 +262,11 @@ export function drawIntervalKeyboard(
     const key = { index: fullFirstIndex + index, black: false };
     return [
       `<rect class="keyboard__white-key${modifier(key)}"`,
-      ` data-note="${formatPitch(key.index)}" x="${round(keyX(index))}"`,
+      ` data-note="${formatPitch(key.index)}"`,
+      // What the key sounds, so a reader who taps it can be played it. MIDI
+      // numbering, as the app's synthesiser counts.
+      ` data-semitone="${pitchSemitoneAtIndex(key.index)}"`,
+      ` x="${round(keyX(index))}"`,
       ` y="${geometry.padding}" width="${round(drawnWhiteKeyWidth)}"`,
       ` height="${round(whiteKeyHeight)}" rx="${geometry.cornerRadius}"/>`,
     ].join("");
@@ -280,6 +284,7 @@ export function drawIntervalKeyboard(
       return [
         `<rect class="keyboard__black-key${modifier(key)}"`,
         ` data-key="${below.note}#${below.octave}"`,
+        ` data-semitone="${pitchSemitoneAtIndex(key.index) + 1}"`,
         ` x="${round(keyX(index + 1) - blackKeyWidth / 2)}"`,
         ` y="${geometry.padding}" width="${round(blackKeyWidth)}"`,
         ` height="${round(blackKeyHeight)}" rx="${geometry.cornerRadius}"/>`,

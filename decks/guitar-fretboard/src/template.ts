@@ -27,42 +27,42 @@ export const FIELD_NAMES = [
 
 export const FRONT_TEMPLATE = `
 <main class="fretboard-card">
-  <div class="position">
+  <div class="position" data-card-part="text">
     {{#Fret}}{{String}}-{{Fret}}{{/Fret}}
     {{#Positions}}{{Note}}{{/Positions}}
   </div>
-  <div class="diagram">{{FrontImage}}</div>
+  <div class="diagram" data-card-part="board">{{FrontImage}}</div>
 </main>
 `.trim();
 
 export const BACK_TEMPLATE = `
 <main class="fretboard-card">
-  <div class="position">
+  <div class="position" data-card-part="text">
     {{#Fret}}{{String}}-{{Fret}}{{/Fret}}
     {{#Positions}}{{Note}} {{Positions}}{{/Positions}}
   </div>
-  <div class="diagram">{{BackImage}}</div>
+  <div class="diagram" data-card-part="board">{{BackImage}}</div>
 </main>
 `.trim();
 
 export const WEB_FRONT_TEMPLATE = `
 <main class="fretboard-card">
-  <div class="position">
+  <div class="position" data-card-part="text">
     {{#Fret}}{{String}}-{{Fret}}{{/Fret}}
     {{#Positions}}{{Note}}{{/Positions}}
   </div>
-  <div class="diagram" data-fretboard data-side="front" data-system="{{System}}" data-string="{{String}}" data-fret="{{Fret}}" {{#Positions}}data-has-positions="true" data-note="{{Note}}"{{/Positions}}></div>
+  <div class="diagram" data-card-part="board" data-fretboard data-side="front" data-system="{{System}}" data-string="{{String}}" data-fret="{{Fret}}" {{#Positions}}data-has-positions="true" data-note="{{Note}}"{{/Positions}}></div>
 </main>
 ${WEB_FRETBOARD_SCRIPT}
 `.trim();
 
 export const WEB_BACK_TEMPLATE = `
 <main class="fretboard-card">
-  <div class="position">
+  <div class="position" data-card-part="text">
     {{#Fret}}{{String}}-{{Fret}}{{/Fret}}
     {{#Positions}}{{Note}} {{Positions}}{{/Positions}}
   </div>
-  <div class="diagram" data-fretboard data-side="back" data-system="{{System}}" data-string="{{String}}" data-fret="{{Fret}}" data-note="{{Note}}" {{#Positions}}data-has-positions="true" data-positions="{{Positions}}"{{/Positions}}></div>
+  <div class="diagram" data-card-part="board" data-fretboard data-side="back" data-system="{{System}}" data-string="{{String}}" data-fret="{{Fret}}" data-note="{{Note}}" {{#Positions}}data-has-positions="true" data-positions="{{Positions}}"{{/Positions}}></div>
 </main>
 ${WEB_FRETBOARD_SCRIPT}
 `.trim();
@@ -86,7 +86,7 @@ export const CARD_CSS = `
 }
 
 .position {
-  font-size: clamp(1.5rem, 5vw, 2.25rem);
+  font-size: calc(clamp(1.5rem, 5vw, 2.25rem) * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.1;
 }

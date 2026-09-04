@@ -40,7 +40,7 @@ describe("the keyboard on an interval card", () => {
           /viewBox="([\d.]+) 0 ([\d.]+) [\d.]+"/,
         )!;
         const [, eX, eWidth] = keyboard.svg.match(
-          /data-note="E4" x="([\d.]+)"[^>]+width="([\d.]+)"/,
+          /data-note="E4"[^>]* x="([\d.]+)"[^>]+width="([\d.]+)"/,
         )!;
         expect(Number(eX) + Number(eWidth)).toBeCloseTo(
           Number(x) + Number(width) / 2,
@@ -166,6 +166,16 @@ describe("the keyboard on an interval card", () => {
     expect(
       drawIntervalKeyboard("C", "E", 37).labels.map(({ text }) => text),
     ).toEqual(["E", "E", "C"]);
+  });
+
+  // The app plays what a reader taps, and a key is a rectangle: it has to say
+  // what it sounds for the tap to mean anything.
+  it("says what each key sounds", () => {
+    const { front } = intervalKeyboards(M3);
+
+    expect(front.svg).toContain('data-note="C4" data-semitone="60"');
+    expect(front.svg).toContain('data-key="C#4" data-semitone="61"');
+    expect(front.svg).toContain('data-note="A2" data-semitone="45"');
   });
 
   it("puts names on black keys above names on white keys", () => {

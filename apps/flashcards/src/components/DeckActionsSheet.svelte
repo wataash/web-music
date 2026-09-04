@@ -14,10 +14,9 @@ SPDX-License-Identifier: Apache-2.0
     onaddnew,
     onstudymore,
     onnotesettings,
-    rotate,
-    answerPlacement,
     switches = [],
     sizes = [],
+    arrange,
     onreset,
     onclose,
   }: {
@@ -35,15 +34,6 @@ SPDX-License-Identifier: Apache-2.0
     // add cards to.
     onstudymore?: () => void;
     onnotesettings?: () => void;
-    // A quarter turn each way, and the card's present one between them. Kept
-    // open when pressed, like the sizes: turning the card is something to do
-    // two or three times in a row.
-    rotate?: Readonly<{ label: string; onstep: (steps: 1 | -1) => void }>;
-    // Where the answer buttons are. Beside the turn, since a card is turned
-    // and then answered from wherever that leaves the hand — but pointed at
-    // on a screen of its own rather than stepped through here: there are
-    // eleven places and no room to say which is which in a row.
-    answerPlacement?: Readonly<{ label: string; onopen: () => void }>;
     // What the card draws or leaves out, each a row that stays where it is
     // when pressed: the card behind the sheet is the answer to it.
     switches?: readonly Readonly<{
@@ -58,10 +48,12 @@ SPDX-License-Identifier: Apache-2.0
       label: string;
       value: string;
       onstep: (steps: 1 | -1) => void;
-      // A size that is not a multiple of anything, offered beside the stepper
-      // rather than hidden past one end of it.
-      option?: Readonly<{ label: string; active: boolean; onselect: () => void }>;
     }>[];
+    // Where the parts of the card sit, how large they are drawn and which way
+    // the card is turned — set on the card itself rather than stepped from
+    // here: a sheet tall enough to hold a row for each is a sheet covering the
+    // card those rows are setting.
+    arrange?: Readonly<{ onopen: () => void }>;
     onreset: () => void;
     onclose: () => void;
   } = $props();
@@ -109,40 +101,15 @@ SPDX-License-Identifier: Apache-2.0
         <span class="icon" aria-hidden="true">?</span>What to ask
       </button>
     {/if}
-    {#if rotate}
-      <div class="action size" role="group" aria-label="Rotate card">
-        <span class="icon" aria-hidden="true">⟳</span>Rotate card
-        <span class="stepper">
-          <button
-            aria-label="Rotate anticlockwise"
-            onclick={() => rotate.onstep(-1)}>🔄</button
-          >
-          <span class="value">{rotate.label}</span>
-          <button
-            aria-label="Rotate clockwise"
-            onclick={() => rotate.onstep(1)}>🔃</button
-          >
-        </span>
-      </div>
-    {/if}
-    {#if answerPlacement}
-      <button class="action" role="menuitem" onclick={answerPlacement.onopen}>
-        <span class="icon" aria-hidden="true">◱</span>Answer buttons
-        <span class="value">{answerPlacement.label}</span>
+    {#if arrange}
+      <button class="action" role="menuitem" onclick={arrange.onopen}>
+        <span class="icon" aria-hidden="true">✥</span>Arrange card
       </button>
     {/if}
     {#each sizes as size (size.label)}
       <div class="action size" role="group" aria-label={size.label}>
         <span class="icon" aria-hidden="true">⤢</span>{size.label}
         <span class="stepper">
-          {#if size.option}
-            <button
-              class="option"
-              class:active={size.option.active}
-              aria-pressed={size.option.active}
-              onclick={size.option.onselect}>{size.option.label}</button
-            >
-          {/if}
           <button
             aria-label={`${size.label} smaller`}
             onclick={() => size.onstep(-1)}>−</button
@@ -256,21 +223,6 @@ SPDX-License-Identifier: Apache-2.0
 
   .stepper button:active {
     background: var(--bg);
-  }
-
-  .stepper .option {
-    width: auto;
-    height: 32px;
-    padding: 0 10px;
-    border-radius: 16px;
-    color: var(--on-surface-muted);
-    font-size: 12px;
-    font-weight: 500;
-  }
-
-  .stepper .option.active {
-    border-color: var(--count-new);
-    color: var(--count-new);
   }
 
   .stepper .value {

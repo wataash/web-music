@@ -18,13 +18,13 @@ export const FIELD_NAMES = [
 
 export const FRONT_TEMPLATE = `
 <main class="guitar-interval-card">
-  <div class="diagram board">{{Board}}</div>
+  <div class="diagram board" data-card-part="board">{{Board}}</div>
 </main>
 `.trim();
 
 export const BACK_TEMPLATE = `
 <main class="guitar-interval-card">
-  <div class="diagram board">{{AnswerBoard}}</div>
+  <div class="diagram board" data-card-part="board">{{AnswerBoard}}</div>
 </main>
 `.trim();
 
@@ -48,15 +48,12 @@ export const CARD_CSS = `
   padding-block-start: 2rem;
 }
 
-/* The negative margin cancels the padding around the card, so the board can
-   reach the edges of the screen. */
-/* The negative margin cancels the padding around the card, so the board can
-   reach the edges of the screen — and scroll past them, since a reader may
-   ask for one larger than the screen. */
+/* Cancel the card padding so drawings reach its edges. Clip oversized
+   drawings to avoid scrollbars interfering with playback and placement. */
 .board {
   width: 100vw;
   margin-inline: -1rem;
-  overflow-x: auto;
+  overflow: clip;
 }
 
 /* The drawing always holds ${MAX_FRET_REACH} frets either side of the root.
@@ -73,7 +70,12 @@ export const CARD_CSS = `
      width, when one is asked for, rather than a multiple of the width the
      deck would have chosen. */
   width: var(--board-width, calc(100% * var(--board-scale, 1)));
-  margin-inline: auto;
+  /* Centred even when it is wider than the card, so the root's fret stays in
+     the middle of it and both ends are cut off alike. Auto margins give a
+     block wider than its container nothing, which would leave it against one
+     side. */
+  left: 50%;
+  translate: -50%;
   overflow: hidden;
   container-type: inline-size;
   line-height: 0;
@@ -100,7 +102,10 @@ export const CARD_CSS = `
    sized against the string spacing — which the window's width and its fret
    count decide together — so a wider window writes smaller names, as a real
    neck does. */
+/* A name lies over the cell it names, and a tap on it is a tap on that cell:
+   the app plays what is under the finger. */
 .fret-name {
+  pointer-events: none;
   position: absolute;
   left: var(--fret-x);
   top: var(--fret-y);

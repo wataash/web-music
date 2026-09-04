@@ -57,15 +57,15 @@ describe("staff reading deck generation", () => {
   });
 
   test("drives both directions from whether Prompt is filled", () => {
-    expect(FRONT_TEMPLATE).toContain('<div class="prompt">{{Prompt}}</div>');
+    expect(FRONT_TEMPLATE).toContain('<div class="prompt" data-card-part="text">{{Prompt}}</div>');
     expect(FRONT_TEMPLATE).toContain(
-      '<div class="diagram">{{QuestionImage}}</div>',
+      '<div class="diagram" data-card-part="staff">{{QuestionImage}}</div>',
     );
     expect(FRONT_TEMPLATE).not.toContain("{{Pitch}}");
     expect(FRONT_TEMPLATE).not.toContain("{{AnswerImage}}");
-    expect(BACK_TEMPLATE).toContain('<div class="prompt">{{Prompt}}</div>');
+    expect(BACK_TEMPLATE).toContain('<div class="prompt" data-card-part="text">{{Prompt}}</div>');
     expect(BACK_TEMPLATE).toContain(
-      '<div class="diagram">{{AnswerImage}}</div>',
+      '<div class="diagram" data-card-part="staff">{{AnswerImage}}</div>',
     );
     // The keyboard carries the answer, so the back never writes it out.
     expect(BACK_TEMPLATE).not.toContain("DisplayPitch");
@@ -74,14 +74,14 @@ describe("staff reading deck generation", () => {
     // Both keyboards are diagrams, which is what makes tapping one reveal
     // the answer.
     expect(FRONT_TEMPLATE).toContain(
-      '{{#Prompt}}<div class="diagram keyboard">{{KeyboardImage}}</div>{{/Prompt}}',
+      '{{#Prompt}}<div class="diagram keyboard" data-card-part="keyboard">{{KeyboardImage}}</div>{{/Prompt}}',
     );
     // A staff-to-note question shows the keyboard with nothing on it yet.
     expect(FRONT_TEMPLATE).toContain(
-      '{{^Prompt}}<div class="diagram keyboard">{{BlankKeyboardImage}}</div>{{/Prompt}}',
+      '{{^Prompt}}<div class="diagram keyboard" data-card-part="keyboard">{{BlankKeyboardImage}}</div>{{/Prompt}}',
     );
     expect(BACK_TEMPLATE).toContain(
-      '<div class="diagram keyboard">{{KeyboardImage}}</div>',
+      '<div class="diagram keyboard" data-card-part="keyboard">{{KeyboardImage}}</div>',
     );
     expect(CARD_CSS).toContain(".prompt:empty");
   });

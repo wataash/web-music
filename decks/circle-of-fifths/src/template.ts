@@ -32,16 +32,16 @@ export const FIELD_NAMES = [
 
 export const FRONT_TEMPLATE = `
 <main class="interval-card">
-  <div class="question">{{Question}}</div>
-  <div class="diagram">{{FrontImage}}</div>
+  <div class="question" data-card-part="text">{{Question}}</div>
+  <div class="diagram" data-card-part="board">{{FrontImage}}</div>
 </main>
 `.trim();
 
 export const BACK_TEMPLATE = `
 <main class="interval-card">
-  <div class="question">{{Question}}</div>
-  <div class="answer">{{Answer}}</div>
-  <div class="diagram">{{BackImage}}</div>
+  <div class="question" data-card-part="text">{{Question}}</div>
+  <div class="answer" data-card-part="text">{{Answer}}</div>
+  <div class="diagram" data-card-part="board">{{BackImage}}</div>
 </main>
 `.trim();
 
@@ -135,17 +135,17 @@ const WEB_CIRCLE_SCRIPT = `
 
 export const WEB_FRONT_TEMPLATE = `
 <main class="interval-card">
-  <div class="question">{{Question}}</div>
-  <div class="diagram" data-circle-of-fifths data-drawing="{{FrontImage}}"></div>
+  <div class="question" data-card-part="text">{{Question}}</div>
+  <div class="diagram" data-card-part="board" data-circle-of-fifths data-drawing="{{FrontImage}}"></div>
 </main>
 ${WEB_CIRCLE_SCRIPT}
 `.trim();
 
 export const WEB_BACK_TEMPLATE = `
 <main class="interval-card">
-  <div class="question">{{Question}}</div>
-  <div class="answer">{{Answer}}</div>
-  <div class="diagram" data-circle-of-fifths data-drawing="{{BackImage}}"></div>
+  <div class="question" data-card-part="text">{{Question}}</div>
+  <div class="answer" data-card-part="text">{{Answer}}</div>
+  <div class="diagram" data-card-part="board" data-circle-of-fifths data-drawing="{{BackImage}}"></div>
 </main>
 ${WEB_CIRCLE_SCRIPT}
 `.trim();
@@ -171,7 +171,7 @@ export const CARD_CSS = `
 
 .question,
 .answer {
-  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-size: calc(clamp(2rem, 8vw, 3.5rem) * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.2;
 }

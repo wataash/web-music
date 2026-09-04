@@ -10,6 +10,88 @@ import { expect, test } from "./fixtures";
 // seconds; the deck list fills in as each deck lands.
 const IMPORT_TIMEOUT = 30_000;
 
+// Two fingers landing at once, which the card reads as one tap on two places:
+// both are played and the answer is shown, as one finger's would be. Desktop
+// browsers have no touch to drive and no Touch to build, so the event is made
+// by hand; the card reads nothing from it but where the fingers are.
+async function touchCard(
+  page: Page,
+  kind: "touchstart" | "touchmove" | "touchend",
+  points: readonly Readonly<{ x: number; y: number }>[],
+): Promise<void> {
+  await page
+    .locator('iframe[title="card"]')
+    .evaluate((frame, { kind: name, places }) => {
+      const view = (frame as HTMLIFrameElement).contentWindow;
+      const document = (frame as HTMLIFrameElement).contentDocument;
+      if (view === null || document === null) return;
+      const event = new view.Event(name, { bubbles: true });
+      const touches = places.map(({ x, y }, index) => ({
+        identifier: index,
+        clientX: x,
+        clientY: y,
+      }));
+      Object.defineProperty(event, "touches", { value: touches });
+      Object.defineProperty(event, "changedTouches", { value: touches });
+      document.body.dispatchEvent(event);
+    }, { kind, places: points });
+}
+
+// Where a locator inside the card sits, in the card's own coordinates: what a
+// finger on it would report.
+async function centreInCard(
+  page: Page,
+  locator: ReturnType<ReturnType<Page["frameLocator"]>["locator"]>,
+): Promise<{ x: number; y: number }> {
+  const frame = (await page.locator('iframe[title="card"]').boundingBox())!;
+  const box = (await locator.boundingBox())!;
+  return {
+    x: box.x + box.width / 2 - frame.x,
+    y: box.y + box.height / 2 - frame.y,
+  };
+}
+
+async function arrangeCard(page: Page): Promise<void> {
+  await openSheetAction(page, "Arrange card");
+  await expect(page.getByRole("group", { name: "Arrange card" })).toBeVisible();
+}
+
+// A mouse cannot pinch, so the wheel over a part is what sizes it. One notch
+// is one step, whichever way the wheel is turned.
+async function wheelOver(
+  page: Page,
+  locator: ReturnType<ReturnType<Page["frameLocator"]>["locator"]>,
+  notches: number,
+): Promise<void> {
+  const box = (await locator.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let turn = 0; turn < Math.abs(notches); turn += 1) {
+    await page.mouse.wheel(0, notches > 0 ? -100 : 100);
+  }
+}
+
+// Within a pixel or two: an offset is stored to a grain of the card's width
+// rather than to the pixel a finger happened to stop on.
+function expectNear(value: number, expected: number): void {
+  expect(Math.abs(value - expected)).toBeLessThan(2);
+}
+
+// From the middle of what is being dragged, in a few steps: one jump is a
+// flick to a browser, and the card is watching the pointer move.
+async function dragBy(
+  page: Page,
+  locator: ReturnType<ReturnType<Page["frameLocator"]>["locator"]>,
+  by: Readonly<{ x: number; y: number }>,
+): Promise<void> {
+  const box = (await locator.boundingBox())!;
+  const fromX = box.x + box.width / 2;
+  const fromY = box.y + box.height / 2;
+  await page.mouse.move(fromX, fromY);
+  await page.mouse.down();
+  await page.mouse.move(fromX + by.x, fromY + by.y, { steps: 8 });
+  await page.mouse.up();
+}
+
 function deckRow(page: Page, name: string) {
   return page.locator(".deck-row").filter({
     has: page.locator(".deck-name", { hasText: new RegExp(`^${name}$`) }),
@@ -74,10 +156,18 @@ async function openStudyMore(page: Page): Promise<void> {
   await openSheetAction(page, "Study more today");
 }
 
-// Where the answer buttons go is chosen on a screen of its own, which the
-// sheet hands over to.
-async function openPlacementPicker(page: Page): Promise<void> {
-  await openSheetAction(page, /^Answer buttons/);
+// Where the answer buttons go: dragged onto an edge while the card is being
+// arranged, from wherever the row is now.
+async function placeAnswerAt(
+  page: Page,
+  x: number,
+  y: number,
+): Promise<void> {
+  const held = (await page.locator("footer.bottom").boundingBox())!;
+  await page.mouse.move(held.x + held.width / 2, held.y + held.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, y, { steps: 8 });
+  await page.mouse.up();
 }
 
 async function study(page: Page, deck: string): Promise<void> {
@@ -240,7 +330,8 @@ test("reveals the answer when the keyboard is tapped", async ({ page }) => {
   await study(page, "Treble Clef");
 
   // The staff and the keyboard are both diagrams, and tapping either one
-  // stands in for SHOW ANSWER on a card with a single right answer.
+  // stands in for SHOW ANSWER on a card with a single right answer. A key
+  // sounds as it is tapped; showing the answer is what it is still for.
   const card = page.frameLocator('iframe[title="card"]');
   await card.locator("svg.keyboard").click();
   await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
@@ -258,8 +349,9 @@ test("names the keys of an interval on a keyboard", async ({ page, shot }) => {
   await expect(card.locator(".answer-value")).toHaveText("?");
   await shot("interval-question");
 
-  // The keyboard stands in for SHOW ANSWER, as the staff decks' diagrams do.
-  await card.locator(".diagram.keyboard").click();
+  // The keyboard stands in for SHOW ANSWER, as the staff decks' diagrams do,
+  // however many fingers land on it.
+  await card.locator("svg.keyboard-svg").click();
 
   await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
   // The answer is spelled out in the question mark's place, and named on the
@@ -268,6 +360,198 @@ test("names the keys of an interval on a keyboard", async ({ page, shot }) => {
   await expect(card.locator(".answer-value")).not.toBeEmpty();
   await expect(card.locator(".key-name")).toHaveCount(3);
   await shot("interval-answer");
+});
+
+// Web Audio makes no sound a test can hear, so the instrument is replaced with
+// one that writes down what it was asked to play: a piano note is a stack of
+// partials, a plucked string is one buffer.
+type PlayedNotes = Readonly<{ partials: number[]; plucks: number }>;
+
+async function recordWhatIsPlayed(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const played = { partials: [] as number[], plucks: 0 };
+    (window as unknown as { __played: typeof played }).__played = played;
+    const param = () => ({
+      value: 0,
+      setValueAtTime: () => {},
+      linearRampToValueAtTime: () => {},
+      exponentialRampToValueAtTime: () => {},
+    });
+    const node = <T extends object>(extra: T) => ({
+      ...extra,
+      connect: (target: unknown) => target,
+      disconnect: () => {},
+    });
+    class Recorder {
+      currentTime = 0;
+      sampleRate = 48000;
+      state = "running";
+      destination = {};
+      resume() {}
+      createGain() {
+        return node({ gain: param() });
+      }
+      createBiquadFilter() {
+        return node({ type: "", frequency: param() });
+      }
+      createOscillator() {
+        const oscillator = node({ frequency: { value: 0 }, stop: () => {} });
+        return {
+          ...oscillator,
+          start: () => played.partials.push(oscillator.frequency.value),
+        };
+      }
+      createBuffer(_channels: number, length: number) {
+        return { getChannelData: () => new Float32Array(length) };
+      }
+      createBufferSource() {
+        return node({
+          buffer: null,
+          onended: null,
+          start: () => (played.plucks += 1),
+        });
+      }
+    }
+    (window as unknown as { AudioContext: unknown }).AudioContext = Recorder;
+  });
+}
+
+function whatWasPlayed(page: Page): Promise<PlayedNotes> {
+  return page.evaluate(
+    () => (window as unknown as { __played: PlayedNotes }).__played,
+  );
+}
+
+test("plays the key under the finger, and the answer as it is shown", async ({
+  page,
+}) => {
+  await recordWhatIsPlayed(page);
+  await openDeckList(page);
+  await study(page, "Intervals");
+  const card = page.frameLocator('iframe[title="card"]');
+
+  // Two fingers, two keys: both are played, and the answer with them — a
+  // piano note is a stack of partials, so two keys and an answer are three
+  // stacks. The card is turned over by the same tap.
+  const keys = card.locator("rect.keyboard__white-key");
+  await touchCard(page, "touchstart", [
+    await centreInCard(page, keys.nth(8)),
+    await centreInCard(page, keys.nth(12)),
+  ]);
+  await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
+  const struck = await whatWasPlayed(page);
+  const partialsPerNote = 4;
+  expect(struck.partials.length).toBe(3 * partialsPerNote);
+  expect(struck.plucks).toBe(0);
+  // Every one of them is a note a piano has.
+  expect(Math.min(...struck.partials)).toBeGreaterThan(20);
+
+  // The answer is not played again once it is out; a key still is. The wait is
+  // the fingers coming off: a browser makes a click out of a touch, and the
+  // card ignores that one so a tap is played once rather than twice.
+  await page.waitForTimeout(800);
+  await card.locator("svg.keyboard-svg").click();
+  await expect
+    .poll(async () => (await whatWasPlayed(page)).partials.length)
+    .toBe(4 * partialsPerNote);
+
+  // A guitar deck is plucked instead: one string, not a stack of partials.
+  await page.getByTitle("Back").click();
+  await study(page, "Guitar Intervals");
+  const before = (await whatWasPlayed(page)).partials.length;
+  await card.locator(".fret-window-board").click();
+  // The cell under the finger and the answer with it.
+  await expect.poll(async () => (await whatWasPlayed(page)).plucks).toBe(2);
+  expect((await whatWasPlayed(page)).partials.length).toBe(before);
+});
+
+test("keeps the staff decks silent until they are asked to sound", async ({
+  page,
+}) => {
+  await recordWhatIsPlayed(page);
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  const card = page.frameLocator('iframe[title="card"]');
+
+  // A staff card asks which note is written and answers with its name.
+  // Sounding that every time is practice at naming pitches by ear, which is a
+  // different skill and not one the deck is teaching.
+  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+  await card.locator("svg.keyboard").click();
+  expect((await whatWasPlayed(page)).partials).toHaveLength(0);
+
+  // The switch is the reader's, and it is the deck's: another deck is not
+  // silenced with it.
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Sound" }).click();
+  await page.keyboard.press("Escape");
+  await card.locator("svg.keyboard").click();
+  await expect
+    .poll(async () => (await whatWasPlayed(page)).partials.length)
+    .toBeGreaterThan(0);
+
+  await page.getByTitle("Back").click();
+  await study(page, "Intervals");
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  await expect(
+    page.getByRole("menuitemcheckbox", { name: "Sound" }),
+  ).toHaveAttribute("aria-checked", "true");
+});
+
+test("plays every key a finger is drawn along", async ({ page }) => {
+  await recordWhatIsPlayed(page);
+  await openDeckList(page);
+  await study(page, "Intervals");
+  const card = page.frameLocator('iframe[title="card"]');
+  const keys = card.locator("rect.keyboard__white-key");
+  // Low in the keys, where no black key lies over them.
+  const along = async (nth: number) => {
+    const box = (await keys.nth(nth).boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height * 0.8 };
+  };
+
+  const start = await along(8);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  for (const nth of [9, 10, 11, 12]) {
+    const key = await along(nth);
+    await page.mouse.move(key.x, key.y);
+  }
+  await page.mouse.up();
+
+  // The four keys it crossed, and the answer as the card turns over — the key
+  // it started on is played by the tap, not by the drag.
+  await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
+  const partialsPerNote = 4;
+  await expect
+    .poll(async () => (await whatWasPlayed(page)).partials.length)
+    .toBe(5 * partialsPerNote);
+
+  // Held still, a key sounds once rather than on every twitch of the finger.
+  const held = await along(6);
+  await page.mouse.move(held.x, held.y);
+  await page.mouse.down();
+  await page.mouse.move(held.x + 1, held.y + 1);
+  await page.mouse.move(held.x + 2, held.y);
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await whatWasPlayed(page)).partials.length)
+    .toBe(6 * partialsPerNote);
+
+  // A finger does the same, and keeps playing while the card is under it: its
+  // own events go on arriving whether or not the card scrolls beneath. The one
+  // it lands on is played by the landing, and each it reaches after that.
+  const landed = [await centreInCard(page, keys.nth(4))];
+  await touchCard(page, "touchstart", landed);
+  for (const nth of [5, 6, 7]) {
+    await touchCard(page, "touchmove", [
+      await centreInCard(page, keys.nth(nth)),
+    ]);
+  }
+  await touchCard(page, "touchend", landed);
+  await expect
+    .poll(async () => (await whatWasPlayed(page)).partials.length)
+    .toBe(10 * partialsPerNote);
 });
 
 test("chooses what the interval keyboard marks on the front", async ({
@@ -322,7 +606,7 @@ test("names a fretboard position's degree, in a window of frets", async ({
   await shot("guitar-interval-question");
 
   // The board is a diagram, so tapping it stands in for SHOW ANSWER.
-  await card.locator(".diagram.board").click();
+  await card.locator(".fret-window-board").click();
   await expect(card.locator(".fret-name.answer")).not.toBeEmpty();
   await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
   await shot("guitar-interval-answer");
@@ -351,15 +635,24 @@ test("names a fretboard position's degree, in a window of frets", async ({
   await expect(dialog).toBeHidden();
   await expect.poll(boardWidth).toBeCloseTo(wide, 0);
 
-  // The board is sized like the interval deck's keyboard, screen width and
-  // all.
-  await page.getByRole("button", { name: "Deck actions" }).click();
-  const boardSize = page.getByRole("group", { name: "Board size" });
-  const screenWidth = boardSize.getByRole("button", { name: "Screen width" });
-  await expect(screenWidth).toHaveAttribute("aria-pressed", "false");
-  await screenWidth.click();
-  await expect(screenWidth).toHaveAttribute("aria-pressed", "true");
-  await expect(boardSize).toContainText("Screen width");
+  // The board is sized on the card itself, screen width and all — which is
+  // not a multiple of anything and so cannot be pinched to.
+  await arrangeCard(page);
+  const bar = page.getByRole("group", { name: "Arrange card" });
+  const window = card.locator(".fret-window");
+  const screen = (await page.locator(".card-rotator").boundingBox())!.width;
+  const windowWidth = async () => (await window.boundingBox())!.width;
+  expect(await windowWidth()).toBeCloseTo(screen, 0);
+
+  await wheelOver(page, window, -2);
+  await expect(bar).toContainText("Diagram");
+  await expect.poll(windowWidth).toBeLessThan(screen - 10);
+
+  // The width of the screen is a width rather than a multiple of one, so a
+  // pinch cannot reach it and the bar offers it by name.
+  await page.getByRole("button", { name: "Screen width" }).click();
+  await expect(bar).toContainText("Screen width");
+  await expect.poll(windowWidth).toBeCloseTo(screen, 0);
 });
 
 test("adds more cards from the deck's menu", async ({ page, shot }) => {
@@ -572,14 +865,17 @@ test("ships the deeper decks turned off", async ({ page, shot }) => {
   await shot("advanced-decks");
 });
 
-test("turns the card sideways from the deck's menu", async ({ page, shot }) => {
+test("turns the card sideways while it is being arranged", async ({
+  page,
+  shot,
+}) => {
   await openDeckList(page);
   await study(page, "Treble Clef");
   const card = page.locator(".card-rotator");
 
-  // The sheet stays open, so every turn is one press.
-  await page.getByRole("button", { name: "Deck actions" }).click();
-  const rotate = page.getByRole("group", { name: "Rotate card" });
+  // The card is the screen while it is being arranged, so every turn is one
+  // press and the card behind the press is what answers it.
+  await arrangeCard(page);
   const clockwise = page.getByRole("button", { name: "Rotate clockwise" });
   const anticlockwise = page.getByRole("button", {
     name: "Rotate anticlockwise",
@@ -587,13 +883,13 @@ test("turns the card sideways from the deck's menu", async ({ page, shot }) => {
 
   await clockwise.click();
   await expect(card).toHaveClass(/clockwise/);
-  await expect(rotate).toContainText("Clockwise");
+  await expect(clockwise).toHaveAttribute("title", "Clockwise");
   await shot("rotated-clockwise");
 
   // A second press the same way stands the card on its head.
   await clockwise.click();
   await expect(card).toHaveClass(/upside-down/);
-  await expect(rotate).toContainText("Upside down");
+  await expect(clockwise).toHaveAttribute("title", "Upside down");
 
   await clockwise.click();
   await expect(card).toHaveClass(/anticlockwise/);
@@ -602,17 +898,17 @@ test("turns the card sideways from the deck's menu", async ({ page, shot }) => {
   // back the way it came.
   await clockwise.click();
   await expect(card).not.toHaveClass(/clockwise|upside-down/);
-  await expect(rotate).toContainText("Upright");
+  await expect(clockwise).toHaveAttribute("title", "Upright");
   await anticlockwise.click();
   await expect(card).toHaveClass(/anticlockwise/);
-  await expect(rotate).toContainText("Anticlockwise");
+  await expect(clockwise).toHaveAttribute("title", "Anticlockwise");
 
   // The app bar and the answer buttons never turn with it.
-  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "DONE" }).click();
   await expect(page.getByRole("button", { name: "SHOW ANSWER" })).toBeVisible();
 });
 
-test("puts the answer buttons where the picker is tapped", async ({
+test("puts the answer buttons where they are dragged", async ({
   page,
   shot,
 }) => {
@@ -623,57 +919,52 @@ test("puts the answer buttons where the picker is tapped", async ({
   const cardArea = page.locator(".card-area");
   const acrossTheBottom = (await cardArea.boundingBox())!;
   const showAnswer = page.getByRole("button", { name: "SHOW ANSWER" });
-  const picker = page.getByRole("radiogroup");
-  const done = page.getByRole("button", { name: "Done" });
+  const bar = page.getByRole("group", { name: "Arrange card" });
 
-  // Eleven places, each pointed at where it would be rather than stepped
-  // through: the cells of the picker stand where the buttons would stand.
-  await openPlacementPicker(page);
-  await expect(
-    page.getByRole("radio", { name: "Bottom", exact: true }),
-  ).toHaveAttribute("aria-checked", "true");
-  await shot("placement-picker");
+  // Eleven places, dragged onto rather than chosen from a list: the row is
+  // taken hold of where it is and let go where it is wanted.
+  await arrangeCard(page);
+  await shot("arranging-the-answer-row");
 
   // One end of the foot rather than the whole of it: the row leaves the
-  // column, so the card has the height it was costing. The picker stays up,
-  // with the buttons themselves showing through the cell that was tapped.
-  await page.getByRole("radio", { name: "Bottom left" }).click();
-  await expect(picker).toBeVisible();
-  await expect(
-    page.getByRole("radio", { name: "Bottom left" }),
-  ).toHaveAttribute("aria-checked", "true");
+  // column, so the card has the height it was costing.
+  await placeAnswerAt(page, 60, 830);
+  await expect(bar).toContainText("Bottom left");
+  // The bar gets out of its way: one lying over the row is a row that cannot
+  // be dragged out from under it.
+  const said = (await bar.boundingBox())!;
+  expect(said.y + said.height).toBeLessThan(
+    (await page.locator("footer.bottom").boundingBox())!.y + 2,
+  );
   const flat = (await showAnswer.boundingBox())!;
   expect((await cardArea.boundingBox())!.height).toBeGreaterThan(
     acrossTheBottom.height,
   );
   expect(flat.width).toBeGreaterThan(flat.height);
   expect(flat.x).toBeLessThan(195);
-  await shot("previewing-bottom-left");
-  await done.click();
-  await expect(picker).toBeHidden();
+  await shot("answer-bottom-left");
 
   // Turning the card leaves them where they are — the edge is asked for, not
   // taken from the turn.
-  await page.getByRole("button", { name: "Deck actions" }).click();
   await page.getByRole("button", { name: "Rotate clockwise" }).click();
-  await page.keyboard.press("Escape");
   const turned = (await showAnswer.boundingBox())!;
   expect(turned.width).toBeGreaterThan(turned.height);
 
   // A side on its own stands them on end and spreads them down the whole of
   // it, with the counts at the near end.
-  await openPlacementPicker(page);
-  await page.getByRole("radio", { name: "Left", exact: true }).click();
+  await placeAnswerAt(page, 10, 420);
+  await expect(bar).toContainText("Answer buttons Left");
   const rail = (await showAnswer.boundingBox())!;
   expect(rail.x).toBeLessThan(100);
   expect(rail.height).toBeGreaterThan(400);
   const railCounts = (await page.locator(".counts").boundingBox())!;
   expect(railCounts.y).toBeLessThan(rail.y);
-  await shot("previewing-rail-left");
+  await shot("answer-rail-left");
 
-  // Another tap in the same sitting: one end of that side instead, the
-  // buttons packed into the corner and the counts at the other end.
-  await page.getByRole("radio", { name: "Left bottom" }).click();
+  // One end of that side instead: the buttons packed into the corner and the
+  // counts at the other end.
+  await placeAnswerAt(page, 10, 700);
+  await expect(bar).toContainText("Left bottom");
   const strip = (await showAnswer.boundingBox())!;
   expect(strip.height).toBeGreaterThan(strip.width);
   expect(strip.height).toBeLessThan(400);
@@ -683,15 +974,17 @@ test("puts the answer buttons where the picker is tapped", async ({
     strip.y,
   );
 
-  // And across to the top of the other side, in one tap rather than four.
-  await page.getByRole("radio", { name: "Right top" }).click();
+  // And across to the top of the other side, in one drag rather than four
+  // presses.
+  await placeAnswerAt(page, 380, 120);
+  await expect(bar).toContainText("Right top");
   const topRight = (await showAnswer.boundingBox())!;
   expect(topRight.x).toBeGreaterThan(290);
   // Below the app bar, not under it.
   expect(topRight.y).toBeGreaterThanOrEqual(56);
   expect(topRight.y).toBeLessThan(200);
-  await done.click();
-  await shot("strip-right-top");
+  await page.getByRole("button", { name: "DONE" }).click();
+  await shot("answer-right-top");
 
   // The eases stand in the strip too, AGAIN at the end the card's own bottom
   // left corner is at.
@@ -706,8 +999,8 @@ test("puts the answer buttons where the picker is tapped", async ({
 
   // A side on its own shares itself between the four of them, as the foot
   // shares its width.
-  await openPlacementPicker(page);
-  await page.getByRole("radio", { name: "Left", exact: true }).click();
+  await arrangeCard(page);
+  await placeAnswerAt(page, 10, 420);
   const railEases = (await page.locator(".eases").boundingBox())!;
   expect(railEases.height).toBeGreaterThan(400);
   // A quarter each, but for the lines between them.
@@ -719,35 +1012,36 @@ test("puts the answer buttons where the picker is tapped", async ({
   // were the foot of the screen: down the right, AGAIN is at the bottom,
   // which is where the left of the row lands when the phone is turned to
   // bring that edge down.
-  await page.getByRole("radio", { name: "Right bottom" }).click();
-  await done.click();
-  await page.getByRole("button", { name: "Deck actions" }).click();
-  await page.getByRole("button", { name: "Rotate anticlockwise" }).click();
-  await expect(page.getByRole("group", { name: "Rotate card" })).toContainText(
-    "Upright",
-  );
-  await page.keyboard.press("Escape");
+  await placeAnswerAt(page, 380, 700);
+  await expect(bar).toContainText("Right bottom");
+  const anticlockwise = page.getByRole("button", {
+    name: "Rotate anticlockwise",
+  });
+  await anticlockwise.click();
+  await expect(anticlockwise).toHaveAttribute("title", "Upright");
+  await page.getByRole("button", { name: "DONE" }).click();
   expect((await page.locator(".ease.again").boundingBox())!.y).toBeGreaterThan(
     (await page.locator(".ease.easy").boundingBox())!.y,
   );
   await shot("upright-right-bottom");
 
-  // The picker is a history entry, so the back button closes it and leaves
-  // the card where it was — and the next press leaves the deck, since the
-  // picker took the sheet's entry rather than pushing one behind itself.
-  await openPlacementPicker(page);
+  // Arranging the card is a history entry, so the back button closes it and
+  // leaves the card where it was — and the next press leaves the deck, since
+  // it took the sheet's entry rather than pushing one behind itself.
+  await arrangeCard(page);
   await page.goBack();
-  await expect(picker).toBeHidden();
+  await expect(bar).toBeHidden();
   await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
   await page.goBack();
   await expect(deckRow(page, "Treble Clef")).toBeVisible();
 });
 
-test("sizes the staff, the keyboard and the answer", async ({ page }) => {
+test("sizes each part of the card by pinching it", async ({ page }) => {
   await openDeckList(page);
   await study(page, "Treble Clef");
   const card = page.frameLocator('iframe[title="card"]');
   const staff = card.locator("svg.staff");
+  const keyboard = card.locator(".keyboard-frame");
   const staffWidth = async () => (await staff.boundingBox())?.width ?? 0;
   const nameSize = async () =>
     Number(
@@ -762,34 +1056,43 @@ test("sizes the staff, the keyboard and the answer", async ({ page }) => {
   // keyboard, so it needs to be on screen to be measured.
   await page.getByRole("button", { name: "SHOW ANSWER" }).click();
   const staffBefore = await staffWidth();
+  const keyboardBefore = (await keyboard.boundingBox())!.width;
+
+  // A mouse has the wheel where a finger has the pinch, and each part is
+  // sized where it is drawn rather than from a row in a sheet covering it.
+  await arrangeCard(page);
+  const bar = page.getByRole("group", { name: "Arrange card" });
+  await wheelOver(page, staff, 2);
+  await expect(bar).toContainText("Staff");
+  await expect.poll(staffWidth).toBeGreaterThan(staffBefore);
+  const staffGrown = await staffWidth();
+
+  // Only that part: the keyboard beside it keeps the size it had.
+  expect((await keyboard.boundingBox())!.width).toBeCloseTo(keyboardBefore, 0);
+  await wheelOver(page, keyboard, -2);
+  await expect(bar).toContainText("Keyboard");
+  await expect
+    .poll(async () => (await keyboard.boundingBox())!.width)
+    .toBeLessThan(keyboardBefore);
+  expect(await staffWidth()).toBeCloseTo(staffGrown, 0);
+
+  // The answer's name is not a part of its own — a question side has none at
+  // all to take hold of — so it is stepped from the sheet. It is written over
+  // the keyboard and sized against it, so it is measured once the keyboard is
+  // the size it is going to be.
+  await page.getByRole("button", { name: "DONE" }).click();
   const nameBefore = await nameSize();
-
   await page.getByRole("button", { name: "Deck actions" }).click();
-  // The sheet stays open, and the card behind it resizes as you press.
-  await page.getByRole("button", { name: "Staff size larger" }).click();
-  await page.getByRole("button", { name: "Staff size larger" }).click();
   await page.getByRole("button", { name: "Answer size larger" }).click();
-
-  await expect(page.getByRole("group", { name: "Staff size" })).toContainText(
-    "120%",
+  await expect(page.getByRole("group", { name: "Answer size" })).toContainText(
+    "110%",
   );
-  await expect.poll(staffWidth).toBeCloseTo(staffBefore * 1.2, 0);
   await expect.poll(nameSize).toBeCloseTo(nameBefore * 1.1, 0);
-
-  // The width of the screen is offered beside the stepper, not past the end
-  // of it.
-  const screenWidth = page.getByRole("button", { name: "Screen width" });
-  await expect(screenWidth).toHaveAttribute("aria-pressed", "false");
-  await screenWidth.click();
-  await expect(screenWidth).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    page.getByRole("group", { name: "Keyboard size" }),
-  ).toContainText("Screen width");
 
   // And they are remembered for the next card.
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "GOOD" }).click();
-  await expect.poll(staffWidth).toBeCloseTo(staffBefore * 1.2, 0);
+  await expect.poll(staffWidth).toBeCloseTo(staffGrown, 0);
 });
 
 test("draws the staff at one size however many notes it asks", async ({
@@ -902,49 +1205,168 @@ test("cuts the app bar down to its buttons", async ({ page, shot }) => {
   await expect(title).toBeHidden();
 });
 
-test("pushes the card down the screen, and up past the top", async ({
+test("moves one part of the card without moving the rest", async ({
+  page,
+  shot,
+}) => {
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  const card = page.frameLocator('iframe[title="card"]');
+  const staff = card.locator(".diagram:not(.keyboard)");
+  const keyboard = card.locator(".diagram.keyboard");
+  const staffBefore = (await staff.boundingBox())!;
+  const keyboardBefore = (await keyboard.boundingBox())!;
+
+  await arrangeCard(page);
+  const bar = page.getByRole("group", { name: "Arrange card" });
+  await expect(bar).toContainText("Drag to move");
+  await shot("moving-card-parts");
+
+  // The card is the screen: the part is dragged where it is wanted rather
+  // than stepped from behind a sheet covering it.
+  await dragBy(page, staff, { x: 40, y: 60 });
+  await expect(bar).toContainText("Staff");
+  const moved = (await staff.boundingBox())!;
+  // Where the finger left it, to within the grain an offset is stored at.
+  expectNear(moved.x - staffBefore.x, 40);
+  expectNear(moved.y - staffBefore.y, 60);
+  // The keyboard under it is a part of its own and stays where it was: the
+  // card is set out piece by piece rather than pushed about as a whole.
+  expectNear((await keyboard.boundingBox())!.y, keyboardBefore.y);
+  await shot("card-part-moved");
+
+  // The drawing moves with its row and no further. A deck names the row it
+  // draws in, and the drawing inside can carry that same name: moved once for
+  // each, a keyboard travelled twice as far as the box around it.
+  const drawn = card.locator("svg.keyboard");
+  const rowBefore = (await keyboard.boundingBox())!;
+  const drawnBefore = (await drawn.boundingBox())!;
+  await dragBy(page, keyboard, { x: -30, y: 20 });
+  const rowAfter = (await keyboard.boundingBox())!;
+  const drawnAfter = (await drawn.boundingBox())!;
+  expectNear(rowAfter.x - rowBefore.x, -30);
+  expectNear(drawnAfter.x - drawnBefore.x, rowAfter.x - rowBefore.x);
+  expectNear(drawnAfter.y - drawnBefore.y, rowAfter.y - rowBefore.y);
+
+  // And the staff's row says nothing down the side of the card: a drawing
+  // larger than the card is cut off at its edges rather than making the row
+  // something to be scrolled, which would put a scrollbar over the card.
+  expect(
+    await staff.evaluate((element) => getComputedStyle(element).overflow),
+  ).toBe("clip");
+
+  // Where the parts are is the deck's, and it outlasts the mode: coming back
+  // to the card finds them where they were left.
+  await page.getByRole("button", { name: "DONE" }).click();
+  await expect(bar).toBeHidden();
+  await page.getByTitle("Back").click();
+  await study(page, "Treble Clef");
+  expectNear((await staff.boundingBox())!.x, moved.x);
+
+  await arrangeCard(page);
+  await page.getByRole("button", { name: "Reset" }).click();
+  const reset = (await staff.boundingBox())!;
+  expectNear(reset.x, staffBefore.x);
+  expectNear(reset.y, staffBefore.y);
+
+  // The back button leaves the mode, as it closes every other screen.
+  await page.goBack();
+  await expect(bar).toBeHidden();
+  await expect(page.getByRole("button", { name: "SHOW ANSWER" })).toBeVisible();
+});
+
+// A part is moved in the card's own directions: turned sideways, the card's
+// down is the screen's left, and the finger that drags it goes that way too.
+test("sizes a part with two fingers, and turns the card with them", async ({
   page,
 }) => {
   await openDeckList(page);
   await study(page, "Treble Clef");
-  const area = page.locator(".card-area");
-  const card = page.locator('iframe[title="card"]');
-  const areaBox = (await area.boundingBox())!;
+  const card = page.frameLocator('iframe[title="card"]');
+  const staff = card.locator("svg.staff");
+  const staffWidth = async () => (await staff.boundingBox())!.width;
+  const before = await staffWidth();
 
-  await page.getByRole("button", { name: "Deck actions" }).click();
-  const down = page.getByRole("button", { name: "Top space larger" });
-  const up = page.getByRole("button", { name: "Top space smaller" });
-  await down.click();
-  await down.click();
-  await expect(page.getByRole("group", { name: "Top space" })).toContainText(
-    "10%",
-  );
-  const pushedDown = (await card.boundingBox())!;
-  expect(pushedDown.y).toBeGreaterThan(areaBox.y);
+  await arrangeCard(page);
+  const bar = page.getByRole("group", { name: "Arrange card" });
+  const middle = await centreInCard(page, staff);
+  const apart = (half: number, lift = 0) => [
+    { x: middle.x - half, y: middle.y },
+    { x: middle.x + half, y: middle.y + lift },
+  ];
 
-  // Below zero the card takes height from above the area, which is cropped:
-  // it starts above the area and is taller than it.
-  await up.click();
-  await up.click();
-  await up.click();
-  await up.click();
-  await expect(page.getByRole("group", { name: "Top space" })).toContainText(
-    "-10%",
-  );
-  const pulledUp = (await card.boundingBox())!;
-  expect(pulledUp.y).toBeLessThan(areaBox.y);
-  expect(pulledUp.height).toBeGreaterThan(areaBox.height);
+  // Drawn apart, the part under them grows by as much as they did.
+  await touchCard(page, "touchstart", apart(60));
+  await touchCard(page, "touchmove", apart(90));
+  await touchCard(page, "touchend", apart(90));
+  await expect(bar).toContainText("Staff 150%");
+  await expect.poll(staffWidth).toBeCloseTo(before * 1.5, 0);
 
-  // The space is the card's own, not the phone's: turned clockwise, the card's
-  // top is the screen's right, and that is the side the space is left on.
-  await down.click();
-  await down.click();
-  await down.click();
-  await down.click();
+  // Twisted far enough, the card turns a quarter with them.
+  await touchCard(page, "touchstart", apart(60));
+  await touchCard(page, "touchmove", apart(60, 90));
+  await touchCard(page, "touchend", apart(60, 90));
+  await expect(page.locator(".card-rotator")).toHaveClass(/clockwise/);
+});
+
+test("crops a keyboard larger than the card, centred on it", async ({
+  page,
+}) => {
+  await openDeckList(page);
+  await study(page, "Intervals");
+  const card = page.frameLocator('iframe[title="card"]');
+  const row = card.locator(".diagram.keyboard");
+  const drawn = card.locator(".keyboard-frame");
+  const middleOf = async (
+    locator: ReturnType<ReturnType<Page["frameLocator"]>["locator"]>,
+  ) => {
+    const box = (await locator.boundingBox())!;
+    return box.x + box.width / 2;
+  };
+
+  await arrangeCard(page);
+  const middle = await middleOf(row);
+  expectNear(await middleOf(drawn), middle);
+
+  await wheelOver(page, row, 6);
+  const grown = (await drawn.boundingBox())!;
+  expect(grown.width).toBeGreaterThan((await row.boundingBox())!.width);
+
+  // Wider than the card and still centred on it: the middle of the keyboard —
+  // the boundary the deck draws every card around — stays in the middle of
+  // the card, and both ends are cut off alike.
+  expectNear(await middleOf(drawn), middle);
+
+  // Cut off rather than scrolled: a row that can be scrolled puts a scrollbar
+  // over the card, and where it was scrolled to is not remembered.
+  expect(
+    await row.evaluate((element) => {
+      element.scrollLeft = 999;
+      return {
+        scrolledTo: element.scrollLeft,
+        overflow: getComputedStyle(element).overflow,
+      };
+    }),
+  ).toEqual({ scrolledTo: 0, overflow: "clip" });
+});
+
+test("drags a part in the card's own directions", async ({ page }) => {
+  await openDeckList(page);
+  await study(page, "Treble Clef");
+  const card = page.frameLocator('iframe[title="card"]');
+  const staff = card.locator(".diagram:not(.keyboard)");
+
+  await arrangeCard(page);
   await page.getByRole("button", { name: "Rotate clockwise" }).click();
-  const turned = (await card.boundingBox())!;
-  expect(turned.width).toBeLessThan(areaBox.width - 10);
-  expect(turned.x).toBeLessThan(areaBox.x + 2);
+  const before = (await staff.boundingBox())!;
+  await dragBy(page, staff, { x: -50, y: 0 });
+
+  const moved = (await staff.boundingBox())!;
+  expectNear(moved.x - before.x, -50);
+  expectNear(moved.y, before.y);
+  await expect(page.getByRole("group", { name: "Arrange card" })).toContainText(
+    "Staff",
+  );
 });
 
 test("keeps the card turned after leaving the deck", async ({ page }) => {
@@ -952,10 +1374,10 @@ test("keeps the card turned after leaving the deck", async ({ page }) => {
   await study(page, "Treble Clef");
 
   const rotator = page.locator(".card-rotator");
-  await page.getByRole("button", { name: "Deck actions" }).click();
+  await arrangeCard(page);
   await page.getByRole("button", { name: "Rotate clockwise" }).click();
   await expect(rotator).toHaveClass(/clockwise/);
-  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "DONE" }).click();
 
   // Back to the list and in again: the turn is a setting, not a mood.
   await page.getByTitle("Back").click();

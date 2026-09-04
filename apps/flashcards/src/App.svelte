@@ -7,7 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 
   import DeckList from "./components/DeckList.svelte";
   import ResetProgressDialog from "./components/ResetProgressDialog.svelte";
-  import { watchForServiceWorkerUpdate } from "./lib/app-update";
+  import {
+    checkForUpdateOnResume,
+    watchForServiceWorkerUpdate,
+  } from "./lib/app-update";
   import Reviewer from "./components/Reviewer.svelte";
   import {
     changedBundledDeckEntries,
@@ -544,6 +547,11 @@ SPDX-License-Identifier: Apache-2.0
     const stopWatchingForUpdates = import.meta.env.PROD
       ? watchForServiceWorkerUpdate(() => (updateReady = true))
       : () => {};
+    // A phone resumes the app rather than reloading it, and nothing else asks
+    // whether there is a new version to come back to.
+    const stopAskingForUpdates = import.meta.env.PROD
+      ? checkForUpdateOnResume()
+      : () => {};
     void initialize()
       .catch((e: unknown) => {
         error = e instanceof Error ? e.message : String(e);
@@ -555,6 +563,7 @@ SPDX-License-Identifier: Apache-2.0
       window.removeEventListener("popstate", handlePopState);
       stopListening();
       stopWatchingForUpdates();
+      stopAskingForUpdates();
     };
   });
 </script>

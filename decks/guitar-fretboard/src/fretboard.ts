@@ -28,6 +28,10 @@ export type FretboardSvgInput = Readonly<{
   highlightedString?: number;
   title?: string;
   description?: string;
+  // Invisible cells over every position, so a reader tapping the neck can be
+  // told which one they touched and played it. Only the app asks for them:
+  // Anki has no sound to play and would carry them in every one of its images.
+  hitCells?: boolean;
 }>;
 
 export function calcNormalizedFretPositions(fretCount: number): number[] {
@@ -46,6 +50,7 @@ export function renderFretboardSvg({
   highlightedString,
   title: explicitTitle,
   description: explicitDescription,
+  hitCells = false,
 }: FretboardSvgInput): string {
   if (
     highlightedString !== undefined &&
@@ -191,6 +196,29 @@ export function renderFretboardSvg({
     })
     .join("");
 
+  // Last in the drawing so a tap lands on the cell rather than on whatever is
+  // drawn under it, and transparent rather than unfilled: an unfilled shape
+  // takes no pointer at all.
+  const cells = !hitCells
+    ? ""
+    : Array.from({ length: STRING_COUNT }, (_, stringIndex) =>
+        Array.from({ length: FRET_COUNT + 1 }, (_, fretIndex) => {
+          const left =
+            fretIndex === 0 ? 0 : fretXs[fretIndex - 1];
+          const right = fretXs[fretIndex];
+          return [
+            // Named as a cell of its own: the diagram around it carries the
+            // card's own string and fret, and a tap must not be read as one.
+            `<rect class="fretboard__cell" data-fret-cell=""`,
+            ` data-string="${stringIndex + 1}"`,
+            ` data-fret="${fretIndex}" x="${left}"`,
+            ` y="${stringYs[stringIndex] - CANVAS.stringGap / 2}"`,
+            ` width="${right - left}" height="${CANVAS.stringGap}"`,
+            ` fill="transparent"/>`,
+          ].join("");
+        }).join(""),
+      ).join("");
+
   return [
     `<svg class="fretboard" xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}" role="img" aria-labelledby="title description">`,
     `<title id="title">${escapeXml(title)}</title>`,
@@ -205,6 +233,7 @@ export function renderFretboardSvg({
     regularInlays,
     octaveInlays,
     targetMarkup,
+    cells,
     "</svg>",
   ].join("");
 }
@@ -314,7 +343,7 @@ export const WEB_FRETBOARD_SCRIPT = `
             host.dataset.system === "sharps" ? "♯" : undefined,
         };
   }
-  host.innerHTML = renderFretboardSvg(input);
+  host.innerHTML = renderFretboardSvg({ ...input, hitCells: true });
 })();
 </script>
 `.trim();

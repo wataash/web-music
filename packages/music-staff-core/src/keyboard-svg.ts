@@ -20,6 +20,7 @@ import {
   NATURAL_SEMITONES,
   parsePitch,
   pitchAtDiatonicIndex,
+  pitchSemitone,
   type Pitch,
 } from "./model";
 
@@ -369,7 +370,11 @@ function keyboardTier({
     const key = { index: range.firstIndex + index, black: false };
     return [
       `<rect class="keyboard__white-key${modifier(key)}"`,
-      ` data-note="${formatPitch(keyPitch(index))}" x="${round(keyX(index))}"`,
+      ` data-note="${formatPitch(keyPitch(index))}"`,
+      // What the key sounds, so a reader who taps it can be played it. MIDI
+      // numbering, as the app's synthesiser counts.
+      ` data-semitone="${pitchSemitone(keyPitch(index))}"`,
+      ` x="${round(keyX(index))}"`,
       ` y="${round(y)}" width="${round(whiteKeyWidth)}"`,
       ` height="${round(whiteKeyHeight)}" rx="${geometry.cornerRadius}"/>`,
     ].join("");
@@ -385,7 +390,9 @@ function keyboardTier({
       const x = keyX(index + 1) - blackKeyWidth / 2;
       return [
         `<rect class="keyboard__black-key${modifier(key)}"`,
-        ` data-key="${below.note}#${below.octave}" x="${round(x)}"`,
+        ` data-key="${below.note}#${below.octave}"`,
+        ` data-semitone="${pitchSemitone(below) + 1}"`,
+        ` x="${round(x)}"`,
         ` y="${round(y)}" width="${round(blackKeyWidth)}"`,
         ` height="${round(blackKeyHeight)}" rx="${geometry.cornerRadius}"/>`,
       ].join("");

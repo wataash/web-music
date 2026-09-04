@@ -5,26 +5,32 @@ import { describe, expect, it } from "vitest";
 
 import {
   answerAnchorParts,
-  cardScaleVariables,
+  answerAnchorAt,
+  cardLiveVariables,
+  cardPartScales,
   clampCardScale,
   clampKeyboardKeys,
   clampPianoKeys,
-  clampTopSpace,
+  clampCardOffset,
   DEFAULT_CARD_SCALES,
   DEFAULT_DECK_CARD_SETTINGS,
   deckCardSettings,
+  defaultDeckCardSettings,
   formatCardScale,
   loadCardScales,
   loadCardSettingsByDeck,
-  MAX_TOP_SPACE,
-  MIN_TOP_SPACE,
+  clampCardOffsetPoint,
+  DEFAULT_CARD_OFFSETS,
+  formatCardOffset,
+  MAX_CARD_OFFSET,
+  MAX_CARD_SCALE,
+  NO_CARD_OFFSET,
   saveCardScales,
   saveCardSettingsByDeck,
   stepCardRotation,
   stepCardScale,
   stepKeyboardKeys,
   stepPianoKeys,
-  stepTopSpace,
   withDeckCardSettings,
 } from "./card-scale";
 
@@ -47,7 +53,9 @@ describe("card scales", () => {
   });
 
   it("keeps a scale on the step, between half and double", () => {
-    expect(clampCardScale(1.24)).toBeCloseTo(1.2, 5);
+    // A pinch lands where the fingers left it, not on the step a button takes.
+    expect(clampCardScale(1.24)).toBeCloseTo(1.24, 5);
+    expect(clampCardScale(1.238)).toBeCloseTo(1.24, 5);
     expect(clampCardScale(0.1)).toBe(0.5);
     expect(clampCardScale(9)).toBe(2);
     expect(clampCardScale(Number.NaN)).toBe(1);
@@ -86,53 +94,125 @@ describe("card scales", () => {
     });
   });
 
-  it("hands the deck stylesheet what it reads", () => {
+  // Set on the card document itself rather than written into it, so a part
+  // under a finger moves and grows without the card being rebuilt around it.
+  it("hands the card what it draws itself by", () => {
     expect(
-      cardScaleVariables(
+      cardLiveVariables(
         { ...DEFAULT_CARD_SCALES, answer: 1.2 },
-        { ...DEFAULT_DECK_CARD_SETTINGS, staff: 0.7 },
+        {
+          ...DEFAULT_DECK_CARD_SETTINGS,
+          staff: 0.7,
+          offsets: {
+            ...DEFAULT_CARD_OFFSETS,
+            text: { x: -0.1, y: 0.25 },
+          },
+        },
       ),
     ).toEqual({
+      "--text-x": "-10vw",
+      "--text-y": "25vh",
+      "--staff-x": "0vw",
+      "--staff-y": "0vh",
+      "--keyboard-x": "0vw",
+      "--keyboard-y": "0vh",
+      "--board-x": "0vw",
+      "--board-y": "0vh",
+      "--text-scale": "1",
       "--staff-scale": "0.7",
       "--keyboard-scale": "1",
       "--board-scale": "1",
       "--answer-scale": "1.2",
     });
-    // Either board can be asked for the width of the screen instead.
+    // Either board can be asked for the width of the screen instead, which is
+    // a width rather than a multiple of the deck's own choice.
     expect(
-      cardScaleVariables(
-        { ...DEFAULT_CARD_SCALES, board: "screen" },
-        DEFAULT_DECK_CARD_SETTINGS,
-      )["--board-width"],
-    ).toBe("100vw");
-    // Asked for the width of the screen, the keyboard is given one rather
-    // than a multiple of the deck's own choice.
-    expect(
-      cardScaleVariables(
-        { ...DEFAULT_CARD_SCALES, keyboard: "screen" },
+      cardLiveVariables(
+        { ...DEFAULT_CARD_SCALES, board: "screen", keyboard: "screen" },
         DEFAULT_DECK_CARD_SETTINGS,
       ),
-    ).toEqual({
-      "--staff-scale": "1",
-      "--board-scale": "1",
-      "--answer-scale": "1",
-      "--keyboard-width": "100vw",
-    });
+    ).toMatchObject({ "--board-width": "100vw", "--keyboard-width": "100vw" });
     expect(formatCardScale(0.7)).toBe("70%");
   });
 
-  it("leaves the top of the card area empty in twentieths, 60% either way", () => {
-    expect(clampTopSpace(0.23)).toBe(0.25);
-    expect(clampTopSpace(9)).toBe(MAX_TOP_SPACE);
-    expect(clampTopSpace(-9)).toBe(MIN_TOP_SPACE);
-    expect(clampTopSpace("15%")).toBe(0);
-    expect(stepTopSpace(0, 1)).toBe(0.05);
-    expect(stepTopSpace(MAX_TOP_SPACE, 1)).toBe(MAX_TOP_SPACE);
-    // Below zero the card is pulled up past the top of the area instead.
-    expect(stepTopSpace(0, -1)).toBe(-0.05);
-    expect(stepTopSpace(MIN_TOP_SPACE, -1)).toBe(MIN_TOP_SPACE);
-    expect(formatCardScale(0.15)).toBe("15%");
-    expect(formatCardScale(-0.15)).toBe("-15%");
+  // A pinch sets a size, and a part asked for the width of the screen has no
+  // multiple of its own to pinch from: it starts again from the largest.
+  it("names the size of every part a pinch can take hold of", () => {
+    expect(
+      cardPartScales(
+        { ...DEFAULT_CARD_SCALES, keyboard: "screen", board: 0.8 },
+        { ...DEFAULT_DECK_CARD_SETTINGS, staff: 0.7, text: 1.4 },
+      ),
+    ).toEqual({ text: 1.4, staff: 0.7, keyboard: MAX_CARD_SCALE, board: 0.8 });
+  });
+
+  // Dragged rather than pointed at: where it is let go says which edge it lies
+  // along and which end of it it is at.
+  it("lands a dragged answer row on the nearest of its eleven places", () => {
+    const area = { width: 400, height: 800 };
+    const at = (x: number, y: number) => answerAnchorAt({ x, y }, area);
+
+    expect(at(200, 780)).toBe("bottom");
+    expect(at(40, 780)).toBe("bottom-left");
+    expect(at(360, 780)).toBe("bottom-right");
+    expect(at(10, 400)).toBe("left");
+    expect(at(10, 100)).toBe("left-top");
+    expect(at(10, 700)).toBe("left-bottom");
+    expect(at(390, 400)).toBe("right");
+    expect(at(390, 700)).toBe("right-bottom");
+    // The top edge has no middle: the app bar is already there.
+    expect(at(120, 5)).toBe("top-left");
+    expect(at(280, 5)).toBe("top-right");
+  });
+
+  // A staff card answers with a note's name, and sounding it every time is
+  // practice at naming pitches by ear — a skill the deck is not teaching.
+  it("starts the staff decks silent and the rest sounding", () => {
+    expect(defaultDeckCardSettings("Music Staff::Staff → Note").sound).toBe(
+      false,
+    );
+    expect(
+      defaultDeckCardSettings("Music Staff (with Octave Numbers)").sound,
+    ).toBe(false);
+    expect(defaultDeckCardSettings("Intervals").sound).toBe(true);
+    expect(defaultDeckCardSettings("Guitar Fretboard").sound).toBe(true);
+
+    // Turned on, it is kept; turned back off, the deck is a deck untouched
+    // again and is dropped rather than written out as its own default.
+    const storage = memoryStorage();
+    const loud = withDeckCardSettings({}, "Music Staff::Treble Clef", {
+      ...defaultDeckCardSettings("Music Staff"),
+      sound: true,
+    });
+    saveCardSettingsByDeck(loud, storage);
+    expect(
+      deckCardSettings(loadCardSettingsByDeck(storage), "Music Staff").sound,
+    ).toBe(true);
+    expect(
+      withDeckCardSettings(loud, "Music Staff", {
+        ...defaultDeckCardSettings("Music Staff"),
+      }),
+    ).toEqual({});
+  });
+
+  it("moves a part of the card, a card's width either way", () => {
+    expect(clampCardOffset(0.2311)).toBe(0.232);
+    expect(clampCardOffset(9)).toBe(MAX_CARD_OFFSET);
+    expect(clampCardOffset(-9)).toBe(-MAX_CARD_OFFSET);
+    expect(clampCardOffset("15%")).toBe(0);
+    // A drag hands over wherever the finger has reached, both axes at once,
+    // and neither of them leaves a card's width behind.
+    expect(clampCardOffsetPoint({ x: 0.1009, y: -0.4 })).toEqual({
+      x: 0.1,
+      y: -0.4,
+    });
+    expect(clampCardOffsetPoint({ x: 4, y: -4 })).toEqual({
+      x: MAX_CARD_OFFSET,
+      y: -MAX_CARD_OFFSET,
+    });
+    // Read as "right and down", the way the arrows that set it are pointed.
+    expect(formatCardOffset(NO_CARD_OFFSET)).toBe("Default");
+    expect(formatCardOffset({ x: 0.15, y: -0.1 })).toBe("+15%, -10%");
   });
 
   it("keeps interval keyboard key counts odd, from 25 through 37", () => {
@@ -168,12 +248,15 @@ describe("stepping a size", () => {
 });
 
 describe("what each deck draws its own way", () => {
-  it("keeps the staff, the keys, the space, the turn and the marks per deck", () => {
+  it("keeps the staff, the keys, the places, the turn and the marks per deck", () => {
     const storage = memoryStorage();
     const turned = withDeckCardSettings({}, "Guitar Intervals::Fifths", {
       ...DEFAULT_DECK_CARD_SETTINGS,
       keyboardKeys: 25,
-      topSpace: 0.2,
+      offsets: {
+        ...DEFAULT_DECK_CARD_SETTINGS.offsets,
+        keyboard: { x: 0, y: 0.2 },
+      },
       rotation: 90,
     });
     saveCardSettingsByDeck(turned, storage);
@@ -183,7 +266,10 @@ describe("what each deck draws its own way", () => {
     ).toEqual({
       ...DEFAULT_DECK_CARD_SETTINGS,
       keyboardKeys: 25,
-      topSpace: 0.2,
+      offsets: {
+        ...DEFAULT_DECK_CARD_SETTINGS.offsets,
+        keyboard: { x: 0, y: 0.2 },
+      },
       rotation: 90,
     });
     // Another deck is untouched by it, and so is a reader who set nothing.
@@ -235,7 +321,8 @@ describe("what each deck draws its own way", () => {
         ),
         "Music Staff::Staff → Note::Treble Clef",
       ),
-    ).toEqual(DEFAULT_DECK_CARD_SETTINGS);
+      // The deck's own defaults: a staff deck starts silent.
+    ).toEqual(defaultDeckCardSettings("Music Staff"));
     expect(
       loadCardSettingsByDeck(
         memoryStorage({ "music-flashcards:deck-card-settings": "{" }),
