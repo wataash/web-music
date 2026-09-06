@@ -576,13 +576,13 @@ test("plays every key a finger is drawn along", async ({ page }) => {
   }
   await page.mouse.up();
 
-  // The four keys it crossed, and the answer as the card turns over — the key
-  // it started on is played by the tap, not by the drag.
+  // The four keys it crossed, and the root and answer as the card turns over —
+  // the key it started on is played by the tap, not by the drag.
   await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
   const partialsPerNote = 4;
   await expect
     .poll(async () => (await whatWasPlayed(page)).partials.length)
-    .toBe(5 * partialsPerNote);
+    .toBe(6 * partialsPerNote);
 
   // Held still, a key sounds once rather than on every twitch of the finger.
   const held = await along(6);
@@ -593,7 +593,7 @@ test("plays every key a finger is drawn along", async ({ page }) => {
   await page.mouse.up();
   await expect
     .poll(async () => (await whatWasPlayed(page)).partials.length)
-    .toBe(6 * partialsPerNote);
+    .toBe(7 * partialsPerNote);
 
   // A finger does the same, and keeps playing while the card is under it: its
   // own events go on arriving whether or not the card scrolls beneath. The one
@@ -608,7 +608,7 @@ test("plays every key a finger is drawn along", async ({ page }) => {
   await touchCard(page, "touchend", landed);
   await expect
     .poll(async () => (await whatWasPlayed(page)).partials.length)
-    .toBe(10 * partialsPerNote);
+    .toBe(11 * partialsPerNote);
 });
 
 test("chooses what the interval keyboard marks on the front", async ({
@@ -1394,8 +1394,9 @@ test("crops a keyboard larger than the card, centred on it", async ({
   // the card, and both ends are cut off alike.
   expectNear(await middleOf(drawn), middle);
 
-  // Cut off rather than scrolled: a row that can be scrolled puts a scrollbar
-  // over the card, and where it was scrolled to is not remembered.
+  // Cut off by the card rather than scrolled: a row that can be scrolled puts a
+  // scrollbar over the card, and where it was scrolled to is not remembered.
+  // The row itself does not clip, so an enlarged key still shows outside it.
   expect(
     await row.evaluate((element) => {
       element.scrollLeft = 999;
@@ -1404,7 +1405,7 @@ test("crops a keyboard larger than the card, centred on it", async ({
         overflow: getComputedStyle(element).overflow,
       };
     }),
-  ).toEqual({ scrolledTo: 0, overflow: "clip" });
+  ).toEqual({ scrolledTo: 0, overflow: "visible" });
 });
 
 test("drags a part in the card's own directions", async ({ page }) => {
