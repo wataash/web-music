@@ -430,9 +430,7 @@ test("plays the key under the finger, and the answer as it is shown", async ({
   await study(page, "Intervals");
   const card = page.frameLocator('iframe[title="card"]');
 
-  // Two fingers, two keys: both are played, and the answer with them — a
-  // piano note is a stack of partials, so two keys and an answer are three
-  // stacks. The card is turned over by the same tap.
+  // The root, both tapped keys, and the answer are played in order.
   const keys = card.locator("rect.keyboard__white-key");
   await touchCard(page, "touchstart", [
     await centreInCard(page, keys.nth(8)),
@@ -441,7 +439,7 @@ test("plays the key under the finger, and the answer as it is shown", async ({
   await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
   const struck = await whatWasPlayed(page);
   const partialsPerNote = 4;
-  expect(struck.partials.length).toBe(3 * partialsPerNote);
+  expect(struck.partials.length).toBe(4 * partialsPerNote);
   expect(struck.plucks).toBe(0);
   // Every one of them is a note a piano has.
   expect(Math.min(...struck.partials)).toBeGreaterThan(20);
@@ -453,7 +451,7 @@ test("plays the key under the finger, and the answer as it is shown", async ({
   await card.locator("svg.keyboard-svg").click();
   await expect
     .poll(async () => (await whatWasPlayed(page)).partials.length)
-    .toBe(4 * partialsPerNote);
+    .toBe(5 * partialsPerNote);
 
   // A guitar deck is plucked instead: one string, not a stack of partials.
   await page.getByTitle("Back").click();
@@ -466,7 +464,7 @@ test("plays the key under the finger, and the answer as it is shown", async ({
 });
 
 for (const side of ["lower", "upper"] as const) {
-  test(`plays a correct ${side} key only once`, async ({ page }) => {
+  test(`plays the root then a correct ${side} key only once`, async ({ page }) => {
     await recordWhatIsPlayed(page);
     await page.addInitScript(() => {
       localStorage.setItem("music-flashcards:deck-card-settings", JSON.stringify({
@@ -481,9 +479,13 @@ for (const side of ["lower", "upper"] as const) {
     const pitch = side === "upper" ? Math.max(...pitches) : Math.min(...pitches);
     const key = card.locator(`rect.is-highlighted[data-semitone="${pitch}"]`);
     const box = (await key.boundingBox())!;
+    const root = Number(await card.locator("rect.is-given").getAttribute("data-semitone"));
     await key.click({ position: { x: box.width / 2, y: box.height * 0.8 } });
     await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
-    expect((await whatWasPlayed(page)).partials).toHaveLength(4);
+    const played = (await whatWasPlayed(page)).partials;
+    expect(played).toHaveLength(8);
+    expect(played[0]).toBeCloseTo(440 * 2 ** ((root - 69) / 12));
+    expect(played[4]).toBeCloseTo(440 * 2 ** ((pitch - 69) / 12));
   });
 }
 

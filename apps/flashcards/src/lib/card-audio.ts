@@ -42,6 +42,32 @@ export type CardSound = Readonly<{
   semitones: readonly number[];
 }>;
 
+// Reveal an interval with its root first, then the tapped pitch and any
+// unanswered target. A correct tap supplies the target at its chosen octave.
+export function tappedAnswerSound(
+  taps: readonly CardTap[],
+  answer: CardSound | null,
+  interval: boolean,
+): CardSound {
+  const tapped = taps.flatMap((tap) => tapSound(tap) ?? []);
+  const played = [...new Set(tapped.flatMap(({ semitones }) => semitones))];
+  const prefix = interval ? answer?.semitones.slice(0, 1) ?? [] : [];
+  const targets = interval
+    ? answer?.semitones.slice(1) ?? []
+    : answer?.semitones ?? [];
+  const remaining = targets.filter((pitch) =>
+    !played.some((tap) => interval ? (tap - pitch) % 12 === 0 : tap === pitch),
+  );
+  return {
+    instrument: (answer ?? tapped[0])?.instrument ?? "piano",
+    semitones: [
+      ...prefix,
+      ...played.filter((pitch) => !prefix.includes(pitch)),
+      ...new Set(remaining),
+    ],
+  };
+}
+
 export function guitarSemitone(guitarString: number, fret: number): number | null {
   const open = GUITAR_OPEN_STRINGS[guitarString - 1];
   if (open === undefined) return null;
@@ -101,7 +127,7 @@ function intervalAnswerSound(
   if (root === null || answer === null) return null;
   const rootSemitone = 60 + root;
   const above = mod12(answer - root) || 12;
-  return { instrument: "piano", semitones: [rootSemitone + above] };
+  return { instrument: "piano", semitones: [rootSemitone, rootSemitone + above] };
 }
 
 function guitarIntervalAnswerSound(

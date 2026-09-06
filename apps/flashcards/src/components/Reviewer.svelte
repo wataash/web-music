@@ -73,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
   } from "../lib/card-scale";
   import {
     answerSound,
-    tapSound,
+    tappedAnswerSound,
     type CardTap,
   } from "../lib/card-audio";
   import { playSemitones } from "../lib/tones";
@@ -342,20 +342,8 @@ SPDX-License-Identifier: Apache-2.0
     const revealing =
       onDiagram && phase === "question" && revealAnswerOnDiagramTap;
     const answer = revealing ? answerSound(item.note) : null;
-    const tapped = taps.flatMap((tap) => tapSound(tap) ?? []);
-    // One call, so a tapped note and the answer are spread apart rather than
-    // struck together and heard as one. They are the same instrument: what a
-    // deck is played on is the deck's, not the finger's.
-    const played = tapped.flatMap(({ semitones }) => semitones);
-    // Interval cards accept the marked answer on either side of the root.
-    const interval = isIntervalCard(item.note);
-    const remaining = (answer?.semitones ?? []).filter(
-      (pitch) => !played.some(
-        (tap) => interval ? (tap - pitch) % 12 === 0 : tap === pitch,
-      ),
-    );
-    const semitones = [...new Set([...played, ...remaining])];
-    sound(semitones, (answer ?? tapped[0])?.instrument ?? "piano");
+    const played = tappedAnswerSound(taps, answer, isIntervalCard(item.note));
+    sound(played.semitones, played.instrument);
     if (revealing) showAnswer(false);
   }
 

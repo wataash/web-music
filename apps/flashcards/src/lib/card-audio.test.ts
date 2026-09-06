@@ -10,6 +10,7 @@ import {
   pitchClassOf,
   semitoneOfPitch,
   tapSound,
+  tappedAnswerSound,
 } from "./card-audio";
 
 // Enough of a note row for the mapping to read: the fields the deck writes and
@@ -73,13 +74,24 @@ describe("the sound of an answer", () => {
       answerSound(
         note(["id", "interval", "C", "M3", "C M3", "E", "basic", "", "E"]),
       ),
-    ).toEqual({ instrument: "piano", semitones: [64] });
+    ).toEqual({ instrument: "piano", semitones: [60, 64] });
     // An octave is an octave up, never the root again.
     expect(
       answerSound(
         note(["id", "interval", "C", "P5", "C P5", "G", "basic", "", "C"]),
       ),
-    ).toEqual({ instrument: "piano", semitones: [72] });
+    ).toEqual({ instrument: "piano", semitones: [60, 72] });
+  });
+
+  it("plays Bb before a correct Ab without repeating Ab", () => {
+    const answer = answerSound(note(["id", "interval", "Bb", "m7", "Bb m7", "Ab", "basic", "", "Ab"]));
+    expect(answer?.semitones).toEqual([70, 80]);
+    for (const pitch of [68, 80]) {
+      expect(tappedAnswerSound([{ kind: "key", semitone: pitch }], answer, true).semitones).toEqual([70, pitch]);
+    }
+    expect(tappedAnswerSound([{ kind: "key", semitone: 79 }], answer, true).semitones).toEqual([70, 79, 80]);
+    expect(tappedAnswerSound([{ kind: "key", semitone: 70 }], answer, true).semitones).toEqual([70, 80]);
+    expect(tappedAnswerSound([{ kind: "key", semitone: 80 }], null, true).semitones).toEqual([80]);
   });
 
   it("plays the pitch a staff card asks for", () => {
