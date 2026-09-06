@@ -217,7 +217,7 @@ export const DEFAULT_DECK_CARD_SETTINGS: DeckCardSettings = {
 // that answer every time is practice at naming a pitch by ear — a different
 // skill, and one a reader is better off not chasing by accident — so those
 // decks start silent. The switch is still theirs to turn on.
-const SILENT_DECKS = ["Music Staff"];
+const SILENT_DECKS = ["Music Staff", "Guitar Fretboard"];
 
 export function defaultDeckCardSettings(deckName: string): DeckCardSettings {
   const top = topDeckName(deckName);

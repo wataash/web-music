@@ -346,10 +346,15 @@ SPDX-License-Identifier: Apache-2.0
     // One call, so a tapped note and the answer are spread apart rather than
     // struck together and heard as one. They are the same instrument: what a
     // deck is played on is the deck's, not the finger's.
-    const semitones = [
-      ...tapped.flatMap(({ semitones: played }) => played),
-      ...(answer?.semitones ?? []),
-    ];
+    const played = tapped.flatMap(({ semitones }) => semitones);
+    // Interval cards accept the marked answer on either side of the root.
+    const interval = isIntervalCard(item.note);
+    const remaining = (answer?.semitones ?? []).filter(
+      (pitch) => !played.some(
+        (tap) => interval ? (tap - pitch) % 12 === 0 : tap === pitch,
+      ),
+    );
+    const semitones = [...new Set([...played, ...remaining])];
     sound(semitones, (answer ?? tapped[0])?.instrument ?? "piano");
     if (revealing) showAnswer(false);
   }

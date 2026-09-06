@@ -117,12 +117,11 @@ export const CARD_CSS = `
   color: #fcd34d;
 }
 
-/* Cancel the card padding so drawings reach its edges. Clip oversized
-   drawings to avoid scrollbars interfering with playback and placement. */
+/* Cancel the card padding so drawings reach its edges. Keep enlarged keys
+   visible outside this row when the keyboard is repositioned. */
 .keyboard {
   width: 100vw;
   margin-inline: -1rem;
-  overflow: clip;
 }
 
 /* The names are written over the keyboard rather than drawn into it, so they

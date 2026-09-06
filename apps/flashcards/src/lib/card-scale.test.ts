@@ -167,7 +167,7 @@ describe("card scales", () => {
 
   // A staff card answers with a note's name, and sounding it every time is
   // practice at naming pitches by ear — a skill the deck is not teaching.
-  it("starts the staff decks silent and the rest sounding", () => {
+  it("starts the staff and fretboard decks silent and intervals sounding", () => {
     expect(defaultDeckCardSettings("Music Staff::Staff → Note").sound).toBe(
       false,
     );
@@ -175,7 +175,8 @@ describe("card scales", () => {
       defaultDeckCardSettings("Music Staff (with Octave Numbers)").sound,
     ).toBe(false);
     expect(defaultDeckCardSettings("Intervals").sound).toBe(true);
-    expect(defaultDeckCardSettings("Guitar Fretboard").sound).toBe(true);
+    expect(defaultDeckCardSettings("Guitar Fretboard").sound).toBe(false);
+    expect(defaultDeckCardSettings("Guitar Fretboard::Position → Note").sound).toBe(false);
 
     // Turned on, it is kept; turned back off, the deck is a deck untouched
     // again and is dropped rather than written out as its own default.

@@ -465,6 +465,49 @@ test("plays the key under the finger, and the answer as it is shown", async ({
   expect((await whatWasPlayed(page)).partials.length).toBe(before);
 });
 
+for (const side of ["lower", "upper"] as const) {
+  test(`plays a correct ${side} key only once`, async ({ page }) => {
+    await recordWhatIsPlayed(page);
+    await page.addInitScript(() => {
+      localStorage.setItem("music-flashcards:deck-card-settings", JSON.stringify({
+        Intervals: { frontAnswer: true },
+      }));
+    });
+    await openDeckList(page);
+    await study(page, "Intervals");
+    const card = page.frameLocator('iframe[title="card"]');
+    const answers = card.locator("rect.is-highlighted");
+    const pitches = await answers.evaluateAll((keys) => keys.map((key) => Number(key.getAttribute("data-semitone"))));
+    const pitch = side === "upper" ? Math.max(...pitches) : Math.min(...pitches);
+    const key = card.locator(`rect.is-highlighted[data-semitone="${pitch}"]`);
+    const box = (await key.boundingBox())!;
+    await key.click({ position: { x: box.width / 2, y: box.height * 0.8 } });
+    await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
+    expect((await whatWasPlayed(page)).partials).toHaveLength(4);
+  });
+}
+
+test("keeps enlarged interval keys visible outside their translated row", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 1400 });
+  await openDeckList(page);
+  await study(page, "Intervals");
+  const card = page.frameLocator('iframe[title="card"]');
+  const visible = await card.locator(".keyboard").evaluate((row) => {
+    const host = row as HTMLElement;
+    host.style.setProperty("--keyboard-scale", "2");
+    host.style.setProperty("--keyboard-x", "40vw");
+    const bounds = host.getBoundingClientRect();
+    const key = [...host.querySelectorAll("rect[data-semitone]")].find((key) => {
+      const rect = key.getBoundingClientRect();
+      return rect.left > 0 && rect.right < bounds.left;
+    });
+    if (!key) return false;
+    const rect = key.getBoundingClientRect();
+    return host.ownerDocument.elementFromPoint(rect.left + rect.width / 2, rect.bottom - 5) === key;
+  });
+  expect(visible).toBe(true);
+});
+
 test("keeps the staff decks silent until they are asked to sound", async ({
   page,
 }) => {
