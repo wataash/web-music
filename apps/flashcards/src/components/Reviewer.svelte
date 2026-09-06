@@ -342,7 +342,11 @@ SPDX-License-Identifier: Apache-2.0
     const revealing =
       onDiagram && phase === "question" && revealAnswerOnDiagramTap;
     const answer = revealing ? answerSound(item.note) : null;
-    const played = tappedAnswerSound(taps, answer, isIntervalCard(item.note));
+    const played = tappedAnswerSound(
+      taps,
+      answer,
+      isIntervalCard(item.note) || isGuitarIntervalCard(item.note),
+    );
     sound(played.semitones, played.instrument);
     if (revealing) showAnswer(false);
   }

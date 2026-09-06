@@ -131,8 +131,23 @@ describe("the sound of an answer", () => {
       ),
     ).toEqual({
       instrument: "guitar",
-      semitones: [guitarSemitone(5, GUITAR_INTERVAL_ROOT_FRET + 2)],
+      semitones: [
+        guitarSemitone(6, GUITAR_INTERVAL_ROOT_FRET),
+        guitarSemitone(5, GUITAR_INTERVAL_ROOT_FRET + 2),
+      ],
     });
+  });
+
+  it("plays the guitar root then a correct tapped target once", () => {
+    const answer = answerSound(note(["id", "guitar-interval", "6", "5", "2", "P5", "", ""]));
+    expect(tappedAnswerSound([{ kind: "fret-offset", string: 5, offset: 2 }], answer, true))
+      .toEqual({ instrument: "guitar", semitones: [47, 54] });
+    expect(tappedAnswerSound([{ kind: "fret-offset", string: 5, offset: 1 }], answer, true).semitones)
+      .toEqual([47, 53, 54]);
+    expect(tappedAnswerSound([{ kind: "fret-offset", string: 6, offset: 0 }], answer, true).semitones)
+      .toEqual([47, 54]);
+    expect(tappedAnswerSound([{ kind: "fret-offset", string: 5, offset: 2 }], null, true).semitones)
+      .toEqual([54]);
   });
 
   // A card that answers with the name of a distance has no pitch of its own.

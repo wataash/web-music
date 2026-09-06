@@ -55,8 +55,9 @@ export function tappedAnswerSound(
   const targets = interval
     ? answer?.semitones.slice(1) ?? []
     : answer?.semitones ?? [];
+  const eitherOctave = interval && answer?.instrument === "piano";
   const remaining = targets.filter((pitch) =>
-    !played.some((tap) => interval ? (tap - pitch) % 12 === 0 : tap === pitch),
+    !played.some((tap) => eitherOctave ? (tap - pitch) % 12 === 0 : tap === pitch),
   );
   return {
     instrument: (answer ?? tapped[0])?.instrument ?? "piano",
@@ -136,7 +137,11 @@ function guitarIntervalAnswerSound(
   const targetString = Number(note.fields[3]);
   const offset = Number(note.fields[4]);
   if (!Number.isInteger(targetString) || !Number.isInteger(offset)) return null;
-  return tapSound({ kind: "fret-offset", string: targetString, offset });
+  const root = guitarSemitone(Number(note.fields[2]), GUITAR_INTERVAL_ROOT_FRET);
+  const target = guitarSemitone(targetString, GUITAR_INTERVAL_ROOT_FRET + offset);
+  return root === null || target === null
+    ? null
+    : { instrument: "guitar", semitones: [root, target] };
 }
 
 // One card names a position and answers with its note; the other names a note

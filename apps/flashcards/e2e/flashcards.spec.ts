@@ -458,9 +458,21 @@ test("plays the key under the finger, and the answer as it is shown", async ({
   await study(page, "Guitar Intervals");
   const before = (await whatWasPlayed(page)).partials.length;
   await card.locator(".fret-window-board").click();
-  // The cell under the finger and the answer with it.
-  await expect.poll(async () => (await whatWasPlayed(page)).plucks).toBe(2);
+  // The root, the cell under the finger, and the answer.
+  await expect.poll(async () => (await whatWasPlayed(page)).plucks).toBe(3);
   expect((await whatWasPlayed(page)).partials.length).toBe(before);
+});
+
+test("plays the guitar root and correct target without repeating the target", async ({ page }) => {
+  await recordWhatIsPlayed(page);
+  await openDeckList(page);
+  await study(page, "Guitar Intervals");
+  const card = page.frameLocator('iframe[title="card"]');
+  const cue = await card.locator(".fret-name.cue").boundingBox();
+  await page.mouse.click(cue!.x + cue!.width / 2, cue!.y + cue!.height / 2);
+  await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
+  expect((await whatWasPlayed(page)).plucks).toBe(2);
+  expect((await whatWasPlayed(page)).partials).toHaveLength(0);
 });
 
 for (const side of ["lower", "upper"] as const) {
