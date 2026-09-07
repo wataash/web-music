@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_CIRCLE_NOTE_SELECTION } from "./circle-note-selection";
+import { DEFAULT_FRETBOARD_NOTE_SELECTION } from "./fretboard-card";
 import { DEFAULT_FRET_WINDOW } from "./guitar-interval-selection";
 import { DEFAULT_INTERVAL_PAIR_SELECTION } from "./interval-pair-selection";
 import { deckSettingsTarget, includesSelectedNote } from "./note-selection";
@@ -17,6 +18,7 @@ const selections = {
     noteToCell: DEFAULT_CIRCLE_NOTE_SELECTION,
     intervals: DEFAULT_CIRCLE_NOTE_SELECTION,
   },
+  fretboardNotes: new Set(DEFAULT_FRETBOARD_NOTE_SELECTION),
   fretWindow: DEFAULT_FRET_WINDOW,
   intervalPairs: new Set(DEFAULT_INTERVAL_PAIR_SELECTION),
   staff: DEFAULT_STAFF_NOTE_SELECTION,
@@ -29,12 +31,31 @@ describe("note selection", () => {
       tags: "clef::treble direction::staff-to-note",
     };
     const fretboardCard = {
-      fields: ["id", "flats", "3", "1", "A♭"],
-      tags: "system::flats direction::position-to-note",
+      fields: ["id", "enharmonic", "3", "1", "G♯A♭"],
+      tags: "spelling::enharmonic direction::position-to-note",
     };
 
     expect(includesSelectedNote(staffCard, selections)).toBe(true);
     expect(includesSelectedNote(fretboardCard, selections)).toBe(true);
+    // Note → Positions ships asking only for the naturals.
+    expect(
+      includesSelectedNote(
+        {
+          fields: ["id", "natural", "1", "", "E", "", "", "1-0 1-12 1-24"],
+          tags: "spelling::natural direction::note-to-positions",
+        },
+        selections,
+      ),
+    ).toBe(true);
+    expect(
+      includesSelectedNote(
+        {
+          fields: ["id", "enharmonic", "1", "", "A♯B♭", "", "", "1-5 1-17"],
+          tags: "spelling::enharmonic direction::note-to-positions",
+        },
+        selections,
+      ),
+    ).toBe(false);
     expect(
       includesSelectedNote(
         { fields: ["id", "interval", "C", "m3"], tags: "" },
@@ -76,6 +97,12 @@ describe("note selection", () => {
     expect(deckSettingsTarget("Interval Identification")).toEqual({
       kind: "interval",
       setting: { deckLabel: "Interval Identification" },
+    });
+    expect(
+      deckSettingsTarget("Guitar Fretboard::Note → Positions"),
+    ).toEqual({
+      kind: "fretboard-note",
+      setting: { deckLabel: "Note → Positions" },
     });
     expect(deckSettingsTarget("Guitar Fretboard")).toBeNull();
   });

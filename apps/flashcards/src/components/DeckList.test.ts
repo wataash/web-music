@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import DeckList from "./DeckList.svelte";
 import { DEFAULT_CIRCLE_NOTE_SELECTION } from "../lib/circle-note-selection";
+import { DEFAULT_FRETBOARD_NOTE_SELECTION } from "../lib/fretboard-card";
 import { DEFAULT_FRET_WINDOW } from "../lib/guitar-interval-selection";
 import { DEFAULT_INTERVAL_PAIR_SELECTION } from "../lib/interval-pair-selection";
 import { DEFAULT_STAFF_NOTE_SELECTION } from "../lib/staff-note-selection";
@@ -49,8 +50,9 @@ describe("deck-list scroll position", () => {
             noteToCell: DEFAULT_CIRCLE_NOTE_SELECTION,
             intervals: DEFAULT_CIRCLE_NOTE_SELECTION,
           },
+          fretboardNotes: new Set(DEFAULT_FRETBOARD_NOTE_SELECTION),
           fretWindow: DEFAULT_FRET_WINDOW,
-  intervalPairs: new Set(DEFAULT_INTERVAL_PAIR_SELECTION),
+          intervalPairs: new Set(DEFAULT_INTERVAL_PAIR_SELECTION),
           staff: DEFAULT_STAFF_NOTE_SELECTION,
         },
         busy: false,
@@ -66,6 +68,7 @@ describe("deck-list scroll position", () => {
           if (list !== null) list.scrollTop = 624;
         },
         oncirclenoteselectionchange: () => {},
+        onfretboardnoteselectionchange: () => {},
         onfretwindowchange: () => {},
         onintervalpairselectionchange: () => {},
         onstaffnoteselectionchange: () => {},

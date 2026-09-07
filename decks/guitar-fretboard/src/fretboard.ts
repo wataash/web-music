@@ -10,6 +10,9 @@ export const CANVAS = {
   boardWidth: 1400,
   stringGap: 40,
   noteRadius: 16,
+  // A dot carrying both names of one pitch is drawn wider, since it writes
+  // them one over the other.
+  enharmonicNoteRadius: 19,
 } as const;
 
 export type FretboardTarget = Readonly<{
@@ -19,10 +22,14 @@ export type FretboardTarget = Readonly<{
   labelKind?: "cue" | "answer";
 }>;
 
+// One deck asks about every position, so the front cannot hint at the spelling
+// of the answer: every question dot carries the same mark.
+export const QUESTION_CUE = "?";
+
 export type FretboardSvgInput = Readonly<{
   string?: number;
   fret?: number;
-  cue?: "♭" | "♯";
+  cue?: typeof QUESTION_CUE;
   note?: string;
   targets?: readonly FretboardTarget[];
   highlightedString?: number;
@@ -121,7 +128,7 @@ export function renderFretboardSvg({
     (note
       ? `${note} on string ${string}, fret ${fret}`
       : cue
-        ? `${cue === "♭" ? "Flat" : "Sharp"} note-name question on string ${string}, fret ${fret}`
+        ? `Note-name question on string ${string}, fret ${fret}`
         : highlightedString !== undefined
           ? `Highlighted string ${highlightedString}`
           : normalizedTargets.length === 1
@@ -132,7 +139,7 @@ export function renderFretboardSvg({
     (note
       ? `A guitar fretboard with ${note} marked on string ${string} at fret ${fret}.`
       : cue
-        ? `A guitar fretboard asking for the ${cue === "♭" ? "flat" : "sharp"} note name on string ${string} at fret ${fret}.`
+        ? `A guitar fretboard asking for the note name on string ${string} at fret ${fret}.`
         : highlightedString !== undefined
           ? `A guitar fretboard with string ${highlightedString} highlighted.`
           : `A guitar fretboard with ${normalizedTargets.length} marked positions.`);
@@ -188,11 +195,17 @@ export function renderFretboardSvg({
           ? fretXs[0] - CANVAS.nutWidth / 2
           : (fretXs[target.fret - 1] + fretXs[target.fret]) / 2;
       const targetY = stringYs[target.string - 1];
-      const label = target.label
-        ? `<text class="fretboard__label" data-label-kind="${target.labelKind ?? "answer"}" x="${targetX}" y="${targetY}" text-anchor="middle" dominant-baseline="central">${escapeXml(target.label)}</text>`
-        : "";
+      const stacked = enharmonicLabelLines(target.label);
+      const radius =
+        stacked === null ? CANVAS.noteRadius : CANVAS.enharmonicNoteRadius;
+      const labelKind = target.labelKind ?? "answer";
+      const label = stacked
+        ? `<text class="fretboard__label fretboard__label--stacked" data-label-kind="${labelKind}" x="${targetX}" y="${targetY}" text-anchor="middle" dominant-baseline="central"><tspan x="${targetX}" dy="-0.6em">${escapeXml(stacked[0])}</tspan><tspan x="${targetX}" dy="1.2em">${escapeXml(stacked[1])}</tspan></text>`
+        : target.label
+          ? `<text class="fretboard__label" data-label-kind="${labelKind}" x="${targetX}" y="${targetY}" text-anchor="middle" dominant-baseline="central">${escapeXml(target.label)}</text>`
+          : "";
 
-      return `<circle class="fretboard__target" data-string="${target.string}" data-fret="${target.fret}" cx="${targetX}" cy="${targetY}" r="${CANVAS.noteRadius}"/>${label}`;
+      return `<circle class="fretboard__target" data-string="${target.string}" data-fret="${target.fret}" cx="${targetX}" cy="${targetY}" r="${radius}"/>${label}`;
     })
     .join("");
 
@@ -223,7 +236,7 @@ export function renderFretboardSvg({
     `<svg class="fretboard" xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}" role="img" aria-labelledby="title description">`,
     `<title id="title">${escapeXml(title)}</title>`,
     `<desc id="description">${escapeXml(description)}</desc>`,
-    `<style>text{font-family:Arial,"Noto Sans",sans-serif}.fretboard__fret-label{fill:#a8b0bc;font-size:${CANVAS.fretLabelFontSize}px;font-weight:600}.fretboard__string-highlight{stroke:#fde68a;stroke-width:14;stroke-linecap:round}.fretboard__string{stroke:#cbd5e1}.fretboard__inlay{fill:#52606d}.fretboard__target{fill:#fde68a;stroke:#a16207;stroke-width:1.5}.fretboard__label{fill:#111827;font-size:17px;font-weight:700}</style>`,
+    `<style>text{font-family:Arial,"Noto Sans",sans-serif}.fretboard__fret-label{fill:#a8b0bc;font-size:${CANVAS.fretLabelFontSize}px;font-weight:600}.fretboard__string-highlight{stroke:#fde68a;stroke-width:14;stroke-linecap:round}.fretboard__string{stroke:#cbd5e1}.fretboard__inlay{fill:#52606d}.fretboard__target{fill:#fde68a;stroke:#a16207;stroke-width:1.5}.fretboard__label{fill:#111827;font-size:17px;font-weight:700}.fretboard__label--stacked{font-size:13px}</style>`,
     `<rect width="100%" height="100%" fill="#111827"/>`,
     `<rect x="0" y="${(stringYs[0] + stringYs[STRING_COUNT - 1] - nutHeight) / 2}" width="${CANVAS.nutWidth}" height="${nutHeight}" fill="#d1d5db"/>`,
     fretLines,
@@ -250,6 +263,16 @@ function validateFret(fret: number | undefined): number {
     throw new RangeError(`fret must be from 0 to ${FRET_COUNT}`);
   }
   return fret!;
+}
+
+// A dot asked for under both names of one pitch — A♯B♭ — writes them one over
+// the other rather than side by side, so the dot stays about as wide as any
+// other on the neck.
+function enharmonicLabelLines(
+  label: string | undefined,
+): readonly [string, string] | null {
+  const match = /^([A-G][♯♭])([A-G][♯♭])$/.exec(label ?? "");
+  return match === null ? null : [match[1], match[2]];
 }
 
 function renderBlockInlay(
@@ -287,6 +310,7 @@ const WEB_FRETBOARD_RENDERER_SOURCE = [
   calcNormalizedFretPositions.toString(),
   validateString.toString(),
   validateFret.toString(),
+  enharmonicLabelLines.toString(),
   renderBlockInlay.toString(),
   escapeXml.toString(),
   renderFretboardSvg.toString(),
@@ -335,13 +359,7 @@ export const WEB_FRETBOARD_SCRIPT = `
     const fret = Number(host.dataset.fret);
     input = back
       ? { string, fret, note: host.dataset.note ?? "" }
-      : {
-          string,
-          fret,
-          cue:
-            host.dataset.system === "flats" ? "♭" :
-            host.dataset.system === "sharps" ? "♯" : undefined,
-        };
+      : { string, fret, cue: ${JSON.stringify(QUESTION_CUE)} };
   }
   host.innerHTML = renderFretboardSvg({ ...input, hitCells: true });
 })();

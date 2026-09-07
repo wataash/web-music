@@ -118,7 +118,7 @@ describe("staff note selection", () => {
   it("passes cards from other decks through untouched", () => {
     expect(
       includesStaffNoteCard(
-        { fields: ["id", "flats", "3", "1"], tags: "system::flats" },
+        { fields: ["id", "enharmonic", "3", "1"], tags: "spelling::enharmonic" },
         selectionForPreset("basic"),
       ),
     ).toBe(true);
@@ -144,7 +144,9 @@ describe("staff note selection", () => {
     expect(staffNoteDeckSetting("Music Staff")).toBeNull();
     expect(staffNoteDeckSetting("Music Staff::Staff → Note")).toBeNull();
     expect(staffNoteDeckSetting("Music Staff::Staff → Note::Nope")).toBeNull();
-    expect(staffNoteDeckSetting("Guitar Fretboard::Naturals")).toBeNull();
+    expect(
+      staffNoteDeckSetting("Guitar Fretboard::Position → Note"),
+    ).toBeNull();
   });
 });
 
@@ -209,7 +211,7 @@ describe("cropping the staff image to the notes in play", () => {
   it("leaves a card it does not recognise alone", () => {
     expect(
       staffCardVariables(
-        { fields: ["id", "flats", "3", "1"], tags: "system::flats" },
+        { fields: ["id", "enharmonic", "3", "1"], tags: "spelling::enharmonic" },
         DEFAULT_STAFF_NOTE_SELECTION,
       ),
     ).toEqual({});

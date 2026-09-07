@@ -9,12 +9,8 @@ import { describe, expect, test } from "vitest";
 
 import {
   DECK_CONFIG_ID,
-  FLATS_DECK_ID,
-  NATURALS_DECK_ID,
-  NOTE_TO_POSITIONS_FLATS_DECK_ID,
-  NOTE_TO_POSITIONS_NATURALS_DECK_ID,
-  NOTE_TO_POSITIONS_SHARPS_DECK_ID,
-  SHARPS_DECK_ID,
+  NOTE_TO_POSITIONS_DECK_ID,
+  POSITION_TO_NOTE_DECK_ID,
   createWebDeckData,
 } from "./apkg";
 import { CARDS } from "./cards";
@@ -26,16 +22,10 @@ import {
 import {
   BACK_TEMPLATE,
   CARD_CSS,
-  FLATS_DECK_NAME,
   FRONT_TEMPLATE,
-  NATURALS_DECK_NAME,
   NOTE_TO_POSITIONS_DECK_NAME,
-  NOTE_TO_POSITIONS_FLATS_DECK_NAME,
-  NOTE_TO_POSITIONS_NATURALS_DECK_NAME,
-  NOTE_TO_POSITIONS_SHARPS_DECK_NAME,
   POSITION_TO_NOTE_DECK_NAME,
   ROOT_DECK_NAME,
-  SHARPS_DECK_NAME,
   WEB_BACK_TEMPLATE,
   WEB_FRONT_TEMPLATE,
 } from "./template";
@@ -50,117 +40,106 @@ describe("Anki deck generation", () => {
   });
 
   test("shows the string-fret position above the diagram on both sides", () => {
-    for (const template of [FRONT_TEMPLATE, BACK_TEMPLATE]) {
-      expect(template).toContain("{{#Fret}}{{String}}-{{Fret}}{{/Fret}}");
+    for (const template of [
+      FRONT_TEMPLATE,
+      BACK_TEMPLATE,
+      WEB_FRONT_TEMPLATE,
+      WEB_BACK_TEMPLATE,
+    ]) {
       expect(template.indexOf('class="position"')).toBeLessThan(
         template.indexOf('class="diagram"'),
       );
     }
+    for (const template of [FRONT_TEMPLATE, WEB_FRONT_TEMPLATE]) {
+      expect(template).toContain('{{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span></span>{{/Fret}}');
+    }
+    for (const template of [BACK_TEMPLATE, WEB_BACK_TEMPLATE]) {
+      expect(template).toContain('{{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span><span class="position-answer">{{Note}}</span></span>{{/Fret}}');
+    }
     expect(FRONT_TEMPLATE).toContain(
-      "{{#Positions}}{{Note}}{{/Positions}}",
+      '{{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span></span>{{/Positions}}',
     );
     expect(BACK_TEMPLATE).toContain(
-      "{{#Positions}}{{Note}} {{Positions}}{{/Positions}}",
+      '{{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span><span class="position-answer">{{Positions}}</span></span>{{/Positions}}',
     );
   });
 
   test("creates both drill directions with front and back images", () => {
     const artifacts = createDeckArtifacts();
 
-    expect(artifacts.notes).toHaveLength(576);
-    expect(artifacts.media).toHaveLength(1152);
+    expect(artifacts.notes).toHaveLength(282);
+    expect(artifacts.media).toHaveLength(564);
     expect(new Set(artifacts.media.map(({ filename }) => filename)).size).toBe(
-      1152,
+      564,
     );
     expect(
-      artifacts.notes.filter(({ deckId }) => deckId === NATURALS_DECK_ID),
-    ).toHaveLength(90);
-    expect(
-      artifacts.notes.filter(({ deckId }) => deckId === FLATS_DECK_ID),
-    ).toHaveLength(150);
-    expect(
-      artifacts.notes.filter(({ deckId }) => deckId === SHARPS_DECK_ID),
+      artifacts.notes.filter(
+        ({ deckId }) => deckId === POSITION_TO_NOTE_DECK_ID,
+      ),
     ).toHaveLength(150);
     expect(
       artifacts.notes.filter(
-        ({ deckId }) => deckId === NOTE_TO_POSITIONS_NATURALS_DECK_ID,
+        ({ deckId }) => deckId === NOTE_TO_POSITIONS_DECK_ID,
       ),
-    ).toHaveLength(42);
-    expect(
-      artifacts.notes.filter(
-        ({ deckId }) => deckId === NOTE_TO_POSITIONS_FLATS_DECK_ID,
-      ),
-    ).toHaveLength(72);
-    expect(
-      artifacts.notes.filter(
-        ({ deckId }) => deckId === NOTE_TO_POSITIONS_SHARPS_DECK_ID,
-      ),
-    ).toHaveLength(72);
-
-    const flats = artifacts.notes.find(
-      ({ id }) => id === "flats-string-3-fret-1",
-    );
-    const sharps = artifacts.notes.find(
-      ({ id }) => id === "sharps-string-3-fret-1",
-    );
-    expect(flats?.fields.slice(1, 5)).toEqual(["flats", "3", "1", "A♭"]);
-    expect(sharps?.fields.slice(1, 5)).toEqual([
-      "sharps",
-      "3",
-      "1",
-      "G♯",
-    ]);
-    expect(flats?.fields[5]).not.toBe(sharps?.fields[5]);
-    expect(flats?.fields[6]).not.toBe(sharps?.fields[6]);
+    ).toHaveLength(132);
 
     const mediaByFilename = new Map(
       artifacts.media.map(({ filename, content }) => [filename, content]),
     );
-    const flatFrontSvg = asText(
-      mediaByFilename.get(imageFilename(flats!.fields[5]))!,
-    );
-    const sharpFrontSvg = asText(
-      mediaByFilename.get(imageFilename(sharps!.fields[5]))!,
-    );
-    const flatBackSvg = asText(
-      mediaByFilename.get(imageFilename(flats!.fields[6]))!,
-    );
-    const sharpBackSvg = asText(
-      mediaByFilename.get(imageFilename(sharps!.fields[6]))!,
-    );
 
-    expect(flatFrontSvg).toContain('data-label-kind="cue"');
-    expect(flatFrontSvg).toContain(">♭</text>");
-    expect(sharpFrontSvg).toContain('data-label-kind="cue"');
-    expect(sharpFrontSvg).toContain(">♯</text>");
-    expect(flatBackSvg).toContain(">A♭</text>");
-    expect(sharpBackSvg).toContain(">G♯</text>");
-    expect(artifacts.media[0].filename).toMatch(
-      /^guitar-fretboard-flats-string-1-fret-0-front-[0-9a-f]{12}\.svg$/,
+    // Every question dot carries the same mark, whichever note answers it, and
+    // an answer with two names writes them one over the other.
+    const accidental = artifacts.notes.find(
+      ({ id }) => id === "position-to-note-string-3-fret-1",
     );
+    expect(accidental?.fields.slice(1, 5)).toEqual([
+      "enharmonic",
+      "3",
+      "1",
+      "G♯A♭",
+    ]);
+    expect(accidental?.tags).toEqual([
+      "spelling::enharmonic",
+      "direction::position-to-note",
+    ]);
+    const accidentalFrontSvg = asText(
+      mediaByFilename.get(imageFilename(accidental!.fields[5]))!,
+    );
+    const accidentalBackSvg = asText(
+      mediaByFilename.get(imageFilename(accidental!.fields[6]))!,
+    );
+    expect(accidentalFrontSvg).toContain('data-label-kind="cue"');
+    expect(accidentalFrontSvg).toContain(">?</text>");
+    expect(accidentalBackSvg).toContain(
+      'class="fretboard__label fretboard__label--stacked"',
+    );
+    expect(accidentalBackSvg).toContain(">G♯</tspan>");
+    expect(accidentalBackSvg).toContain(">A♭</tspan>");
 
     const natural = artifacts.notes.find(
-      ({ id }) => id === "naturals-string-3-fret-0",
+      ({ id }) => id === "position-to-note-string-3-fret-0",
     );
-    expect(natural?.fields.slice(1, 5)).toEqual([
-      "naturals",
-      "3",
-      "0",
-      "G",
-    ]);
+    expect(natural?.fields.slice(1, 5)).toEqual(["natural", "3", "0", "G"]);
     const naturalFrontSvg = asText(
       mediaByFilename.get(imageFilename(natural!.fields[5]))!,
+    );
+    const naturalBackSvg = asText(
+      mediaByFilename.get(imageFilename(natural!.fields[6]))!,
     );
     expect(naturalFrontSvg).toContain(
       'class="fretboard__target" data-string="3" data-fret="0"',
     );
-    expect(naturalFrontSvg).not.toContain('class="fretboard__label"');
+    expect(naturalFrontSvg).toContain(">?</text>");
+    expect(naturalBackSvg).toContain(">G</text>");
+    expect(artifacts.media[0].filename).toMatch(
+      /^guitar-fretboard-position-to-note-string-1-fret-0-front-[0-9a-f]{12}\.svg$/,
+    );
 
     const openE = artifacts.notes.find(
-      ({ id }) => id === "flats-note-to-positions-string-1-pitch-7",
+      ({ id }) => id === "note-to-positions-natural-string-1-pitch-7",
     );
     expect(openE?.fields.slice(1, 8)).toEqual([
-      "flats",
+      "natural",
       "1",
       "",
       "E",
@@ -181,6 +160,22 @@ describe("Anki deck generation", () => {
     );
     expect(openEFrontSvg).not.toContain('class="fretboard__target"');
     expect(openEBackSvg.match(/class="fretboard__target"/g)).toHaveLength(3);
+
+    // A pitch with two names is also asked under both at once.
+    const enharmonic = artifacts.notes.find(
+      ({ id }) => id === "note-to-positions-enharmonic-string-3-pitch-11",
+    );
+    expect(enharmonic?.fields.slice(1, 5)).toEqual([
+      "enharmonic",
+      "3",
+      "",
+      "G♯A♭",
+    ]);
+    const enharmonicBackSvg = asText(
+      mediaByFilename.get(imageFilename(enharmonic!.fields[6]))!,
+    );
+    expect(enharmonicBackSvg).toContain(">G♯</tspan>");
+    expect(enharmonicBackSvg).toContain(">A♭</tspan>");
   });
 
   test("creates stable, unique IDs and GUIDs", () => {
@@ -191,7 +186,7 @@ describe("Anki deck generation", () => {
     expect(first.notes.map(({ guid }) => guid)).toEqual(
       second.notes.map(({ guid }) => guid),
     );
-    expect(new Set(first.notes.map(({ guid }) => guid)).size).toBe(576);
+    expect(new Set(first.notes.map(({ guid }) => guid)).size).toBe(282);
   });
 
   test("keeps the web deck small and free of SVG media", () => {
@@ -217,24 +212,18 @@ describe("Anki deck generation", () => {
     try {
       const summary = await generateAnkiDeck(outputPath);
 
-      expect(summary.noteCount).toBe(576);
-      expect(summary.cardCount).toBe(576);
-      expect(summary.deckCount).toBe(9);
+      expect(summary.noteCount).toBe(282);
+      expect(summary.cardCount).toBe(282);
+      expect(summary.deckCount).toBe(3);
       expect(summary.cardsByDeck).toEqual({
         [ROOT_DECK_NAME]: 0,
-        [POSITION_TO_NOTE_DECK_NAME]: 0,
-        [NATURALS_DECK_NAME]: 90,
-        [FLATS_DECK_NAME]: 150,
-        [SHARPS_DECK_NAME]: 150,
-        [NOTE_TO_POSITIONS_DECK_NAME]: 0,
-        [NOTE_TO_POSITIONS_NATURALS_DECK_NAME]: 42,
-        [NOTE_TO_POSITIONS_FLATS_DECK_NAME]: 72,
-        [NOTE_TO_POSITIONS_SHARPS_DECK_NAME]: 72,
+        [POSITION_TO_NOTE_DECK_NAME]: 150,
+        [NOTE_TO_POSITIONS_DECK_NAME]: 132,
       });
       expect(summary.modelCount).toBe(1);
-      expect(summary.mediaCount).toBe(1152);
-      expect(new Set(summary.mediaFilenames).size).toBe(1152);
-      expect(new Set(summary.noteGuids).size).toBe(576);
+      expect(summary.mediaCount).toBe(564);
+      expect(new Set(summary.mediaFilenames).size).toBe(564);
+      expect(new Set(summary.noteGuids).size).toBe(282);
       expect(summary.noteFields.every((fields) => fields.length === 8)).toBe(
         true,
       );

@@ -24,32 +24,20 @@ import {
   BACK_TEMPLATE,
   CARD_CSS,
   FIELD_NAMES,
-  FLATS_DECK_NAME,
   FRONT_TEMPLATE,
   MODEL_NAME,
-  NATURALS_DECK_NAME,
   NOTE_TO_POSITIONS_DECK_NAME,
-  NOTE_TO_POSITIONS_FLATS_DECK_NAME,
-  NOTE_TO_POSITIONS_NATURALS_DECK_NAME,
-  NOTE_TO_POSITIONS_SHARPS_DECK_NAME,
   POSITION_TO_NOTE_DECK_NAME,
   ROOT_DECK_NAME,
-  SHARPS_DECK_NAME,
   WEB_BACK_TEMPLATE,
   WEB_FRONT_TEMPLATE,
 } from "./template";
 
 export const MODEL_ID = 1_786_800_000_000;
 export const ROOT_DECK_ID = 1_786_800_000_001;
-export const FLATS_DECK_ID = 1_786_800_000_002;
-export const SHARPS_DECK_ID = 1_786_800_000_003;
 export const DECK_CONFIG_ID = 1_786_800_000_004;
 export const POSITION_TO_NOTE_DECK_ID = 1_786_800_000_005;
 export const NOTE_TO_POSITIONS_DECK_ID = 1_786_800_000_006;
-export const NOTE_TO_POSITIONS_FLATS_DECK_ID = 1_786_800_000_007;
-export const NOTE_TO_POSITIONS_SHARPS_DECK_ID = 1_786_800_000_008;
-export const NATURALS_DECK_ID = 1_786_800_000_009;
-export const NOTE_TO_POSITIONS_NATURALS_DECK_ID = 1_786_800_000_010;
 
 const NOTE_ID_BASE = 1_786_800_100_000;
 const CARD_ID_BASE = 1_786_800_200_000;
@@ -75,46 +63,14 @@ const DECK_DEFINITIONS: readonly DeckDefinition[] = [
   {
     id: POSITION_TO_NOTE_DECK_ID,
     name: POSITION_TO_NOTE_DECK_NAME,
-    description: "Identify the note name at a marked fretboard position.",
-  },
-  {
-    id: NATURALS_DECK_ID,
-    name: NATURALS_DECK_NAME,
-    description: "Identify fretboard positions containing natural notes.",
-  },
-  {
-    id: FLATS_DECK_ID,
-    name: FLATS_DECK_NAME,
     description:
-      "Identify each fretboard position using natural and flat note names.",
-  },
-  {
-    id: SHARPS_DECK_ID,
-    name: SHARPS_DECK_NAME,
-    description:
-      "Identify each fretboard position using natural and sharp note names.",
+      "Identify the note name at a marked fretboard position, spelt under both of its names where it has two.",
   },
   {
     id: NOTE_TO_POSITIONS_DECK_ID,
     name: NOTE_TO_POSITIONS_DECK_NAME,
-    description: "Recall every occurrence of a note on one guitar string.",
-  },
-  {
-    id: NOTE_TO_POSITIONS_NATURALS_DECK_ID,
-    name: NOTE_TO_POSITIONS_NATURALS_DECK_NAME,
-    description: "Recall natural-note positions on one string.",
-  },
-  {
-    id: NOTE_TO_POSITIONS_FLATS_DECK_ID,
-    name: NOTE_TO_POSITIONS_FLATS_DECK_NAME,
     description:
-      "Recall positions on one string using natural and flat note names.",
-  },
-  {
-    id: NOTE_TO_POSITIONS_SHARPS_DECK_ID,
-    name: NOTE_TO_POSITIONS_SHARPS_DECK_NAME,
-    description:
-      "Recall positions on one string using natural and sharp note names.",
+      "Recall every occurrence of a note on one guitar string, under its natural, flat, sharp or both-names spelling.",
   },
 ];
 
@@ -553,14 +509,9 @@ function validatePackageInput(
   }
   for (const note of notes) {
     if (
-      ![
-        NATURALS_DECK_ID,
-        FLATS_DECK_ID,
-        SHARPS_DECK_ID,
-        NOTE_TO_POSITIONS_NATURALS_DECK_ID,
-        NOTE_TO_POSITIONS_FLATS_DECK_ID,
-        NOTE_TO_POSITIONS_SHARPS_DECK_ID,
-      ].includes(note.deckId)
+      ![POSITION_TO_NOTE_DECK_ID, NOTE_TO_POSITIONS_DECK_ID].includes(
+        note.deckId,
+      )
     ) {
       throw new Error(`${note.id}: invalid child deck id ${note.deckId}`);
     }

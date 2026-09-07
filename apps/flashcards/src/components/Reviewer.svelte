@@ -132,6 +132,7 @@ SPDX-License-Identifier: Apache-2.0
     noteSelections,
     onclose,
     oncirclenoteselectionchange,
+    onfretboardnoteselectionchange,
     onfretwindowchange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
@@ -154,6 +155,7 @@ SPDX-License-Identifier: Apache-2.0
       scope: CircleNoteSettingsScope,
       selection: CircleNoteSelection,
     ) => void;
+    onfretboardnoteselectionchange: (selection: readonly string[]) => void;
     onfretwindowchange: (selection: FretWindow) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
@@ -1150,6 +1152,7 @@ SPDX-License-Identifier: Apache-2.0
     {noteSelections}
     onpreviewfretwindow={(selection) => (previewFretWindow = selection)}
     {oncirclenoteselectionchange}
+    {onfretboardnoteselectionchange}
     {onfretwindowchange}
     {onintervalpairselectionchange}
     {onstaffnoteselectionchange}

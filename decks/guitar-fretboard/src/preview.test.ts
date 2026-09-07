@@ -16,7 +16,6 @@ describe("fretboard preview", () => {
     try {
       const summary = await writeFretboardPreview({
         outputDirectory: directory,
-        system: "sharps",
         string: 2,
         fret: 4,
       });
@@ -24,14 +23,15 @@ describe("fretboard preview", () => {
       const backSvg = await readFile(summary.backPath, "utf8");
 
       expect(basename(summary.frontPath)).toBe(
-        "sharps-string-2-fret-4-front.svg",
+        "position-to-note-string-2-fret-4-front.svg",
       );
       expect(basename(summary.backPath)).toBe(
-        "sharps-string-2-fret-4-back.svg",
+        "position-to-note-string-2-fret-4-back.svg",
       );
-      expect(frontSvg).toContain(">♯</text>");
-      expect(backSvg).toContain(">D♯</text>");
-      expect(summary.note).toBe("D♯");
+      expect(frontSvg).toContain(">?</text>");
+      expect(backSvg).toContain(">D♯</tspan>");
+      expect(backSvg).toContain(">E♭</tspan>");
+      expect(summary.note).toBe("D♯E♭");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -43,13 +43,12 @@ describe("fretboard preview", () => {
     ).rejects.toThrow("string 1-6");
   });
 
-  test("writes a natural-note question without an accidental cue", async () => {
+  test("asks a natural position with the same mark as any other", async () => {
     const directory = await mkdtemp(join(tmpdir(), "fretboard-preview-test-"));
 
     try {
       const summary = await writeFretboardPreview({
         outputDirectory: directory,
-        system: "naturals",
         string: 3,
         fret: 0,
       });
@@ -59,7 +58,7 @@ describe("fretboard preview", () => {
       expect(frontSvg).toContain(
         'class="fretboard__target" data-string="3" data-fret="0"',
       );
-      expect(frontSvg).not.toContain('class="fretboard__label"');
+      expect(frontSvg).toContain(">?</text>");
       expect(backSvg).toContain(">G</text>");
       expect(summary.note).toBe("G");
     } finally {
@@ -74,7 +73,6 @@ describe("fretboard preview", () => {
       const summary = await writeFretboardPreview({
         outputDirectory: directory,
         kind: "note",
-        system: "flats",
         string: 3,
         note: "Ab",
       });
@@ -82,7 +80,7 @@ describe("fretboard preview", () => {
       const backSvg = await readFile(summary.backPath, "utf8");
 
       expect(basename(summary.frontPath)).toBe(
-        "flats-string-3-note-A-flat-front.svg",
+        "note-to-positions-string-3-note-A-flat-front.svg",
       );
       expect(frontSvg).toContain(
         'class="fretboard__string-highlight" data-string="3"',
@@ -97,13 +95,32 @@ describe("fretboard preview", () => {
     }
   });
 
-  test("rejects a note outside the selected spelling system", async () => {
-    await expect(
-      writeFretboardPreview({
+  test("writes a both-names note preview with stacked dot labels", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "fretboard-preview-test-"));
+
+    try {
+      const summary = await writeFretboardPreview({
+        outputDirectory: directory,
         kind: "note",
-        system: "flats",
-        note: "A#",
-      }),
-    ).rejects.toThrow("selected system");
+        string: 3,
+        note: "G#Ab",
+      });
+      const backSvg = await readFile(summary.backPath, "utf8");
+
+      expect(basename(summary.backPath)).toBe(
+        "note-to-positions-string-3-note-G-sharpA-flat-back.svg",
+      );
+      expect(summary.note).toBe("G♯A♭");
+      expect(backSvg).toContain(">G♯</tspan>");
+      expect(backSvg).toContain(">A♭</tspan>");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects a note the deck never asks for", async () => {
+    await expect(
+      writeFretboardPreview({ kind: "note", note: "Fb" }),
+    ).rejects.toThrow("must be one the deck asks for");
   });
 });

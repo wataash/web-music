@@ -6,17 +6,11 @@ import { WEB_FRETBOARD_SCRIPT } from "./fretboard";
 export const MODEL_NAME = "Guitar Fretboard Notes";
 export const ROOT_DECK_NAME = "Guitar Fretboard";
 export const POSITION_TO_NOTE_DECK_NAME = `${ROOT_DECK_NAME}::Position → Note`;
-export const NATURALS_DECK_NAME = `${POSITION_TO_NOTE_DECK_NAME}::Naturals`;
-export const FLATS_DECK_NAME = `${POSITION_TO_NOTE_DECK_NAME}::Naturals + Flats`;
-export const SHARPS_DECK_NAME = `${POSITION_TO_NOTE_DECK_NAME}::Naturals + Sharps`;
 export const NOTE_TO_POSITIONS_DECK_NAME = `${ROOT_DECK_NAME}::Note → Positions`;
-export const NOTE_TO_POSITIONS_NATURALS_DECK_NAME = `${NOTE_TO_POSITIONS_DECK_NAME}::Naturals`;
-export const NOTE_TO_POSITIONS_FLATS_DECK_NAME = `${NOTE_TO_POSITIONS_DECK_NAME}::Naturals + Flats`;
-export const NOTE_TO_POSITIONS_SHARPS_DECK_NAME = `${NOTE_TO_POSITIONS_DECK_NAME}::Naturals + Sharps`;
 
 export const FIELD_NAMES = [
   "Id",
-  "System",
+  "Spelling",
   "String",
   "Fret",
   "Note",
@@ -25,44 +19,42 @@ export const FIELD_NAMES = [
   "Positions",
 ] as const;
 
+const FRONT_HEADING = `  <div class="position" data-card-part="text">
+    {{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span></span>{{/Fret}}
+    {{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span></span>{{/Positions}}
+  </div>`;
+
+const BACK_HEADING = `  <div class="position" data-card-part="text">
+    {{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span><span class="position-answer">{{Note}}</span></span>{{/Fret}}
+    {{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span><span class="position-answer">{{Positions}}</span></span>{{/Positions}}
+  </div>`;
+
 export const FRONT_TEMPLATE = `
 <main class="fretboard-card">
-  <div class="position" data-card-part="text">
-    {{#Fret}}{{String}}-{{Fret}}{{/Fret}}
-    {{#Positions}}{{Note}}{{/Positions}}
-  </div>
+${FRONT_HEADING}
   <div class="diagram" data-card-part="board">{{FrontImage}}</div>
 </main>
 `.trim();
 
 export const BACK_TEMPLATE = `
 <main class="fretboard-card">
-  <div class="position" data-card-part="text">
-    {{#Fret}}{{String}}-{{Fret}}{{/Fret}}
-    {{#Positions}}{{Note}} {{Positions}}{{/Positions}}
-  </div>
+${BACK_HEADING}
   <div class="diagram" data-card-part="board">{{BackImage}}</div>
 </main>
 `.trim();
 
 export const WEB_FRONT_TEMPLATE = `
 <main class="fretboard-card">
-  <div class="position" data-card-part="text">
-    {{#Fret}}{{String}}-{{Fret}}{{/Fret}}
-    {{#Positions}}{{Note}}{{/Positions}}
-  </div>
-  <div class="diagram" data-card-part="board" data-fretboard data-side="front" data-system="{{System}}" data-string="{{String}}" data-fret="{{Fret}}" {{#Positions}}data-has-positions="true" data-note="{{Note}}"{{/Positions}}></div>
+${FRONT_HEADING}
+  <div class="diagram" data-card-part="board" data-fretboard data-side="front" data-string="{{String}}" data-fret="{{Fret}}" {{#Positions}}data-has-positions="true" data-note="{{Note}}"{{/Positions}}></div>
 </main>
 ${WEB_FRETBOARD_SCRIPT}
 `.trim();
 
 export const WEB_BACK_TEMPLATE = `
 <main class="fretboard-card">
-  <div class="position" data-card-part="text">
-    {{#Fret}}{{String}}-{{Fret}}{{/Fret}}
-    {{#Positions}}{{Note}} {{Positions}}{{/Positions}}
-  </div>
-  <div class="diagram" data-card-part="board" data-fretboard data-side="back" data-system="{{System}}" data-string="{{String}}" data-fret="{{Fret}}" data-note="{{Note}}" {{#Positions}}data-has-positions="true" data-positions="{{Positions}}"{{/Positions}}></div>
+${BACK_HEADING}
+  <div class="diagram" data-card-part="board" data-fretboard data-side="back" data-string="{{String}}" data-fret="{{Fret}}" data-note="{{Note}}" {{#Positions}}data-has-positions="true" data-positions="{{Positions}}"{{/Positions}}></div>
 </main>
 ${WEB_FRETBOARD_SCRIPT}
 `.trim();
@@ -86,9 +78,24 @@ export const CARD_CSS = `
 }
 
 .position {
+  width: 100%;
   font-size: calc(clamp(1.5rem, 5vw, 2.25rem) * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.1;
+}
+
+.position-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 0.6em;
+}
+
+.position-question {
+  text-align: right;
+}
+
+.position-answer {
+  text-align: left;
 }
 
 .diagram img,

@@ -12,32 +12,29 @@ Everywhere else b and # are fine, since they are easier to type.
 
 Let n be the string number (1-6) and F the fret number (0-24).
 
-Subdeck 1-0: Naturals deck: Notes: A B C D E F G
-front: only the natural positions, showing n-F and a pale yellow dot with no
-symbol
-back: the note name written on the dot
-
-Subdeck 1-1: Naturals + flats deck: Notes: Ab A Bb B C Db D Eb E F Gb G
-front: n-F (newline) a pale yellow dot at position n-F on the fretboard with b
+Deck 1: one deck, no subdecks
+front: n-F (newline) a pale yellow dot at position n-F on the fretboard with ?
 written on it
-back: the note name instead of b on the dot
+back: n-F followed by the note name, and the note name instead of ? on the dot,
+written under both of its names where the pitch has two
 25 frets (open string (0F) - 24F) x 6 strings = 150 cards
 
-Subdeck 1-2: Naturals + sharps deck: Notes: A A# B C C# D D# E F F# G G#
-front/back: as the flats deck, but # instead of b
-
-    Flats deck example:
+    Example:
     front:
     3-5
-    (a pale yellow dot at string 3 fret 5 with b written in it)
+    (a pale yellow dot at string 3 fret 5 with ? written in it)
     back:
-    3-5
+    3-5 C
     (a pale yellow dot at string 3 fret 5 with C written in it)
+    front:
+    3-1
+    (a pale yellow dot at string 3 fret 1 with ? written in it)
+    back:
+    3-1 G#Ab
+    (a pale yellow dot at string 3 fret 1 with G#Ab written in it)
 
-Subdeck 2-0: Naturals deck: Notes: A B C D E F G
-front/back: as 2-1, but asking only about the naturals
-
-Subdeck 2-1: Naturals + flats deck: Notes: Ab A Bb B C Db D Eb E F Gb G
+Deck 2: one deck, no subdecks: Notes: A A# Bb A#Bb B C C# Db C#Db D D# Eb D#Eb
+E F F# Gb F#Gb G G# Ab G#Ab
 front: one of the Notes (newline) the fretboard with a single string
 highlighted
 back: one of the Notes n-F_low n-F_high (newline) pale yellow dots at n-F_low
@@ -48,47 +45,52 @@ placed on 0F.
   E A D G B have a 0F. Square brackets mean optional and are not shown on the
   card.
 
-Subdeck 2-2: Naturals + sharps deck: Notes: A A# B C C# D D# E F F# G G#
-front/back: as the flats deck, but # instead of b
+A pitch with two names is asked three ways: under its sharp name, under its
+flat name, and under both at once, where one dot carries the two spellings one
+over the other. The web app asks only the naturals until the rest are turned on
+from the deck's own settings.
 
 ## Decks
 
 ```text
 Guitar Fretboard
-├── Position → Note
-│   ├── Naturals           (90 cards)
-│   ├── Naturals + Flats  (150 cards)
-│   └── Naturals + Sharps (150 cards)
-└── Note → Positions
-    ├── Naturals           (42 cards)
-    ├── Naturals + Flats   (72 cards)
-    └── Naturals + Sharps  (72 cards)
+├── Position → Note  (150 cards)
+└── Note → Positions (132 cards)
 ```
 
-The Naturals deck under `Position → Note` holds only the natural positions,
-15 per string for 90 cards. Naturals + Flats and Naturals + Sharps hold one
-card for each of the 25 positions from the open string (0F) to 24F on all six
-strings of a guitar in standard tuning, 150 cards each. Under
-`Note → Positions`, Naturals has 7 notes × 6 strings = 42 cards and each
-extended deck 12 notes × 6 strings = 72 cards. The package holds 576 cards.
+Neither direction is split by spelling any more, since a card carries its own.
+`Position → Note` holds one card for each of the 25 positions from the open
+string (0F) to 24F on all six strings of a guitar in standard tuning, 150
+cards. `Note → Positions` asks 22 notes × 6 strings = 132 cards. The package
+holds 282 cards.
 
-- Naturals: `A B C D E F G`
-- Naturals + Flats: `A♭ A B♭ B C D♭ D E♭ E F G♭ G`
-- Naturals + Sharps: `A A♯ B C C♯ D D♯ E F F♯ G G♯`
+- The answer to a position: `A A♯B♭ B C C♯D♭ D D♯E♭ E F F♯G♭ G G♯A♭`
+- Note → Positions: the seven naturals, the five sharps, the five flats, and
+  the five pitches written under both names — `A♯B♭ C♯D♭ D♯E♭ F♯G♭ G♯A♭`
 
 The fretboard runs from string 1 (high E) at the top to string 6 (low E) at the
-bottom. The front marks the position in question with a pale yellow dot. The
-dot carries no symbol in Naturals, `♭` in Naturals + Flats and `♯` in
-Naturals + Sharps. The back shows the note name inside the same dot. Both sides
-print `string-fret` (e.g. `3-5`) above the fretboard, so mixing the spellings
-from the parent deck still makes the position and the spelling system clear.
-Every fret from 0F to 24F is drawn the same width.
+bottom. The front marks the position in question with a pale yellow dot
+carrying `?` — the same mark at every position, since one deck asks about all
+of them and the dot must not hint at the answer's spelling. The back shows the
+note name inside the same dot, under both of its names where the pitch has two,
+one over the other on a slightly wider dot. Both sides print `string-fret`
+(e.g. `3-5`) above the fretboard, followed by the note name on the back
+(e.g. `3-5 C` or `3-1 G♯A♭`). The position is right-aligned to the left of
+the center, and the answer is left-aligned to its right, keeping the question
+in the same place on both sides. Every fret from 0F to 24F is drawn the same
+width.
 
 The front of a `Note → Positions` card shows the note name and draws a pale
 yellow bar behind the string in question. The back shows where that note falls
 in the lower (1F–12F) and upper (13F–24F) half, with the note name on each dot,
 and adds 0F only when the note matches the open string. The E on string 1, for
-example, reads `E 1-0 1-12 1-24`. Square brackets are not shown.
+example, reads `E 1-0 1-12 1-24`. The note name stays right-aligned to the left
+of the center on both sides; the answer positions are left-aligned to its right.
+Square brackets are not shown. A card asked
+under both names writes them the same way `Position → Note` answers with them.
+
+Only the naturals are asked until the reader turns the rest on: the web app's
+gear on `Note → Positions` picks the notes, and ships on `Naturals`.
 
 ## Generate
 
@@ -125,21 +127,20 @@ SVG.
 pnpm preview
 ```
 
-By default this generates the flats card for string 3 fret 5 into
-`dist/preview/flats-string-3-fret-5-{front,back}.svg`. The string, fret,
-spelling system and output path can all be changed.
+By default this generates the card for string 3 fret 5 into
+`dist/preview/position-to-note-string-3-fret-5-{front,back}.svg`. The string,
+fret and output path can all be changed.
 
 ```console
-pnpm preview --string 2 --fret 4 --system sharps --output /tmp/fretboard
+pnpm preview --string 2 --fret 4 --output /tmp/fretboard
 ```
-
-Naturals are inspected with `--system naturals`.
 
 Cards that ask for the positions of a note are inspected with `--kind note` and
 `--note`. The CLI accepts both `b` / `#` and `♭` / `♯`.
 
 ```console
-pnpm preview --kind note --string 3 --note Ab --system flats --output /tmp/fretboard
+pnpm preview --kind note --string 3 --note Ab --output /tmp/fretboard
+pnpm preview --kind note --string 3 --note "G#Ab" --output /tmp/fretboard
 ```
 
 New cards are stored in a reproducible shuffle, and the dedicated
@@ -155,15 +156,15 @@ pnpm test
 pnpm typecheck
 ```
 
-The generation tests inspect the decks, the 576 cards, the fields and the SVG
-media inside a temporary collection. Existing `Position → Note` cards keep
-their IDs and GUIDs.
+The generation tests inspect the decks, the 282 cards, the fields and the SVG
+media inside a temporary collection. Both directions were renamed when their
+spelling subdecks became one deck each, so study progress starts again.
 
 The implementation is split along these responsibilities, with an eye on
 factoring it into a shared library later.
 
 - `src/fretboard.ts`: the 0F–24F fretboard SVG
-- `src/cards.ts`: the card data for 3 spellings and 2 directions
+- `src/cards.ts`: the card data for both directions and their spellings
 - `src/generate.ts`: card fields and Anki SVG media
 - `src/apkg.ts`: the SQLite collection and the `.apkg`
 - `src/template.ts`: the Anki templates and CSS

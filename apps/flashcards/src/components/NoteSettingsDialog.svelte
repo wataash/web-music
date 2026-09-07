@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
   import { untrack } from "svelte";
 
   import CircleNoteSettings from "./CircleNoteSettings.svelte";
+  import FretboardNoteSettings from "./FretboardNoteSettings.svelte";
   import GuitarIntervalSettings from "./GuitarIntervalSettings.svelte";
   import IntervalPairSettings from "./IntervalPairSettings.svelte";
   import SettingsDialog from "./SettingsDialog.svelte";
@@ -30,6 +31,7 @@ SPDX-License-Identifier: Apache-2.0
     noteSelections,
     onpreviewfretwindow,
     oncirclenoteselectionchange,
+    onfretboardnoteselectionchange,
     onfretwindowchange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
@@ -44,6 +46,7 @@ SPDX-License-Identifier: Apache-2.0
       scope: CircleNoteSettingsScope,
       selection: CircleNoteSelection,
     ) => void;
+    onfretboardnoteselectionchange: (selection: readonly string[]) => void;
     onfretwindowchange: (selection: FretWindow) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
@@ -62,6 +65,9 @@ SPDX-License-Identifier: Apache-2.0
   );
   let fretWindow = $state<FretWindow>(
     untrack(() => ({ ...noteSelections.fretWindow })),
+  );
+  let fretboardNotes = $state<readonly string[]>(
+    untrack(() => [...noteSelections.fretboardNotes]),
   );
 
   const SCOPE_FIELDS = {
@@ -94,6 +100,9 @@ SPDX-License-Identifier: Apache-2.0
     const kinds = new Set(targets.map(({ kind }) => kind));
     if (kinds.has("staff")) onstaffnoteselectionchange(staff);
     if (kinds.has("interval")) onintervalpairselectionchange(intervalPairs);
+    if (kinds.has("fretboard-note")) {
+      onfretboardnoteselectionchange(fretboardNotes);
+    }
     if (kinds.has("guitar-interval")) onfretwindowchange(fretWindow);
     const scopes = new Set(
       targets.flatMap((target) =>
@@ -140,6 +149,12 @@ SPDX-License-Identifier: Apache-2.0
           deckLabel={target.setting.deckLabel}
           selection={intervalPairs}
           onchange={(selection) => (intervalPairs = selection)}
+        />
+      {:else if target.kind === "fretboard-note"}
+        <FretboardNoteSettings
+          deckLabel={target.setting.deckLabel}
+          selection={fretboardNotes}
+          onchange={(selection) => (fretboardNotes = selection)}
         />
       {:else if target.kind === "guitar-interval"}
         <GuitarIntervalSettings

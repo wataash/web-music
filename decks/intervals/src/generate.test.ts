@@ -118,11 +118,9 @@ describe("interval deck generation", () => {
     }
     expect(FRONT_TEMPLATE).toContain("{{Keyboard}}");
     expect(BACK_TEMPLATE).toContain("{{AnswerKeyboard}}");
-    // The arrow stands between the two on both sides, so the answer takes the
-    // question mark's place rather than moving the line.
+    // The answer takes the question mark's place without moving the question.
     const question =
-      '<span class="question">{{Question}}</span>' +
-      '<span class="answer-arrow">→</span>';
+      '<span class="question">{{Question}}</span>';
     expect(FRONT_TEMPLATE).toContain(
       `${question}<span class="answer-value">?</span>`,
     );
@@ -130,7 +128,7 @@ describe("interval deck generation", () => {
       `${question}<span class="answer-value">{{Answer}}</span>`,
     );
     expect(CARD_CSS).toMatch(
-      /\.prompt-line \{[\s\S]*?grid-template-columns: 1fr auto 1fr;/,
+      /\.prompt-line \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/,
     );
     expect(CARD_CSS).toMatch(/\.question \{\s*justify-self: end;/);
     expect(CARD_CSS).toMatch(

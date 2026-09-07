@@ -109,7 +109,7 @@ describe("the sound of an answer", () => {
     expect(
       answerSound(
         note(
-          ["id", "naturals", "6", "5", "A", "", "", ""],
+          ["id", "natural", "6", "5", "A", "", "", ""],
           "direction::position-to-note",
         ),
       ),
@@ -117,7 +117,7 @@ describe("the sound of an answer", () => {
     expect(
       answerSound(
         note(
-          ["id", "naturals", "6", "", "A", "", "", "6-5 6-17"],
+          ["id", "natural", "6", "", "A", "", "", "6-5 6-17"],
           "direction::note-to-positions",
         ),
       ),

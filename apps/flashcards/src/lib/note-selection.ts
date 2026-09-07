@@ -9,6 +9,10 @@ import {
 } from "./circle-note-selection";
 import type { NoteRow } from "./db";
 import {
+  fretboardNoteDeckSetting,
+  includesFretboardNoteCard,
+} from "./fretboard-card";
+import {
   guitarIntervalDeckSetting,
   includesGuitarIntervalCard,
   type FretWindow,
@@ -30,6 +34,7 @@ import {
 // settings exclude it.
 export type NoteSelections = Readonly<{
   circle: CircleNoteSelections;
+  fretboardNotes: ReadonlySet<string>;
   fretWindow: FretWindow;
   intervalPairs: ReadonlySet<string>;
   staff: StaffNoteSelection;
@@ -41,6 +46,7 @@ export function includesSelectedNote(
 ): boolean {
   return (
     includesCircleNoteCard(note, selections.circle) &&
+    includesFretboardNoteCard(note, selections.fretboardNotes) &&
     includesGuitarIntervalCard(note, selections.fretWindow) &&
     includesIntervalPairCard(note, selections.intervalPairs) &&
     includesStaffNoteCard(note, selections.staff)
@@ -50,6 +56,7 @@ export function includesSelectedNote(
 // Which settings panel a deck's gear opens, or null when it has no gear.
 export type DeckSettingsTarget =
   | Readonly<{ kind: "circle"; setting: CircleNoteDeckSetting }>
+  | Readonly<{ kind: "fretboard-note"; setting: Readonly<{ deckLabel: string }> }>
   | Readonly<{ kind: "guitar-interval"; setting: Readonly<{ deckLabel: string }> }>
   | Readonly<{ kind: "interval"; setting: IntervalDeckSetting }>
   | Readonly<{ kind: "staff"; setting: StaffNoteDeckSetting }>;
@@ -61,6 +68,10 @@ export function deckSettingsTarget(
   if (circle !== null) return { kind: "circle", setting: circle };
   const interval = intervalDeckSetting(deckName);
   if (interval !== null) return { kind: "interval", setting: interval };
+  const fretboard = fretboardNoteDeckSetting(deckName);
+  if (fretboard !== null) {
+    return { kind: "fretboard-note", setting: fretboard };
+  }
   const guitar = guitarIntervalDeckSetting(deckName);
   if (guitar !== null) return { kind: "guitar-interval", setting: guitar };
   const staff = staffNoteDeckSetting(deckName);

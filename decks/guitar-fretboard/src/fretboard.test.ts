@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   CANVAS,
+  QUESTION_CUE,
   calcNormalizedFretPositions,
   renderFretboardSvg,
 } from "./fretboard";
@@ -22,7 +23,7 @@ describe("fretboard SVG", () => {
   });
 
   test("ends the SVG at the last fret line without right padding", () => {
-    const svg = renderFretboardSvg({ string: 3, fret: 24, cue: "♭" });
+    const svg = renderFretboardSvg({ string: 3, fret: 24, cue: QUESTION_CUE });
     const lastFretX =
       CANVAS.nutWidth + CANVAS.boardWidth * calcNormalizedFretPositions(24)[24];
 
@@ -38,7 +39,7 @@ describe("fretboard SVG", () => {
   });
 
   test("renders one pale-yellow target on a dark background", () => {
-    const svg = renderFretboardSvg({ string: 3, fret: 7, cue: "♭" });
+    const svg = renderFretboardSvg({ string: 3, fret: 7, cue: QUESTION_CUE });
 
     expect(svg).toContain('<svg class="fretboard"');
     expect(svg).toContain('<rect width="100%" height="100%" fill="#111827"/>');
@@ -52,17 +53,18 @@ describe("fretboard SVG", () => {
     expect(svg).toContain(
       'class="fretboard__label" data-label-kind="cue"',
     );
-    expect(svg).toContain(">♭</text>");
+    expect(svg).toContain(">?</text>");
     expect(svg).not.toContain('data-label-kind="answer"');
   });
 
-  test("renders a sharp cue for sharp-system questions", () => {
-    const svg = renderFretboardSvg({ string: 2, fret: 4, cue: "♯" });
+  test("asks every position with the same mark", () => {
+    const svg = renderFretboardSvg({ string: 2, fret: 4, cue: QUESTION_CUE });
 
     expect(svg).toContain(
       'class="fretboard__label" data-label-kind="cue"',
     );
-    expect(svg).toContain(">♯</text>");
+    expect(svg).toContain(">?</text>");
+    expect(svg).toContain("Note-name question on string 2, fret 4");
   });
 
   test("renders the typographic note name in the same target on the back", () => {
@@ -106,8 +108,20 @@ describe("fretboard SVG", () => {
     }
   });
 
+  test("stacks both names of one pitch on a wider dot", () => {
+    const svg = renderFretboardSvg({
+      targets: [{ string: 3, fret: 1, label: "G♯A♭", labelKind: "answer" }],
+    });
+
+    expect(svg).toContain(`r="${CANVAS.enharmonicNoteRadius}"`);
+    expect(svg).not.toContain(`r="${CANVAS.noteRadius}"`);
+    expect(svg).toContain('class="fretboard__label fretboard__label--stacked"');
+    expect(svg).toContain('dy="-0.6em">G♯</tspan>');
+    expect(svg).toContain('dy="1.2em">A♭</tspan>');
+  });
+
   test("sizes block inlays from their fret and string intervals", () => {
-    const svg = renderFretboardSvg({ string: 3, fret: 7, cue: "♭" });
+    const svg = renderFretboardSvg({ string: 3, fret: 7, cue: QUESTION_CUE });
     const fretXs = calcNormalizedFretPositions(24).map(
       (position) => CANVAS.nutWidth + CANVAS.boardWidth * position,
     );
@@ -135,7 +149,7 @@ describe("fretboard SVG", () => {
   });
 
   test("renders every fret line with the same weight", () => {
-    const svg = renderFretboardSvg({ string: 3, fret: 7, cue: "♭" });
+    const svg = renderFretboardSvg({ string: 3, fret: 7, cue: QUESTION_CUE });
     const fretLines = svg.match(/<line data-fret="[^"]+"[^>]+>/g);
 
     expect(fretLines).toHaveLength(25);

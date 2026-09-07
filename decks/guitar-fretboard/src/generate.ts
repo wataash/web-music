@@ -6,13 +6,9 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  FLATS_DECK_ID,
   inspectAnkiPackage,
-  NATURALS_DECK_ID,
-  NOTE_TO_POSITIONS_FLATS_DECK_ID,
-  NOTE_TO_POSITIONS_NATURALS_DECK_ID,
-  NOTE_TO_POSITIONS_SHARPS_DECK_ID,
-  SHARPS_DECK_ID,
+  NOTE_TO_POSITIONS_DECK_ID,
+  POSITION_TO_NOTE_DECK_ID,
   stableNoteGuid,
   writeAnkiPackage,
   type AnkiPackageSummary,
@@ -23,7 +19,7 @@ import {
   CARDS,
   type FretboardCard,
 } from "./cards";
-import { renderFretboardSvg } from "./fretboard";
+import { QUESTION_CUE, renderFretboardSvg } from "./fretboard";
 
 const PACKAGE_DIRECTORY = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -49,12 +45,7 @@ export function createDeckArtifacts(): DeckArtifacts {
         ? renderFretboardSvg({
             string: card.string,
             fret: card.fret,
-            cue:
-              card.system === "naturals"
-                ? undefined
-                : card.system === "flats"
-                  ? "♭"
-                  : "♯",
+            cue: QUESTION_CUE,
           })
         : renderFretboardSvg({
             highlightedString: card.string,
@@ -125,7 +116,7 @@ function createPackageNote(
     deckId: deckIdForCard(card),
     fields: [
       card.id,
-      card.system,
+      card.spelling,
       String(card.string),
       card.kind === "position-to-note" ? String(card.fret) : "",
       card.note,
@@ -138,16 +129,9 @@ function createPackageNote(
 }
 
 function deckIdForCard(card: FretboardCard): number {
-  if (card.kind === "position-to-note") {
-    if (card.system === "naturals") return NATURALS_DECK_ID;
-    return card.system === "flats" ? FLATS_DECK_ID : SHARPS_DECK_ID;
-  }
-  if (card.system === "naturals") {
-    return NOTE_TO_POSITIONS_NATURALS_DECK_ID;
-  }
-  return card.system === "flats"
-    ? NOTE_TO_POSITIONS_FLATS_DECK_ID
-    : NOTE_TO_POSITIONS_SHARPS_DECK_ID;
+  return card.kind === "position-to-note"
+    ? POSITION_TO_NOTE_DECK_ID
+    : NOTE_TO_POSITIONS_DECK_ID;
 }
 
 function formatPositions(

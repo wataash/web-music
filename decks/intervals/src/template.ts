@@ -23,7 +23,7 @@ export const FIELD_NAMES = [
 export const FRONT_TEMPLATE = `
 <main class="interval-card">
   <div class="prompt-line" data-card-part="text">
-    <span class="question">{{Question}}</span><span class="answer-arrow">→</span><span class="answer-value">?</span>
+    <span class="question">{{Question}}</span><span class="answer-value">?</span>
   </div>
   <div class="diagram keyboard" data-card-part="keyboard">{{Keyboard}}</div>
 </main>
@@ -34,7 +34,7 @@ export const FRONT_TEMPLATE = `
 export const BACK_TEMPLATE = `
 <main class="interval-card">
   <div class="prompt-line" data-card-part="text">
-    <span class="question">{{Question}}</span><span class="answer-arrow">→</span><span class="answer-value">{{Answer}}</span>
+    <span class="question">{{Question}}</span><span class="answer-value">{{Answer}}</span>
   </div>
   <div class="diagram keyboard" data-card-part="keyboard">{{AnswerKeyboard}}</div>
 </main>
@@ -46,7 +46,7 @@ export const BACK_TEMPLATE = `
 export const WEB_FRONT_TEMPLATE = `
 <main class="interval-card">
   <div class="prompt-line" data-card-part="text">
-    <span class="question">{{Question}}</span><span class="answer-arrow">→</span><span class="answer-value">?</span>
+    <span class="question">{{Question}}</span><span class="answer-value">?</span>
   </div>
   <div class="diagram keyboard" data-card-part="keyboard" data-interval-keyboard data-root="{{Root}}"></div>
 </main>
@@ -56,7 +56,7 @@ ${WEB_INTERVAL_KEYBOARD_SCRIPT}
 export const WEB_BACK_TEMPLATE = `
 <main class="interval-card">
   <div class="prompt-line" data-card-part="text">
-    <span class="question">{{Question}}</span><span class="answer-arrow">→</span><span class="answer-value">{{Answer}}</span>
+    <span class="question">{{Question}}</span><span class="answer-value">{{Answer}}</span>
   </div>
   <div class="diagram keyboard" data-card-part="keyboard" data-interval-keyboard data-root="{{Root}}" data-answer="{{AnswerKeyboard}}"></div>
 </main>
@@ -89,7 +89,6 @@ export const CARD_CSS = `
 }
 
 .question,
-.answer-arrow,
 .answer-value {
   font-size: calc(clamp(2.4rem, 10vw, 4rem) * var(--text-scale, 1));
   font-weight: 700;
@@ -97,14 +96,13 @@ export const CARD_CSS = `
   white-space: nowrap;
 }
 
-/* The arrow is the middle of the card and stays there: the question grows to
-   its left and the answer to its right, so neither side moves the other when
-   the card is turned over. */
+/* Equal columns keep the question left of center and the answer right of
+   center, so neither moves the other when the card is turned over. */
 .prompt-line {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: baseline;
-  gap: 0 0.3em;
+  gap: 0 calc(clamp(2.4rem, 10vw, 4rem) * var(--text-scale, 1) * 0.4);
   width: 100%;
 }
 

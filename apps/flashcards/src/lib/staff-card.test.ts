@@ -21,12 +21,12 @@ describe("staff reading card direction", () => {
   it("rejects cards from other decks", () => {
     expect(
       isStaffReadingCard({
-        tags: "system::naturals direction::position-to-note",
+        tags: "spelling::natural direction::position-to-note",
       }),
     ).toBe(false);
     expect(
       isStaffReadingCard({
-        tags: "system::naturals direction::note-to-positions",
+        tags: "spelling::natural direction::note-to-positions",
       }),
     ).toBe(false);
     expect(isStaffReadingCard({ tags: "" })).toBe(false);

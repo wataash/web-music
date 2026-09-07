@@ -38,6 +38,10 @@ SPDX-License-Identifier: Apache-2.0
     type CircleNoteSettingsScope,
   } from "./lib/circle-note-selection";
   import {
+    DEFAULT_FRETBOARD_NOTE_SELECTION,
+    parseFretboardNotes,
+  } from "./lib/fretboard-card";
+  import {
     includesSelectedNote,
     type NoteSelections,
   } from "./lib/note-selection";
@@ -106,6 +110,8 @@ SPDX-License-Identifier: Apache-2.0
   const INTERVAL_PAIR_SELECTION_KEY =
     "music-flashcards:interval-pair-selection";
   const FRET_WINDOW_KEY = "music-flashcards:guitar-fret-window";
+  const FRETBOARD_NOTE_SELECTION_KEY =
+    "music-flashcards:guitar-fretboard-note-selection";
   const COLLAPSED_DECK_NAMES_KEY = "music-flashcards:collapsed-decks";
   const HIDDEN_DECK_NAMES_KEY = "music-flashcards:hidden-decks";
 
@@ -122,12 +128,16 @@ SPDX-License-Identifier: Apache-2.0
     DEFAULT_INTERVAL_PAIR_SELECTION,
   );
   let fretWindow = $state<FretWindow>(DEFAULT_FRET_WINDOW);
+  let fretboardNoteSelection = $state<readonly string[]>(
+    DEFAULT_FRETBOARD_NOTE_SELECTION,
+  );
   const circleNoteSelections = $derived<CircleNoteSelections>({
     noteToCell: noteToCellSelection,
     intervals: intervalSelection,
   });
   const noteSelections = $derived<NoteSelections>({
     circle: circleNoteSelections,
+    fretboardNotes: new Set(fretboardNoteSelection),
     fretWindow,
     intervalPairs: new Set(intervalPairSelection),
     staff: staffNoteSelection,
@@ -257,6 +267,19 @@ SPDX-License-Identifier: Apache-2.0
     fretWindow = selection;
     try {
       localStorage.setItem(FRET_WINDOW_KEY, JSON.stringify(selection));
+    } catch {
+      // The preference is optional when storage is unavailable.
+    }
+    void refresh();
+  }
+
+  function setFretboardNoteSelection(selection: readonly string[]): void {
+    fretboardNoteSelection = selection;
+    try {
+      localStorage.setItem(
+        FRETBOARD_NOTE_SELECTION_KEY,
+        JSON.stringify(selection),
+      );
     } catch {
       // The preference is optional when storage is unavailable.
     }
@@ -527,6 +550,14 @@ SPDX-License-Identifier: Apache-2.0
     } catch {
       fretWindow = DEFAULT_FRET_WINDOW;
     }
+    try {
+      const saved = localStorage.getItem(FRETBOARD_NOTE_SELECTION_KEY);
+      if (saved !== null) {
+        fretboardNoteSelection = parseFretboardNotes(JSON.parse(saved));
+      }
+    } catch {
+      fretboardNoteSelection = DEFAULT_FRETBOARD_NOTE_SELECTION;
+    }
     const initialState = historyStateForDeckListScrollTop(
       historyStateForDeck(
         history.state,
@@ -578,6 +609,7 @@ SPDX-License-Identifier: Apache-2.0
     {noteSelections}
     onclose={closeReviewer}
     oncirclenoteselectionchange={setCircleNoteSelection}
+    onfretboardnoteselectionchange={setFretboardNoteSelection}
     onfretwindowchange={setFretWindow}
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}
@@ -609,6 +641,7 @@ SPDX-License-Identifier: Apache-2.0
     oncollapseddecknameschange={setCollapsedDeckNames}
     onhiddendecknameschange={setHiddenDeckNames}
     oncirclenoteselectionchange={setCircleNoteSelection}
+    onfretboardnoteselectionchange={setFretboardNoteSelection}
     onfretwindowchange={setFretWindow}
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}

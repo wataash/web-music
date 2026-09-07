@@ -4,7 +4,6 @@
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { type NoteSystem } from "./cards";
 import {
   DEFAULT_PREVIEW_DIRECTORY,
   writeFretboardPreview,
@@ -15,9 +14,6 @@ const { values } = parseArgs({
     output: {
       type: "string",
       short: "o",
-    },
-    system: {
-      type: "string",
     },
     kind: {
       type: "string",
@@ -35,7 +31,6 @@ const { values } = parseArgs({
 });
 
 const kind = parseKind(values.kind);
-const system = parseSystem(values.system);
 const string = parseInteger(values.string, "string", 3);
 const fret = parseInteger(values.fret, "fret", 5);
 const outputDirectory = resolve(
@@ -44,7 +39,6 @@ const outputDirectory = resolve(
 const summary = await writeFretboardPreview({
   outputDirectory,
   kind,
-  system,
   string,
   fret,
   note: values.note,
@@ -64,19 +58,6 @@ function parseKind(
     return "note";
   }
   throw new RangeError("--kind must be position or note");
-}
-
-function parseSystem(value: string | undefined): NoteSystem {
-  if (value === undefined || value === "flats") {
-    return "flats";
-  }
-  if (value === "sharps") {
-    return "sharps";
-  }
-  if (value === "naturals") {
-    return "naturals";
-  }
-  throw new RangeError("--system must be naturals, flats, or sharps");
 }
 
 function parseInteger(

@@ -8,9 +8,8 @@ import { fileURLToPath } from "node:url";
 import {
   NOTE_TO_POSITIONS_CARDS,
   POSITION_TO_NOTE_CARDS,
-  type NoteSystem,
 } from "./cards";
-import { renderFretboardSvg } from "./fretboard";
+import { QUESTION_CUE, renderFretboardSvg } from "./fretboard";
 
 const PACKAGE_DIRECTORY = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -25,7 +24,6 @@ export const DEFAULT_PREVIEW_DIRECTORY = resolve(
 export type PreviewOptions = Readonly<{
   outputDirectory?: string;
   kind?: "position" | "note";
-  system?: NoteSystem;
   string?: number;
   fret?: number;
   note?: string;
@@ -40,7 +38,6 @@ export type PreviewSummary = Readonly<{
 export async function writeFretboardPreview({
   outputDirectory = DEFAULT_PREVIEW_DIRECTORY,
   kind = "position",
-  system = "flats",
   string = 3,
   fret = 5,
   note = "C",
@@ -50,46 +47,33 @@ export async function writeFretboardPreview({
     kind === "position"
       ? POSITION_TO_NOTE_CARDS.find(
           (candidate) =>
-            candidate.system === system &&
-            candidate.string === string &&
-            candidate.fret === fret,
+            candidate.string === string && candidate.fret === fret,
         )
       : NOTE_TO_POSITIONS_CARDS.find(
           (candidate) =>
-            candidate.system === system &&
-            candidate.string === string &&
-            candidate.note === normalizedNote,
+            candidate.string === string && candidate.note === normalizedNote,
         );
   if (!card) {
     if (kind === "position") {
       throw new RangeError(
-        `preview position must belong to naturals, flats, or sharps and use string 1-6 and fret 0-24`,
+        `preview position must use string 1-6 and fret 0-24`,
       );
     }
     throw new RangeError(
-      `preview note must belong to the selected system and use string 1-6`,
+      `preview note must be one the deck asks for and use string 1-6`,
     );
   }
 
   const resolvedDirectory = resolve(outputDirectory);
   const basename =
     card.kind === "position-to-note"
-      ? `${system}-string-${string}-fret-${fret}`
-      : `${system}-string-${string}-note-${noteFilenamePart(card.note)}`;
+      ? `position-to-note-string-${string}-fret-${fret}`
+      : `note-to-positions-string-${string}-note-${noteFilenamePart(card.note)}`;
   const frontPath = join(resolvedDirectory, `${basename}-front.svg`);
   const backPath = join(resolvedDirectory, `${basename}-back.svg`);
   const frontSvg =
     card.kind === "position-to-note"
-      ? renderFretboardSvg({
-          string,
-          fret,
-          cue:
-            system === "naturals"
-              ? undefined
-              : system === "flats"
-                ? "♭"
-                : "♯",
-        })
+      ? renderFretboardSvg({ string, fret, cue: QUESTION_CUE })
       : renderFretboardSvg({
           highlightedString: string,
           title: `${card.note} positions on string ${string}`,
@@ -127,5 +111,5 @@ export function normalizeNoteName(note: string): string {
 }
 
 function noteFilenamePart(note: string): string {
-  return note.replace("♭", "-flat").replace("♯", "-sharp");
+  return note.replaceAll("♭", "-flat").replaceAll("♯", "-sharp");
 }

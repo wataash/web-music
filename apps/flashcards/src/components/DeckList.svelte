@@ -58,6 +58,7 @@ SPDX-License-Identifier: Apache-2.0
     oncollapseddecknameschange,
     onhiddendecknameschange,
     oncirclenoteselectionchange,
+    onfretboardnoteselectionchange,
     onfretwindowchange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
@@ -86,6 +87,7 @@ SPDX-License-Identifier: Apache-2.0
       scope: CircleNoteSettingsScope,
       selection: CircleNoteSelection,
     ) => void;
+    onfretboardnoteselectionchange: (selection: readonly string[]) => void;
     onfretwindowchange: (selection: FretWindow) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
@@ -532,6 +534,7 @@ SPDX-License-Identifier: Apache-2.0
     targets={[settingsTarget]}
     {noteSelections}
     {oncirclenoteselectionchange}
+    {onfretboardnoteselectionchange}
     {onfretwindowchange}
     {onintervalpairselectionchange}
     {onstaffnoteselectionchange}
