@@ -6,9 +6,14 @@
   "type": "module",
   "scripts": {
     "analyze": "node src/cli.js",
-    "test": "node --test src/*.test.js"
+    "test": "node --test src/*.test.js",
+    "extract": "node src/extract.js"
   },
   "engines": {
     "node": ">=22.5"
+  },
+  "dependencies": {
+    "@web-music/ireal": "workspace:*",
+    "@web-music/chordwiki": "workspace:*"
   }
 }

@@ -4,6 +4,16 @@ https://x.com/wata_ash/status/2093846358503686543
 -->
 # iReal Pro Jazz 1460 Chord Frequency Analysis
 
+Chord chart extraction uses the independent `@web-music/ireal` and
+`@web-music/chordwiki` packages. The local `src/extract-source.js` dispatches
+between them; `src/extract.js` provides a CLI with automatic format detection.
+
+```sh
+# fish / bash: run from the repository root
+node tools/ireal-analysis/src/extract.js --output chords path/to/source.html
+node tools/ireal-analysis/src/extract.js --format chordwiki - < path/to/source.md
+```
+
 Surveyed on 2026-08-28.
 
 ## Top 25 chords

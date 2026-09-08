@@ -297,6 +297,8 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/chordwiki: {}
+
   packages/circle-of-fifths-core:
     devDependencies:
       vitest:
@@ -312,6 +314,8 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.1))
+
+  packages/ireal: {}
 
   packages/music-staff-core:
     devDependencies:
@@ -335,7 +339,14 @@ importers:
         specifier: ^4.23.1
         version: 4.23.1
 
-  tools/ireal-analysis: {}
+  tools/ireal-analysis:
+    dependencies:
+      '@web-music/chordwiki':
+        specifier: workspace:*
+        version: link:../../packages/chordwiki
+      '@web-music/ireal':
+        specifier: workspace:*
+        version: link:../../packages/ireal
 
 packages:
 

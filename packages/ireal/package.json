@@ -1,0 +1,19 @@
+{
+  "name": "@web-music/ireal",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": "./src/extract.js",
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test src/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}
