@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "song-bar-analysis"
+version = "0.1.0"
+description = "Estimate beat and bar timestamps from audio with librosa"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["librosa>=0.11,<2", "numpy>=1.26", "scipy>=1.11", "matplotlib>=3.8"]
+
+[project.scripts]
+song-bar-analysis = "song_bar_analysis.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["song_bar_analysis*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

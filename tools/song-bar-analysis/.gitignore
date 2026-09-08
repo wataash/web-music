@@ -1,0 +1,25 @@
+# Audio, generated plots, features, logs and archives
+*.opus
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.aac
+*.aiff
+*.aif
+onsets.png
+*.wav
+*.npz
+*.log
+*.zip
+
+# Runtime/build caches and default analysis outputs
+__pycache__/
+numba/
+mpl/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+outputs/
+.venv/
