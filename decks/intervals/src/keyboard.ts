@@ -25,7 +25,7 @@ export type IntervalKeyboardInput = Readonly<{
   keyCount?: IntervalKeyCount;
 }>;
 
-export const INTERVAL_KEY_COUNTS = [25, 27, 29, 31, 33, 35, 37] as const;
+export const INTERVAL_KEY_COUNTS = [25, 27, 29, 31, 33, 35, 37, 39, 41] as const;
 export type IntervalKeyCount = (typeof INTERVAL_KEY_COUNTS)[number];
 
 export function intervalKeyboards({

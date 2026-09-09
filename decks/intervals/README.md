@@ -36,12 +36,12 @@ shown below and above the middle-octave G. The fixed range is large enough to
 put both occurrences around every root, including roots near either end of an
 octave.
 
-The web app's card actions can reduce the board in odd steps from 37 to 25
+The web app's card actions can select the board in odd steps from 25 to 41
 keys. Every size is a crop around the same E4/F4 axis, independent of both the
 root and the hidden answer. A short crop can omit an answer occurrence outside
 its range; occurrences that remain visible are still marked.
 The web card builds an inline SVG when it is shown, so the deck JSON carries a
-compact drawing function instead of seven front and seven back images per note.
+compact drawing function instead of separate front and back images for each size per note.
 Anki uses a static SVG at the 37-key default.
 
 The spelling stays on the card as text, because the keys cannot distinguish

@@ -43,9 +43,9 @@ export function drawIntervalKeyboard(
     width: number;
   }>;
 
-  const allowedKeyCounts = [25, 27, 29, 31, 33, 35, 37];
+  const allowedKeyCounts = [25, 27, 29, 31, 33, 35, 37, 39, 41];
   if (!allowedKeyCounts.includes(physicalKeyCount)) {
-    throw new RangeError("keyCount must be an odd number from 25 through 37");
+    throw new RangeError("keyCount must be an odd number from 25 through 41");
   }
 
   const notes = ["C", "D", "E", "F", "G", "A", "B"];
@@ -380,7 +380,7 @@ export const WEB_INTERVAL_KEYBOARD_SCRIPT = `
   const host = document.querySelector("[data-interval-keyboard]");
   if (!(host instanceof HTMLElement)) return;
   const selected = Number(document.documentElement.dataset.keyboardKeys);
-  const allowed = [25, 27, 29, 31, 33, 35, 37];
+  const allowed = [25, 27, 29, 31, 33, 35, 37, 39, 41];
   const keyCount = allowed.includes(selected) ? selected : 37;
   // Only the back names the answer in its own markup; the front is handed one
   // by the app when the reader asked for it.

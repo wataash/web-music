@@ -216,14 +216,16 @@ describe("card scales", () => {
     expect(formatCardOffset({ x: 0.15, y: -0.1 })).toBe("+15%, -10%");
   });
 
-  it("keeps interval keyboard key counts odd, from 25 through 37", () => {
+  it("keeps interval keyboard key counts odd, from 25 through 41", () => {
     expect(clampKeyboardKeys(24)).toBe(25);
     expect(clampKeyboardKeys(26)).toBe(27);
-    expect(clampKeyboardKeys(99)).toBe(37);
+    expect(clampKeyboardKeys(99)).toBe(41);
     expect(clampKeyboardKeys("29")).toBe(37);
     expect(stepKeyboardKeys(25, -1)).toBe(25);
     expect(stepKeyboardKeys(25, 1)).toBe(27);
-    expect(stepKeyboardKeys(37, 1)).toBe(37);
+    expect(stepKeyboardKeys(37, 1)).toBe(39);
+    expect(stepKeyboardKeys(39, 1)).toBe(41);
+    expect(stepKeyboardKeys(41, 1)).toBe(41);
   });
 });
 

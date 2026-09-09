@@ -19,7 +19,7 @@ export const MAX_CARD_SCALE = 2;
 // of an 88-key board — the boundary between E4 and F4.
 const PIANO_KEY_COUNTS = [49, 61, 76, 88] as const;
 export const MIN_KEYBOARD_KEYS = 25;
-export const MAX_KEYBOARD_KEYS = 37;
+export const MAX_KEYBOARD_KEYS = 41;
 export const KEYBOARD_KEYS_STEP = 2;
 
 // Where each part of the card sits, as a share of the card's width and height.
@@ -204,7 +204,7 @@ export type DeckCardSettings = Readonly<{
 export const DEFAULT_DECK_CARD_SETTINGS: DeckCardSettings = {
   staff: 1,
   text: 1,
-  keyboardKeys: MAX_KEYBOARD_KEYS,
+  keyboardKeys: 37,
   offsets: DEFAULT_CARD_OFFSETS,
   rotation: 0,
   answerAnchor: "bottom",
@@ -413,7 +413,7 @@ export function clampPianoKeys(value: unknown): number {
 
 export function clampKeyboardKeys(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    return MAX_KEYBOARD_KEYS;
+    return DEFAULT_DECK_CARD_SETTINGS.keyboardKeys;
   }
   const steps = Math.round((value - MIN_KEYBOARD_KEYS) / KEYBOARD_KEYS_STEP);
   return Math.min(

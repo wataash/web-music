@@ -50,7 +50,7 @@ describe("the keyboard on an interval card", () => {
     }
     expect(() =>
       intervalKeyboards({ ...M3, keyCount: 23 as never }),
-    ).toThrow("keyCount must be an odd number from 25 through 37");
+    ).toThrow("keyCount must be an odd number from 25 through 41");
   });
 
   it("puts the given note on the fixed board on the front", () => {

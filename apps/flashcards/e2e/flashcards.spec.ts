@@ -1694,3 +1694,14 @@ test("carries the study progress out to a file and back in", async ({
     { timeout: IMPORT_TIMEOUT },
   );
 });
+
+test("selects 41 interval keys", async ({ page }) => {
+  await openDeckList(page);
+  await study(page, "Intervals");
+  await page.getByRole("button", { name: "Deck actions" }).click();
+  await page.getByRole("button", { name: "Keyboard keys larger" }).click();
+  await page.getByRole("button", { name: "Keyboard keys larger" }).click();
+  await expect(page.getByRole("group", { name: "Keyboard keys", exact: true })).toContainText("41");
+  const card = page.frameLocator('iframe[title="card"]');
+  await expect(card.locator("svg.keyboard-svg")).toHaveAttribute("data-key-count", "41");
+});
