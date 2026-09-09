@@ -1740,3 +1740,47 @@ test("captures repeated mobile arrange drags", async ({ page, browserName }) => 
   }
   await session.detach();
 });
+
+test("positions the circle before the answer document loads", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (window === window.top) {
+      localStorage.setItem("music-flashcards:deck-card-settings", JSON.stringify({
+        "(Experimental) Circle of Fifths": {
+          text: 1.3,
+          offsets: { board: { x: 0, y: 0.25 }, text: { x: 0, y: 0.2 } },
+        },
+      }));
+    }
+    // DOMContentLoaded precedes the iframe's load handler, where live layout
+    // updates are installed. Capture the layout before that handler can fix it.
+    document.addEventListener("DOMContentLoaded", () => {
+      const board = document.querySelector("[data-circle-of-fifths] svg");
+      if (board === null) return;
+      const root = document.documentElement;
+      root.dataset.initialLayout = JSON.stringify({
+        y: board.getBoundingClientRect().y,
+        offset: root.style.getPropertyValue("--board-y"),
+        textScale: root.style.getPropertyValue("--text-scale"),
+      });
+    });
+  });
+  await openDeckList(page);
+  await settleDeckImports(page);
+  await page.getByRole("button", { name: "CHOOSE DECKS" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("checkbox", { name: "(Experimental) Circle of Fifths" }).check();
+  await dialog.getByRole("button", { name: "APPLY" }).click();
+  await page.locator('[data-deck="(Experimental) Circle of Fifths"] .deck-study').click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const card = page.frameLocator('iframe[title="card"]');
+  await expect(card.locator("[data-circle-of-fifths] svg")).toBeVisible();
+  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+  await expect(card.locator(".answer")).toHaveCount(1);
+  await expect(card.locator("html")).toHaveAttribute("data-initial-layout", /25vh/);
+  const layout = await card.locator("html").evaluate((root) => ({
+    initial: JSON.parse((root as HTMLElement).dataset.initialLayout!),
+    y: root.querySelector("[data-circle-of-fifths] svg")!.getBoundingClientRect().y,
+  }));
+  expect(layout.initial.textScale).toBe("1.3");
+  expect(layout.initial.y).toBeCloseTo(layout.y, 1);
+});

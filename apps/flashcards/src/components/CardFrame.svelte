@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
 
   import type { CardTap } from "../lib/card-audio";
   import {
@@ -100,6 +100,23 @@ SPDX-License-Identifier: Apache-2.0
   // stopped asking for — the width of the screen, say — is taken off again
   // rather than left standing.
   let written: readonly string[] = [];
+
+  // A new document must start at its saved position, before its first paint.
+  // Snapshot only when the document changes; dragging still updates it live.
+  const frameDoc = $derived.by(() => {
+    const source = doc;
+    return untrack(() => {
+      const style = Object.entries(variables)
+        .map(([name, value]) => `${name}: ${value};`)
+        .join(" ")
+        .replaceAll("&", "&amp;")
+        .replaceAll('"', "&quot;");
+      return source.replace(
+        "<html",
+        `<html style="${style}"${positioning ? " data-positioning" : ""}`,
+      );
+    });
+  });
 
   $effect(() => {
     void loaded;
@@ -434,6 +451,9 @@ SPDX-License-Identifier: Apache-2.0
     stopListening();
     const frame = event.currentTarget as HTMLIFrameElement;
     cardDocument = frame.contentDocument;
+    written = cardDocument === null
+      ? []
+      : Array.from(cardDocument.documentElement.style);
     for (const [name, listener] of LISTENERS) {
       // On the card rather than on its drawings: a tap means the same thing
       // wherever it lands, and only what is under it decides what it plays.
@@ -451,7 +471,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <!-- Mimics the AnkiDroid WebView: the card is a full document so the deck's
      own CSS applies untouched, isolated from the app chrome. -->
-<iframe title="card" srcdoc={doc} onload={handleLoad}></iframe>
+<iframe title="card" srcdoc={frameDoc} onload={handleLoad}></iframe>
 
 <style>
   iframe {
