@@ -1705,3 +1705,38 @@ test("selects 41 interval keys", async ({ page }) => {
   const card = page.frameLocator('iframe[title="card"]');
   await expect(card.locator("svg.keyboard-svg")).toHaveAttribute("data-key-count", "41");
 });
+
+test("captures repeated mobile arrange drags", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "Native touch input uses CDP");
+  const session = await page.context().newCDPSession(page);
+  await session.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+  await openDeckList(page);
+  await study(page, "Intervals");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await arrangeCard(page);
+  const card = page.frameLocator('iframe[title="card"]');
+  const keyboard = card.locator('[data-card-part="keyboard"]');
+  await keyboard.evaluate((element) => {
+    element.addEventListener("gotpointercapture", (event) => {
+      if (event.target === element) element.setAttribute("data-captured", "yes");
+    });
+  });
+  for (const dy of [60, -40, 30]) {
+    const box = (await keyboard.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await keyboard.evaluate((element) => element.removeAttribute("data-captured"));
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchStart", touchPoints: [{ x, y }],
+    });
+    for (let step = 1; step <= 5; step += 1) {
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchMove", touchPoints: [{ x, y: y + dy * step / 5 }],
+      });
+    }
+    await expect(keyboard).toHaveAttribute("data-captured", "yes");
+    await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect.poll(async () => Math.abs((await keyboard.boundingBox())!.y - box.y - dy)).toBeLessThan(2);
+  }
+  await session.detach();
+});

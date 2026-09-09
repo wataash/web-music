@@ -360,9 +360,7 @@ SPDX-License-Identifier: Apache-2.0
     };
     // Held by the element the drag started on, so a finger that outruns the
     // part keeps moving it.
-    if (held instanceof Element && "setPointerCapture" in held) {
-      (held as HTMLElement).setPointerCapture(point.pointerId);
-    }
+    held?.setPointerCapture(point.pointerId);
     event.preventDefault();
   }
 
