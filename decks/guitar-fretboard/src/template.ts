@@ -19,43 +19,58 @@ export const FIELD_NAMES = [
   "Positions",
 ] as const;
 
-const FRONT_HEADING = `  <div class="position" data-card-part="text">
-    {{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span></span>{{/Fret}}
-    {{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span></span>{{/Positions}}
+function heading(showAnswer: boolean): string {
+  // Hidden answers reserve the same space when a long position list wraps.
+  const hidden = showAnswer ? "" : ' style="visibility: hidden" aria-hidden="true"';
+  return `  <div class="position" data-card-part="text">
+    {{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span><span class="position-answer"${hidden}>{{Note}}</span></span>{{/Fret}}
+    {{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span><span class="position-answer"${hidden}>{{Positions}}</span></span>{{/Positions}}
   </div>`;
+}
 
-const BACK_HEADING = `  <div class="position" data-card-part="text">
-    {{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span><span class="position-answer">{{Note}}</span></span>{{/Fret}}
-    {{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span><span class="position-answer">{{Positions}}</span></span>{{/Positions}}
-  </div>`;
+// Keep all positions in the note data for the diagram; shorten only the heading.
+const POSITION_LABEL_SCRIPT = `
+<script>
+for (const answer of document.querySelectorAll(".position-answer")) {
+  answer.textContent = (answer.textContent ?? "")
+    .split(" ")
+    .filter((position) => !/^[1-6]-24$/.test(position))
+    .join(" ");
+}
+</script>
+`.trim();
 
 export const FRONT_TEMPLATE = `
 <main class="fretboard-card">
-${FRONT_HEADING}
+${heading(false)}
   <div class="diagram" data-card-part="board">{{FrontImage}}</div>
 </main>
+${POSITION_LABEL_SCRIPT}
 `.trim();
 
 export const BACK_TEMPLATE = `
 <main class="fretboard-card">
-${BACK_HEADING}
+${heading(true)}
   <div class="diagram" data-card-part="board">{{BackImage}}</div>
 </main>
+${POSITION_LABEL_SCRIPT}
 `.trim();
 
 export const WEB_FRONT_TEMPLATE = `
 <main class="fretboard-card">
-${FRONT_HEADING}
+${heading(false)}
   <div class="diagram" data-card-part="board" data-fretboard data-side="front" data-string="{{String}}" data-fret="{{Fret}}" {{#Positions}}data-has-positions="true" data-note="{{Note}}"{{/Positions}}></div>
 </main>
+${POSITION_LABEL_SCRIPT}
 ${WEB_FRETBOARD_SCRIPT}
 `.trim();
 
 export const WEB_BACK_TEMPLATE = `
 <main class="fretboard-card">
-${BACK_HEADING}
+${heading(true)}
   <div class="diagram" data-card-part="board" data-fretboard data-side="back" data-string="{{String}}" data-fret="{{Fret}}" data-note="{{Note}}" {{#Positions}}data-has-positions="true" data-positions="{{Positions}}"{{/Positions}}></div>
 </main>
+${POSITION_LABEL_SCRIPT}
 ${WEB_FRETBOARD_SCRIPT}
 `.trim();
 

@@ -51,13 +51,13 @@ describe("Anki deck generation", () => {
       );
     }
     for (const template of [FRONT_TEMPLATE, WEB_FRONT_TEMPLATE]) {
-      expect(template).toContain('{{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span></span>{{/Fret}}');
+      expect(template).toContain('{{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span><span class="position-answer" style="visibility: hidden" aria-hidden="true">{{Note}}</span></span>{{/Fret}}');
     }
     for (const template of [BACK_TEMPLATE, WEB_BACK_TEMPLATE]) {
       expect(template).toContain('{{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span><span class="position-answer">{{Note}}</span></span>{{/Fret}}');
     }
     expect(FRONT_TEMPLATE).toContain(
-      '{{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span></span>{{/Positions}}',
+      '{{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span><span class="position-answer" style="visibility: hidden" aria-hidden="true">{{Positions}}</span></span>{{/Positions}}',
     );
     expect(BACK_TEMPLATE).toContain(
       '{{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span><span class="position-answer">{{Positions}}</span></span>{{/Positions}}',

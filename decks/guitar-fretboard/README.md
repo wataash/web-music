@@ -84,7 +84,7 @@ The front of a `Note → Positions` card shows the note name and draws a pale
 yellow bar behind the string in question. The back shows where that note falls
 in the lower (1F–12F) and upper (13F–24F) half, with the note name on each dot,
 and adds 0F only when the note matches the open string. The E on string 1, for
-example, reads `E 1-0 1-12 1-24`. The note name stays right-aligned to the left
+example, reads `E 1-0 1-12`. The heading omits 24F; the diagram still marks it. The note name stays right-aligned to the left
 of the center on both sides; the answer positions are left-aligned to its right.
 Square brackets are not shown. A card asked
 under both names writes them the same way `Position → Note` answers with them.
