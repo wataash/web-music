@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     type CardOffsets,
     type CardPart,
     type CardPartScales,
-  } from "../lib/card-scale";
+  } from "@web-music/practice-ui/card-scale";
 
   let {
     doc,

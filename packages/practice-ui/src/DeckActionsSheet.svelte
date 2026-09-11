@@ -54,7 +54,7 @@ SPDX-License-Identifier: Apache-2.0
     // here: a sheet tall enough to hold a row for each is a sheet covering the
     // card those rows are setting.
     arrange?: Readonly<{ onopen: () => void }>;
-    onreset: () => void;
+    onreset?: () => void;
     onclose: () => void;
   } = $props();
 
@@ -133,9 +133,11 @@ SPDX-License-Identifier: Apache-2.0
         >{option.label}
       </button>
     {/each}
+    {#if onreset}
     <button class="action danger" role="menuitem" onclick={onreset}>
       <span class="icon" aria-hidden="true">↺</span>Reset study progress
     </button>
+    {/if}
   </div>
 </div>
 

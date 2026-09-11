@@ -4,6 +4,6 @@
 import { mount } from "svelte";
 
 import App from "./App.svelte";
-import "./app.css";
+import "@web-music/practice-ui/theme.css";
 
 mount(App, { target: document.getElementById("app")! });

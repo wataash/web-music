@@ -6,6 +6,7 @@ decks they ship with, and the tools that build them.
 ## Layout
 
 - `apps/flashcards/`: Music Flashcards (a Svelte web app / PWA)
+- `packages/practice-ui/`: shared audio, layout settings, theme and settings UI
 - `apps/circle-of-fifths-playground/`: interactive circle of fifths SVG playground
 - `apps/fretboard/`: fretboard app showing scales and chord tones (Next.js)
 - `decks/circle-of-fifths/`: circle of fifths flashcard deck

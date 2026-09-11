@@ -1,0 +1,22 @@
+{
+  "name": "@web-music/practice-ui",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./DeckActionsSheet.svelte": "./src/DeckActionsSheet.svelte",
+    "./theme.css": "./src/theme.css",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "svelte": "^5.55.0"
+  },
+  "devDependencies": {
+    "svelte": "^5.55.0",
+    "vitest": "^4.1.10"
+  }
+}

@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
   import { onDestroy, tick } from "svelte";
 
   import BackupDialog from "./BackupDialog.svelte";
-  import DeckActionsSheet from "./DeckActionsSheet.svelte";
+  import DeckActionsSheet from "@web-music/practice-ui/DeckActionsSheet.svelte";
   import DeckVisibilitySettings from "./DeckVisibilitySettings.svelte";
   import type { FretWindow } from "../lib/guitar-interval-selection";
   import NoteSettingsDialog from "./NoteSettingsDialog.svelte";

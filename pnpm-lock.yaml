@@ -57,6 +57,9 @@ importers:
       '@web-music/music-staff-core':
         specifier: workspace:*
         version: link:../../packages/music-staff-core
+      '@web-music/practice-ui':
+        specifier: workspace:*
+        version: link:../../packages/practice-ui
       dexie:
         specifier: ^4.2.0
         version: 4.4.5
@@ -319,6 +322,15 @@ importers:
 
   packages/music-staff-core:
     devDependencies:
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.1))
+
+  packages/practice-ui:
+    devDependencies:
+      svelte:
+        specifier: ^5.55.0
+        version: 5.56.9(@typescript-eslint/types@8.65.0)
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(jsdom@29.1.1)(vite@8.1.5(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.1))

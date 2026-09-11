@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
   import {
     checkForUpdateOnResume,
     watchForServiceWorkerUpdate,
-  } from "./lib/app-update";
+  } from "@web-music/practice-ui/app-update";
   import Reviewer from "./components/Reviewer.svelte";
   import {
     changedBundledDeckEntries,

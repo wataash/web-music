@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
   import { untrack } from "svelte";
 
   import CardFrame from "./CardFrame.svelte";
-  import DeckActionsSheet from "./DeckActionsSheet.svelte";
+  import DeckActionsSheet from "@web-music/practice-ui/DeckActionsSheet.svelte";
   import ResetProgressDialog from "./ResetProgressDialog.svelte";
   import ExtraStudyDialog, {
     type ExtraStudySelection,
@@ -70,13 +70,13 @@ SPDX-License-Identifier: Apache-2.0
     type CardSettingsByDeck,
     type DeckCardSettings,
     withDeckCardSettings,
-  } from "../lib/card-scale";
+  } from "@web-music/practice-ui/card-scale";
   import {
     answerSound,
     tappedAnswerSound,
     type CardTap,
   } from "../lib/card-audio";
-  import { playSemitones } from "../lib/tones";
+  import { playSemitones } from "@web-music/practice-ui/tones";
   import {
     addNewCardsForToday,
     answerButtonLabels,

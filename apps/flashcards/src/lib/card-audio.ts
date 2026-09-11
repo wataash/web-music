@@ -6,17 +6,16 @@
 // a drawing names its keys and cells in strings and frets; both come back from
 // here as MIDI semitones, which is all the synthesiser wants.
 
+import { guitarSemitone } from "@web-music/practice-ui/guitar";
+export { guitarSemitone, GUITAR_OPEN_STRINGS } from "@web-music/practice-ui/guitar";
 import type { NoteRow } from "./db";
 import { isGuitarIntervalCard } from "./guitar-interval-selection";
 import { intervalAnswerNote, isIntervalCard } from "./interval-pair-selection";
-import type { Instrument } from "./tones";
+import type { Instrument } from "@web-music/practice-ui/tones";
 
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"] as const;
 const NATURAL_SEMITONES = [0, 2, 4, 5, 7, 9, 11] as const;
 
-// Standard tuning, string 1 (high E) first, as the fretboard decks number
-// their strings. Matches OPEN_STRING_SEMITONES in decks/guitar-intervals.
-export const GUITAR_OPEN_STRINGS = [64, 59, 55, 50, 45, 40] as const;
 
 // `Guitar Intervals` draws the neck around the root rather than at a fret
 // number: the shape is the same wherever it is played. A sound is not — it has
@@ -25,9 +24,6 @@ export const GUITAR_OPEN_STRINGS = [64, 59, 55, 50, 45, 40] as const;
 // neck rather than behind the nut.
 export const GUITAR_INTERVAL_ROOT_FRET = 7;
 
-// The lowest and highest fret a guitar has, so a tap outside the neck is
-// silent rather than a note no instrument can make.
-const MAX_FRET = 24;
 
 // A tap on a drawing, as the card names the place that was touched: a key
 // that knows its own pitch, a cell at a fret, or a cell so many frets from a
@@ -69,12 +65,6 @@ export function tappedAnswerSound(
   };
 }
 
-export function guitarSemitone(guitarString: number, fret: number): number | null {
-  const open = GUITAR_OPEN_STRINGS[guitarString - 1];
-  if (open === undefined) return null;
-  if (!Number.isInteger(fret) || fret < 0 || fret > MAX_FRET) return null;
-  return open + fret;
-}
 
 export function tapSound(tap: CardTap): CardSound | null {
   if (tap.kind === "key") {
