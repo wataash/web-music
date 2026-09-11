@@ -3,11 +3,12 @@
 
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vitest/config";
+import { loadEnv } from "vite";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   server: {
     host: true,
-    allowedHosts: ["wsh24b"],
+    allowedHosts: (loadEnv(mode, process.cwd(), "DEV_").DEV_ALLOWED_HOSTS ?? "").split(",").map(host => host.trim()).filter(Boolean),
     port: 17382,
     strictPort: true,
   },
@@ -16,4 +17,4 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts"],
   },
-});
+}));

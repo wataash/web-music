@@ -10,6 +10,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import type { Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vitest/config";
+import { loadEnv } from "vite";
 
 const PROJECT_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const DEV_DECK_PREFIX = "/__dev_deck";
@@ -68,9 +69,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     // Listen on every interface so the app can be opened from a phone on the
     // LAN, not just localhost. Vite rejects unknown Host headers by default
-    // (DNS-rebinding protection), so this machine's hostname is allowed too.
+    // (DNS-rebinding protection); extra hosts can be configured in .env.local.
     host: true,
-    allowedHosts: ["wsh24b"],
+    allowedHosts: (loadEnv(mode, process.cwd(), "DEV_").DEV_ALLOWED_HOSTS ?? "").split(",").map(host => host.trim()).filter(Boolean),
     port: 17381,
     strictPort: true,
   },

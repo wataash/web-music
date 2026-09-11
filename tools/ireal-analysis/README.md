@@ -375,47 +375,9 @@ emits occurrence counts and song counts as JSON for roots, qualities, families,
 full chord symbols, slash basses, key signatures, intervals and chord-tone
 spellings. Run the commands below from the root of this repository.
 
-### Aggregating a local JSON file
-
-If decoding the HTML is unnecessary, a locally saved JSON can be aggregated
-directly. The source data under `tools/ireal-analysis/data/` is not tracked by
-Git.
-
-```console
-node tools/ireal-analysis/src/cli.js \
-  tools/ireal-analysis/data/jazz-1460.json > /tmp/jazz-1460-stats.json
-```
-
-### Reproducing from the HTML
-
-This needs `git` and Node.js. Clone the [pianosnake/ireal-reader][reader-revision]
-revision used for the analysis into `/tmp` and pin it.
-
-```console
-IREAL_READER_DIR=/tmp/ireal-reader-662106f
-git clone https://github.com/pianosnake/ireal-reader.git "$IREAL_READER_DIR"
-git -C "$IREAL_READER_DIR" checkout --detach \
-  662106fe60ea3f91574ddf98df0e2468a3d89e6a
-```
-
-Decode and expand the saved HTML, then pipe the output into the aggregator.
-
-```console
-node "$IREAL_READER_DIR/index.js" \
-  tools/ireal-analysis/data/jazz-1460.html \
-  | node tools/ireal-analysis/src/cli.js - \
-  > /tmp/jazz-1460-stats.json
-```
-
-The JSON `ireal-reader` emits has the same content as the JSON saved at analysis
-time, but formats line breaks in the bar arrays differently. This does not affect
-the aggregated results.
-
-To limit just the full-chord-symbol ranking to the top 30:
-
-```console
-node tools/ireal-analysis/src/cli.js --exact-limit 30 \
-  tools/ireal-analysis/data/jazz-1460.json
+```sh
+node tools/ireal-analysis/src/cli.js path/to/playlist.json
+node tools/ireal-analysis/src/cli.js --exact-limit 30 path/to/playlist.json
 ```
 
 ### Tests
