@@ -1,10 +1,10 @@
 # @web-music/chordwiki
 
-ChordWiki Markdownから記載順のコード列・曲情報・注釈・元の表記を保持する譜面トークンを抽出する。Node.js >=22.5。
+Extract chords in written order, song information, annotations and source-preserving chart tokens from ChordWiki Markdown. Requires Node.js >=22.5.
 
-外部依存ゼロを保つこと。別リポジトリから pnpm の Git subdirectory 依存として直接インストールするため、`workspace:*` 依存を追加すると外部で解決できなくなる。ビルド・prepare 処理は不要。npm publish は行わず、`private: true` で誤公開を防ぐ。
+Keep this package free of external dependencies. Other repositories install it directly using pnpm Git subdirectory dependencies; adding workspace dependencies would break those installs. No build or prepare step is required. The package is private to prevent accidental npm publication.
 
-web-music 内では `workspace:*`、外部では次の依存指定を使う。
+Use `workspace:*` within web-music. External consumers use:
 
 ```json
 "@web-music/chordwiki": "github:wataash/web-music#chordwiki-v0.1.0&path:/packages/chordwiki"
@@ -14,13 +14,15 @@ web-music 内では `workspace:*`、外部では次の依存指定を使う。
 import { extractChordWiki } from "@web-music/chordwiki";
 ```
 
-抽出結果は `{ format, title, artist, originalKey, chords, comments, annotations, score, unmappedSymbols }`。反復は展開しない。コード品質は元の記法を保持し、iReal の表記への正規化は行わない。
+The result contains `{ format, title, artist, originalKey, chords, comments, annotations, score, unmappedSymbols }`. Repeats are not expanded. Chord qualities retain their source notation and are not normalized to iReal notation. Japanese subtitle credit syntax remains supported.
 
-もう一方の形式への依存はない。短い汎用 tokenize は各パッケージ内に保持し、独立してインストールできるようにする。両形式の振り分け・CLI は利用側の tools/ireal-analysis/ にある。
+Generated labels and symbol descriptions are in English. Source text is preserved in its original language. Consumers updating a pinned revision should check any label-based lookups and IDs derived from the parsed output.
+
+The two parser packages are independent. Each keeps its small tokenizer locally so it can be installed on its own. Format dispatch and the CLI live in `tools/ireal-analysis/`.
 
 ```sh
-# fish / bash 共通。web-music のルートで実行
+# Run from the repository root; works in fish and bash.
 pnpm --filter @web-music/chordwiki test
 ```
 
-テストは自作の合成譜面だけを使う。実譜面の検証は消費側で行い、このパッケージに第三者の譜面や非公開 URL を含めない。
+Tests use original synthetic charts. Consumer projects verify real charts separately. Do not include third-party charts or private URLs in this package.

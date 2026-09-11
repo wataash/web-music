@@ -66,7 +66,7 @@ Scores from `evaluate` are neither probabilities nor accuracy estimates. Do not 
 
 | File | Contents |
 |---|---|
-| `bars.txt` | A `時間 小節` (time, bar) header followed by downbeats in `00:01.234 1` format |
+| `bars.txt` | A `Time Bar` header followed by downbeats in `00:01.234 1` format |
 | `beats.csv` | Selected beat times in seconds, beat numbers, bar numbers, and beat positions within each bar |
 | `session.json` | Input path, audio duration, librosa version, analysis settings, and regularization settings |
 | `initial.json` | Beat-interval statistics in 30-second segments from the initial detection |

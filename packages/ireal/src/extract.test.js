@@ -37,8 +37,8 @@ test("preserves iReal symbols, compressed cells, comment offsets and playback se
   assert.equal(tokens.filter(token => token.kind === "space").length, 5);
   for (const text of ["4/4", "𝄆", "𝄇", "⌜1.", "⌜2.", "𝄐", "％", "END"]) assert.ok(tokens.some(token => token.text === text), text);
   assert.equal(tokens.find(token => token.kind === "comment").position, 33);
-  assert.ok(score.fields.some(field => field.label === "テンポ (BPM)" && field.value === "0"));
-  assert.ok(score.fields.some(field => field.label === "コーラス数" && field.value === "0"));
+  assert.ok(score.fields.some(field => field.label === "Tempo (BPM)" && field.value === "0"));
+  assert.ok(score.fields.some(field => field.label === "Choruses" && field.value === "0"));
   const repeat = score.blocks.find(block => block.some(token => token.text === "％"));
   assert.ok(!repeat.some(token => token.kind === "chord"), "compressed repeat belongs to its own measure");
 });

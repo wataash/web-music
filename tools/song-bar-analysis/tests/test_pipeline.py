@@ -26,7 +26,7 @@ def session(tmp_path):
 
 def test_export_indexing_and_half_time(session):
     result = core.export(session, beats_per_bar=3, first_beat=1, stride=2, last_beat=13, first_bar=7)
-    assert (session / "bars.txt").read_text().splitlines() == ["時間 小節", "00:01.000 7", "00:04.000 8", "00:07.000 9"]
+    assert (session / "bars.txt").read_text().splitlines() == ["Time Bar", "00:01.000 7", "00:04.000 8", "00:07.000 9"]
     assert result["median_bpm"] == 60.
     assert result["phase_selection"] == "explicit"
     assert len((session / "beats.csv").read_text().splitlines()) == 8

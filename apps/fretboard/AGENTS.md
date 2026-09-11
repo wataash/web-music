@@ -6,7 +6,7 @@ Routes:
 
 - `/en`: English UI
 - `/ja`: Japanese UI
-- `/`: redirects to `/en`
+- `/`: English UI
 
 ## Development
 

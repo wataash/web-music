@@ -27,7 +27,7 @@ test("preserves lyrics, credit, rhythm, empty measures and trailing directions w
   const raw = "{title:Example}\n{subtitle:歌：Band 作詞：Writer 作曲：Composer}\n{custom:extra}\n|[C]歌(うた)[>==] | ---- |\n\n(2/4)[G7]--\n(Repeat & F.O)\n";
   const { score } = extractChordWiki(raw);
   assert.equal(score.blocks.flat().map(token => token.raw).join(""), raw);
-  assert.ok(score.fields.some(field => field.label === "歌・作詞・作曲" && field.value.includes("Composer")));
+  assert.ok(score.fields.some(field => field.label === "Vocals / lyrics / music" && field.value.includes("Composer")));
   assert.ok(score.fields.some(field => field.label === "custom" && field.value === "extra"));
   assert.equal(score.blocks.flat().filter(token => token.kind === "chord").length, 2);
 });

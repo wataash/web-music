@@ -23,7 +23,7 @@ function tokenize(raw, positions, pattern, describe) {
 
 export function chordWikiScore(raw, positions) {
   const fields = [];
-  const labels = { title: "曲名", subtitle: "歌・作詞・作曲", artist: "アーティスト", key: "原調" };
+  const labels = { title: "Title", subtitle: "Vocals / lyrics / music", artist: "Artist", key: "Original key" };
   const tokens = tokenize(raw, positions, /^(?:\{[^}]*\}|\[[^\]]*\]|\r?\n|[^\[{\r\n]+|[\s\S])/, text => {
     const directive = /^\{([^:}]+):([\s\S]*)\}$/.exec(text);
     if (directive) {
@@ -35,7 +35,7 @@ export function chordWikiScore(raw, positions) {
     }
     // Brackets that are not chords hold bar lines, rhythm and accents; ChordWiki
     // prints them on the chord row too.
-    if (text.startsWith("[") && text.endsWith("]")) return { kind: "marker", text: text.slice(1, -1), label: "元譜の記号" };
+    if (text.startsWith("[") && text.endsWith("]")) return { kind: "marker", text: text.slice(1, -1), label: "Source symbol" };
     return { kind: text.includes("\n") ? "break" : "text", text };
   });
   const blocks = [[]];

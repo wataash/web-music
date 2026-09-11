@@ -26,23 +26,23 @@ function tokenize(raw, positions, pattern, describe) {
 // https://www.irealpro.com/ireal-pro-custom-chord-chart-protocol/
 // Compressed bar/space tokens: https://garten.salat.dev/041-scraping-chords/
 const symbols = {
-  "|": ["bar", "│", "小節線"],
-  "[": ["bar", "║", "開始二重線"], "]": ["bar", "║", "終了二重線"],
-  "{": ["bar", "𝄆", "反復開始"], "}": ["bar", "𝄇", "反復終了"], Z: ["bar", "▕", "終止線"],
-  x: ["symbol", "％", "前の1小節を反復"],
-  r: ["symbol", "𝄎", "前の2小節を反復"], p: ["symbol", "/", "直前のコードを反復"],
-  S: ["symbol", "𝄋", "セーニョ"], Q: ["symbol", "𝄌", "コーダ"], f: ["symbol", "𝄐", "フェルマータ"],
-  U: ["symbol", "END", "再生終了小節"],
-  s: ["size", "狭", "以降のコードを狭く表示"], l: ["size", "標準", "以降のコードを標準幅で表示"],
-  ",": ["divider", "", "空きセルなしで次のコードへ"],
-  " ": ["space", "   ", "空きセル"],
+  "|": ["bar", "│", "Barline"],
+  "[": ["bar", "║", "Opening double barline"], "]": ["bar", "║", "Closing double barline"],
+  "{": ["bar", "𝄆", "Start repeat"], "}": ["bar", "𝄇", "End repeat"], Z: ["bar", "▕", "Final barline"],
+  x: ["symbol", "％", "Repeat previous bar"],
+  r: ["symbol", "𝄎", "Repeat previous two bars"], p: ["symbol", "/", "Repeat previous chord"],
+  S: ["symbol", "𝄋", "Segno"], Q: ["symbol", "𝄌", "Coda"], f: ["symbol", "𝄐", "Fermata"],
+  U: ["symbol", "END", "Playback end"],
+  s: ["size", "Narrow", "Narrow chord spacing"], l: ["size", "Standard", "Standard chord spacing"],
+  ",": ["divider", "", "Next chord without an empty cell"],
+  " ": ["space", "   ", "Empty cell"],
 };
 
 export function irealScore(raw, positions, fields, musicIndex) {
-  const labels = ["曲名", "作曲者・アーティスト", "追加情報", "スタイル", "原調", "移調設定"];
-  const settings = fields.slice(0, musicIndex).map((value, index) => ({ label: labels[index] ?? `追加情報 ${index + 1}`, value }));
-  const playbackLabels = ["伴奏スタイル", "テンポ (BPM)", "コーラス数"];
-  settings.push(...fields.slice(musicIndex + 1).map((value, index) => ({ label: playbackLabels[index] ?? `再生設定 ${index + 1}`, value })));
+  const labels = ["Title", "Composer / artist", "Additional information", "Style", "Original key", "Transpose setting"];
+  const settings = fields.slice(0, musicIndex).map((value, index) => ({ label: labels[index] ?? `Additional information ${index + 1}`, value }));
+  const playbackLabels = ["Accompaniment style", "Tempo (BPM)", "Choruses"];
+  settings.push(...fields.slice(musicIndex + 1).map((value, index) => ({ label: playbackLabels[index] ?? `Playback setting ${index + 1}`, value })));
   function describe(text) {
     // These abbreviations occupy the same cells as their expanded spellings.
     const compressed = { XyQ: [" ", " ", " "], LZ: [" ", "|"], Kcl: ["|", "x", " "] };
@@ -53,15 +53,15 @@ export function irealScore(raw, positions, fields, musicIndex) {
     }
     if (text.startsWith("<")) {
       const position = /^<\*(\d+)/.exec(text);
-      return { kind: "comment", text: text.slice(1, -1).replace(/^\*\d+/, ""), ...(position ? { position: Number(position[1]), label: `注記の高さ ${position[1]}` } : {}) };
+      return { kind: "comment", text: text.slice(1, -1).replace(/^\*\d+/, ""), ...(position ? { position: Number(position[1]), label: `Note height ${position[1]}` } : {}) };
     }
-    if (text.startsWith("*")) return { kind: "section", text: text.slice(1), label: "セクション" };
+    if (text.startsWith("*")) return { kind: "section", text: text.slice(1), label: "Section" };
     if (text.startsWith("T")) {
       const value = text.slice(1);
-      return { kind: "symbol", text: value === "12" ? "12/8" : `${value.slice(0, -1)}/${value.slice(-1)}`, label: "拍子" };
+      return { kind: "symbol", text: value === "12" ? "12/8" : `${value.slice(0, -1)}/${value.slice(-1)}`, label: "Time signature" };
     }
-    if (text.startsWith("N")) return { kind: "symbol", text: text === "N0" ? "⌜" : `⌜${text.slice(1)}.`, label: text === "N0" ? "番号なし括弧" : `${text.slice(1)}番括弧` };
-    if (/^Y+$/.test(text)) return { kind: "break", text: "\n".repeat(text.length), label: `段間 ${text.length}` };
+    if (text.startsWith("N")) return { kind: "symbol", text: text === "N0" ? "⌜" : `⌜${text.slice(1)}.`, label: text === "N0" ? "Ending bracket" : `Ending ${text.slice(1)}` };
+    if (/^Y+$/.test(text)) return { kind: "break", text: "\n".repeat(text.length), label: `Row spacing ${text.length}` };
     return { kind: "text", text };
   }
   const tokens = tokenize(raw, positions, /^(?:<[^>]*>|\*\w|T\d+|N\d|XyQ|Kcl|LZ|Y+|[\s\S])/, describe);

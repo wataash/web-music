@@ -267,7 +267,7 @@ def export(root, *, beats_per_bar=4, first_beat=None, stride=1, last_beat=None, 
     if click_track and shutil.which("ffmpeg") is None:
         raise ValueError("Required executable is not installed: ffmpeg")
     (root / "result.json").unlink(missing_ok=True)
-    (root / "bars.txt").write_text("時間 小節\n" + "".join(f"{timestamp(t)} {i}\n" for i, t in enumerate(downbeats, first_bar)), encoding="utf-8")
+    (root / "bars.txt").write_text("Time Bar\n" + "".join(f"{timestamp(t)} {i}\n" for i, t in enumerate(downbeats, first_bar)), encoding="utf-8")
     (root / "beats.csv").write_text("time_seconds,beat,bar,beat_in_bar\n" + "".join(f"{t:.6f},{i + 1},{first_bar + i // beats_per_bar},{i % beats_per_bar + 1}\n" for i, t in enumerate(selected)), encoding="utf-8")
     for filename in ("review.wav", "review.opus"):
         (root / filename).unlink(missing_ok=True)
