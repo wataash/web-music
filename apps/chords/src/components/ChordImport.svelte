@@ -44,10 +44,11 @@ SPDX-License-Identifier: Apache-2.0
 <div class="import">
 <details bind:open>
   <summary>Import iReal Pro charts</summary>
-  <p>Import an HTML file or link shared from iReal Pro. Songs and playlists are supported. Charts are saved in this browser.</p>
-  <label>HTML file<input type="file" accept=".html,.htm,.txt,text/html,text/plain" multiple disabled={busy} onchange={importFiles} /></label>
-  <label>Shared link / HTML<textarea bind:value={text} rows="3" disabled={busy} placeholder="irealb://… or irealbook://…"></textarea></label>
+  <p>Import songs or playlists from iReal Pro. Charts are saved in this browser.</p>
+  <p id="ireal-paste-help">Right-click an iReal link on a computer, or touch and hold it on a phone or tablet, and copy the link address. Paste it below, then choose Import.</p>
+  <label>Shared link / HTML<textarea bind:value={text} rows="3" disabled={busy} aria-describedby="ireal-paste-help" autocapitalize="off" spellcheck={false} placeholder="irealb://… or irealbook://…"></textarea></label>
   <button disabled={busy || !text.trim()} onclick={() => importText(text)}>Import</button>
+  <label>HTML file<input type="file" accept=".html,.htm,.txt,text/html,text/plain" multiple disabled={busy} onchange={importFiles} /></label>
   {#if errors.length}<details open><summary>Songs that could not be imported</summary><ul>{#each errors as error}<li>{error}</li>{/each}</ul></details>{/if}
 </details>
 <p role="status">{message}</p>

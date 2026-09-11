@@ -46,7 +46,7 @@ An independent Svelte app / PWA for practicing guitar chord tones with iReal Pro
 
 ## Importing iReal Pro charts
 
-Use “Import iReal Pro charts” to import shared HTML files or `irealb://` / `irealbook://` links. Both individual songs and playlists are supported. Imported songs can be searched, transposed, displayed in a list and deleted. Importing the same chart again does not create a duplicate.
+Open “Import iReal Pro charts”. On a computer, right-click an iReal link and copy its address; on a phone or tablet, touch and hold the link to copy it. Paste the `irealb://` or `irealbook://` link into “Shared link / HTML”, then choose “Import”. You can also select a shared HTML file. Both individual songs and playlists are supported. Imported songs can be searched, transposed, displayed in a list and deleted. Importing the same chart again does not create a duplicate.
 
 Charts and song information are stored in this browser's IndexedDB (`music-flashcards-chord-library`) and are never sent to a server. Keep the original HTML files: clearing site data deletes the library. Resetting practice settings does not delete imported charts.
 
