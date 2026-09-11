@@ -9,3 +9,14 @@ routes = [{ pattern = "mf.wataash.com", custom_domain = true }]
 # nobody, so there is no script to run in front of the files.
 [assets]
 directory = "./apps/flashcards/dist"
+
+[env.chords]
+name = "music-flashcards-chords"
+workers_dev = true
+routes = [{ pattern = "chords.wataash.com", custom_domain = true }]
+
+[env.chords.assets]
+directory = "./apps/chords/dist"
+
+[env.chords.build]
+command = "pnpm build:chords"

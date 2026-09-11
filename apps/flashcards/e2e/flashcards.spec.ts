@@ -184,6 +184,8 @@ test("lists the decks as they import, cheapest first", async ({
   shot,
 }) => {
   await page.goto("/");
+  await expect(page).toHaveTitle("Music Flashcards");
+  await expect(page.getByRole("button", { name: "CHORDS", exact: true })).toHaveCount(0);
 
   // Music Staff is imported first and is studiable while the rest arrive.
   await expect(deckRow(page, "Music Staff")).toBeVisible({

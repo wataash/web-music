@@ -4,7 +4,16 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "exports": "./src/extract.js",
+  "exports": {
+    ".": {
+      "types": "./src/extract.d.ts",
+      "default": "./src/extract.js"
+    },
+    "./intervals": {
+      "types": "./src/intervals.d.ts",
+      "default": "./src/intervals.js"
+    }
+  },
   "files": [
     "src/",
     "README.md",

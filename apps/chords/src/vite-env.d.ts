@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-
-export { DEGREES, QUALITY_INTERVALS, intervalsForQuality } from "@web-music/ireal/intervals";
+/// <reference types="svelte" />
+/// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/client" />

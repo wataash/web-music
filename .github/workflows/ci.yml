@@ -59,3 +59,17 @@ jobs:
           name: playwright-report-flashcards
           path: apps/flashcards/playwright-report/
           retention-days: 30
+
+  e2e-chords:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --global pnpm@11.17.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:chords
+      - run: pnpm --dir apps/chords exec playwright install --with-deps chromium
+      - run: pnpm --dir apps/chords exec playwright test --project=chromium

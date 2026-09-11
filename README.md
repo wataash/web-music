@@ -6,6 +6,7 @@ decks they ship with, and the tools that build them.
 ## Layout
 
 - `apps/flashcards/`: Music Flashcards (a Svelte web app / PWA)
+- `apps/chords/`: independent iReal Pro chord practice app / PWA
 - `packages/practice-ui/`: shared audio, layout settings, theme and settings UI
 - `apps/circle-of-fifths-playground/`: interactive circle of fifths SVG playground
 - `apps/fretboard/`: fretboard app showing scales and chord tones (Next.js)

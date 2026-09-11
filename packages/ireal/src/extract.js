@@ -32,10 +32,61 @@ export function scramble(encoded) {
 }
 
 export function extractIreal(html) {
-  const links = [...html.matchAll(/irealb:\/\/([^"'<>\s]+)/g)];
-  if (links.length !== 1) throw new Error("Expected exactly one irealb:// link");
-  const payload = decodeURIComponent(links[0][1]);
-  if (payload.split(PREFIX).length > 2) throw new Error("Playlists are not supported; export one song per HTML file");
+  const collection = readPlaylist(html, true);
+  if (collection.errors.length) throw new Error(collection.errors[0].message);
+  if (collection.songs.length !== 1) throw new Error("Expected exactly one song; use extractIrealPlaylist for playlists");
+  return collection.songs[0];
+}
+
+// Parse links as text, never as executable HTML. A bad chart must not prevent
+// the remaining songs in a shared playlist from being imported.
+export function extractIrealPlaylist(text) {
+  return readPlaylist(text, false);
+}
+
+function readPlaylist(text, strictLinks) {
+  const links = [...text.matchAll(/(irealb|irealbook):\/\/([^"'<>\s]+)/g)];
+  if (!links.length) throw new Error("iReal Proの共有リンクが見つかりません。");
+  const songs = [], errors = [];
+  let name = "";
+  for (const [index, [, scheme, encoded]] of links.entries()) {
+    let payload;
+    try { payload = decodeURIComponent(encoded.replaceAll("&amp;", "&")); }
+    catch (error) {
+      if (strictLinks) throw error;
+      errors.push({ title: `Link ${index + 1}`, message: error.message });
+      continue;
+    }
+    let entries;
+    if (scheme === "irealbook") {
+      const fields = payload.split("=");
+      entries = [];
+      while (fields.length >= 6) {
+        const [title, artist, style, key, , raw] = fields.splice(0, 6);
+        entries.push([title, artist, "", style, key, "", PREFIX + scramble(raw)].join("="));
+      }
+      name ||= fields.join("=");
+    } else {
+      // Empty composer/additional-info fields also contain ===. Only split
+      // when the next entry has all six header fields and a music marker.
+      entries = payload.split(/===(?=[^=]*=[^=]*=[^=]*=[^=]*=[^=]*=[^=]*=1r34LbKcu7)/);
+      const last = entries.at(-1);
+      const musicAt = last.indexOf(PREFIX);
+      const end = last.indexOf("===", musicAt + PREFIX.length);
+      if (musicAt >= 0 && end >= 0) {
+        name ||= last.slice(end + 3);
+        entries[entries.length - 1] = last.slice(0, end);
+      }
+    }
+    for (const entry of entries) {
+      try { songs.push(extractSong(entry)); }
+      catch (error) { errors.push({ title: entry.split("=")[0], message: error.message }); }
+    }
+  }
+  return { name, songs, errors };
+}
+
+function extractSong(payload) {
   const fields = payload.split("=");
   const music = fields.find(field => field.startsWith(PREFIX));
   if (!music) throw new Error("Unsupported iReal encoding (expected 1r34LbKcu7)");
@@ -65,7 +116,7 @@ export function extractIreal(html) {
     }
     // Ignore layout and navigation. Do not expand repeats.
     // Token reference: https://github.com/pianosnake/ireal-reader/blob/master/Parser.js
-    const control = /^(?:T\d+|N\d|XyQ|Kcl|LZ|[\s,|{}\[\]YZSQUxpsrlf]+)/.exec(rest);
+    const control = /^(?:T\d+|N\d|XyQ|Kcl|LZ|[\s,|{}\[\]()YZSQUxpsrlf]+)/.exec(rest);
     if (control) {
       if (/LZ|Kcl|[|{}\[\]]/.test(control[0])) chordInMeasure = null;
       offset += control[0].length; continue;
@@ -77,7 +128,7 @@ export function extractIreal(html) {
       offset++;
       continue;
     }
-    const chord = /^([A-G][b#]?|W)([+\-^\dhob#suadlt]*)(\/[A-G][#b]?)?/.exec(rest);
+    const chord = /^([A-G][b#]?|W)(\*[^*]*\*|(?:maj|min)?[+\-^\dhob#suadlt]*(?:\(add\d+\))?)(\/[A-G][#b]?)?/.exec(rest);
     if (!chord) throw new Error(`Unrecognized iReal token at ${offset}: ${rest.slice(0, 24)}`);
     positions.push({ start: offset, end: offset + chord[0].length, chordIndex: chords.length });
     let [, root, quality, bass = ""] = chord;

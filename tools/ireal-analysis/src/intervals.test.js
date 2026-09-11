@@ -23,8 +23,9 @@ describe("QUALITY_INTERVALS", () => {
     }
   });
 
-  it("gives every quality a 3rd or a suspended 4th", () => {
+  it("gives every quality except power chords a third or suspended degree", () => {
     for (const [quality, intervals] of QUALITY_INTERVALS) {
+      if (quality === "5") { assert.deepEqual(intervals, ["P5"]); continue; }
       assert.ok(
         ["M3", "m3", "P4", "M2"].some((third) => intervals.includes(third)),
         `${quality} has no 3rd`,

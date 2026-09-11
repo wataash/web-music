@@ -343,7 +343,8 @@ committed to Git.
    them from main chords.
 8. Counted only the chord tones a symbol names explicitly. Tones a player might
    add, such as the 9th over `C13`, are not counted. The quality-to-interval map
-   is in [`src/intervals.js`][intervals-map].
+   is in [`packages/ireal/src/intervals.js`][intervals-map], shared with the
+   browser's chord importer through the local `src/intervals.js` re-export.
 9. Derived chord-tone spellings from the interval's size (how many letter names
    it spans) and its semitone count. The `♯9` of `E7♯9` is F𝄪, kept distinct
    from the enharmonic G.
@@ -392,4 +393,4 @@ node --test tools/ireal-analysis/src/*.test.js
 [reader]: https://github.com/pianosnake/ireal-reader
 [reader-revision]: https://github.com/pianosnake/ireal-reader/tree/662106fe60ea3f91574ddf98df0e2468a3d89e6a
 [analysis-script]: ./src/analyze.js
-[intervals-map]: ./src/intervals.js
+[intervals-map]: ../../packages/ireal/src/intervals.js
