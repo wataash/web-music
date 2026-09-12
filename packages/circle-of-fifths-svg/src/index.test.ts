@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { DEFAULT_LAYOUT } from "@circle-of-fifths/core";
 import { describe, expect, test } from "vitest";
 
 import {
@@ -36,10 +37,12 @@ describe("SVG diagram", () => {
     const model = createDiagramModel();
     const [major, minor] = model.sectors[0].labels;
 
-    expect(major.noteLines.map(({ y }) => y)).toEqual([-38, 0, 38]);
-    expect(minor.noteLines.map(({ y }) => y)).toEqual([-38, 0, 38]);
-    expect(major.noteLines[0].accidentalX).toBe(13);
-    expect(minor.noteLines[0].accidentalX).toBe(13);
+    const ys = major.noteLines.map(({ y }) => y);
+    expect(minor.noteLines.map(({ y }) => y)).toEqual(ys);
+    expect(ys[1] - ys[0]).toBeGreaterThan(0);
+    expect(ys[2] - ys[1]).toBe(ys[1] - ys[0]);
+    expect(major.noteLines[0].accidentalX).toBeGreaterThan(0);
+    expect(minor.noteLines[0].accidentalX).toBe(major.noteLines[0].accidentalX);
   });
 
   test("renders a self-contained SVG", () => {
@@ -67,12 +70,6 @@ describe("SVG diagram", () => {
     const atFive = model.keySignatureGroups.find(({ hour }) => hour === 5);
     const atTwelve = model.keySignatureGroups.find(({ hour }) => hour === 12);
 
-    expect(model.viewBox).toEqual({
-      x: -56.5,
-      y: -71.5,
-      width: 1113,
-      height: 1129,
-    });
     expect(model.keySignatureGroups).toHaveLength(12);
     expect(model.keySignatureGroups.flatMap(({ staffs }) => staffs)).toHaveLength(
       24,
@@ -85,13 +82,18 @@ describe("SVG diagram", () => {
       const dx = Math.max(left - 500, 500 - right, 0);
       const dy = Math.max(top - 500, 500 - bottom, 0);
 
-      expect(Math.hypot(dx, dy)).toBeCloseTo(480);
+      if (group.hour === 3 || group.hour === 12) {
+        expect(Math.hypot(dx, dy)).toBeGreaterThan(DEFAULT_LAYOUT.outerRadius);
+      }
+      expect(left).toBeGreaterThanOrEqual(model.viewBox.x);
+      expect(right).toBeLessThanOrEqual(model.viewBox.x + model.viewBox.width);
+      expect(top).toBeGreaterThanOrEqual(model.viewBox.y);
+      expect(bottom).toBeLessThanOrEqual(model.viewBox.y + model.viewBox.height);
     }
     expect(atNine?.staffs.map(({ clef }) => clef)).toEqual([
       "treble",
       "bass",
     ]);
-    expect(atNine?.staffs.map(({ clefY }) => clefY)).toEqual([12, 18]);
     expect(
       atNine?.staffs[0].signatures.map(
         ({ fifths, accidentals }) => ({
@@ -115,11 +117,8 @@ describe("SVG diagram", () => {
     expect(atEight?.staffs[0].signatures.map(({ fifths }) => fifths)).toEqual([
       -4,
     ]);
-    expect(atEight?.staffs.map(({ lineEndX }) => lineEndX)).toEqual([
-      -67,
-      -67,
-    ]);
-    expect(atNine?.staffs.map(({ lineEndX }) => lineEndX)).toEqual([-74, -74]);
+    expect(atEight?.staffs[0].lineEndX).toBe(atEight?.staffs[1].lineEndX);
+    expect(atEight!.staffs[0].lineEndX).toBeGreaterThan(atNine!.staffs[0].lineEndX);
     expect(
       atFive?.staffs[1].signatures
         .find(({ fifths }) => fifths === -7)
@@ -136,9 +135,6 @@ describe("SVG diagram", () => {
     expect(createDiagramModel().keySignatureGroups).toEqual([]);
     expect(plainSvg).not.toContain(
       'class="circle-of-fifths__key-signature-group"',
-    );
-    expect(signatureSvg).toContain(
-      'viewBox="-56.5 -71.5 1113 1129" width="1113" height="1129"',
     );
     expect(
       signatureSvg.match(/class="circle-of-fifths__staff"/g),

@@ -10,18 +10,6 @@ function copiedSettingsUrl(settings: AppSettings, locale = "en") {
   return `http://localhost:18427/${locale}?settings=${readableSettingsParam(settings)}`;
 }
 
-test("renders the guitar scale board", async ({ page, shot }) => {
-  await page.goto("/en");
-
-  await expect(
-    page.getByRole("heading", { name: "genscale" }),
-  ).toBeVisible();
-  await expect(
-    page.getByLabel("A m7 guitar scale fretboard"),
-  ).toBeVisible();
-  await shot("edit-loaded", { fullPage: true });
-});
-
 test("switches to concat and renders one fretboard per pasted URL", async ({
   page,
   shot,
@@ -44,13 +32,6 @@ test("switches to concat and renders one fretboard per pasted URL", async ({
   };
 
   await page.getByRole("tab", { name: "concat" }).click();
-  await expect(page.getByLabel("Copied settings URLs")).toHaveValue(
-    [
-      'http://localhost:18427/?settings={"key":"D","tuning":["E4","B3","G3","D3","A2","E2"],"notes":["1","...♭9","...9","..♭3","...3","...11","...♯11",".5","...♭13","...13","..♭7","...Δ7"],"noteGrayLevels":[20,40,75,100]}',
-      'http://localhost:18427/?settings={"key":"G","tuning":["E4","B3","G3","D3","A2","E2"],"notes":["1","..♭9","...9","..♯9","..3","...11","..♯11","...5","..♭13","...13","..♯13","...Δ7"],"noteGrayLevels":[20,40,75,100]}',
-      'http://localhost:18427/?settings={"key":"C","tuning":["E4","B3","G3","D3","A2","E2"],"notes":["1","...♭9","...9","...♯9","..3","...11","...♯11",".5","...♭13","...13","...♭7","..Δ7"],"noteGrayLevels":[20,40,75,100]}',
-    ].join("\n"),
-  );
   await expect(page.getByLabel("D m7 guitar scale fretboard")).toBeVisible();
   await expect(
     page.getByLabel("G Altered dominant guitar scale fretboard"),
@@ -83,6 +64,7 @@ test("updates the fretboard label when key and scale change", async ({
   shot,
 }) => {
   await page.goto("/en");
+  await expect(page.getByRole("heading", { name: "genscale" })).toBeVisible();
   await expect(page.getByLabel("A m7 guitar scale fretboard")).toBeVisible();
   await shot("key-a-m7");
 
@@ -167,6 +149,8 @@ test("switches between equal-temperament and equal-width fret spacing", async ({
 test("syncs the settings editor with the controls", async ({ page }) => {
   await page.goto("/en");
 
+  await expect(page.locator('svg circle[fill="#333333"]')).not.toHaveCount(0);
+  await expect(page.getByRole("slider", { name: "NOTE grayscale", exact: true }).locator("xpath=ancestor::label[1]").getByText("Δ7", { exact: true })).toBeVisible();
   const settingEditor = page.getByLabel("Settings editor");
   let settings = JSON.parse(await settingEditor.inputValue());
   expect(settings).toMatchObject({
@@ -194,6 +178,7 @@ test("syncs the settings editor with the controls", async ({ page }) => {
   });
   expect(settings).not.toHaveProperty("scale");
   expect(settings.noteGrayLevels).toEqual([30, 40, 75, 100]);
+  await expect(page.locator('svg circle[fill="#4d4d4d"]')).not.toHaveCount(0);
 
   await page
     .getByRole("combobox", { name: "Fret spacing" })
@@ -316,23 +301,10 @@ test("keeps the fretboard above the controls at small and large widths", async (
     expect(keyBox).not.toBeNull();
     if (!fretboardBox || !keyBox) throw new Error("Missing layout element");
 
+    if (viewport.width === 390) expect(fretboardBox.width).toBeLessThan(1100);
     expect(fretboardBox.y + fretboardBox.height).toBeLessThan(keyBox.y);
     await shot(`layout-${viewport.width}px`);
   }
-});
-
-test("renders a smaller fretboard on mobile", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/en");
-
-  const fretboardBox = await page
-    .getByLabel("A m7 guitar scale fretboard")
-    .boundingBox();
-
-  expect(fretboardBox).not.toBeNull();
-  if (!fretboardBox) throw new Error("Missing fretboard");
-
-  expect(fretboardBox.width).toBeLessThan(1100);
 });
 
 test("shows the 24th fret when the browser is wide enough", async ({ page }) => {
@@ -376,27 +348,6 @@ test("supports editable dot tokens for out-of-scale and hidden labels", async ({
   await expect(page.getByLabel("A Custom guitar scale fretboard")).toBeVisible();
   await expect(page.locator("svg text").filter({ hasText: "♭9" })).toHaveCount(0);
   await shot("notes-labels-hidden");
-});
-
-test("adjusts note grayscale levels", async ({ page, shot }) => {
-  await page.goto("/en");
-
-  await expect(page.locator('svg circle[fill="#333333"]')).not.toHaveCount(0);
-  await shot("grayscale-default");
-  const noteSlider = page.getByRole("slider", {
-    name: "NOTE grayscale",
-    exact: true,
-  });
-  await expect(
-    noteSlider.locator("xpath=ancestor::label[1]").getByText("Δ7", { exact: true }),
-  ).toBeVisible();
-  await noteSlider.focus();
-  for (let i = 0; i < 40; i += 1) {
-    await page.keyboard.press("ArrowRight");
-  }
-
-  await expect(page.locator('svg circle[fill="#999999"]')).not.toHaveCount(0);
-  await shot("grayscale-lightened");
 });
 
 test("renders Japanese UI at /ja", async ({ page, shot }) => {

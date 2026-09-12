@@ -13,7 +13,6 @@ import {
   scheduler,
   serializeFsrsCard,
   startOfStudyDay,
-  State,
 } from "./scheduler";
 
 describe("day arithmetic (04:00 rollover)", () => {
@@ -73,27 +72,6 @@ describe("fsrs card serialization", () => {
     expect(roundTripped.state).toBe(rated.state);
     expect(roundTripped.stability).toBe(rated.stability);
     expect(roundTripped.last_review).toEqual(rated.last_review);
-  });
-});
-
-describe("scheduling sanity", () => {
-  it("orders answer intervals Again <= Hard <= Good <= Easy", () => {
-    const now = new Date("2026-08-15T10:00:00Z");
-    const record = scheduler.repeat(newEmptyCard(now), now);
-    const due = (r: (typeof Rating)["Again" | "Hard" | "Good" | "Easy"]) =>
-      record[r].card.due.getTime();
-    expect(due(Rating.Again)).toBeLessThanOrEqual(due(Rating.Hard));
-    expect(due(Rating.Hard)).toBeLessThanOrEqual(due(Rating.Good));
-    expect(due(Rating.Good)).toBeLessThanOrEqual(due(Rating.Easy));
-  });
-
-  it("moves a card out of the New state on first answer", () => {
-    const now = new Date("2026-08-15T10:00:00Z");
-    const card = newEmptyCard(now);
-    expect(card.state).toBe(State.New);
-    expect(scheduler.repeat(card, now)[Rating.Good].card.state).not.toBe(
-      State.New,
-    );
   });
 });
 

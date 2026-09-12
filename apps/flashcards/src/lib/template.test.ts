@@ -12,8 +12,8 @@ import {
 
 describe("renderTemplate", () => {
   it("substitutes fields", () => {
-    expect(renderTemplate("{{A}} and {{B}}", { A: "x", B: "y" })).toBe(
-      "x and y",
+    expect(renderTemplate("{{A}} and {{FrontSide}}", { A: "x", FrontSide: "<b>Q</b>" })).toBe(
+      "x and <b>Q</b>",
     );
   });
 
@@ -43,15 +43,6 @@ describe("renderTemplate", () => {
     expect(renderTemplate(tmpl, { A: "1", B: "1" })).toBe("ab");
     expect(renderTemplate(tmpl, { A: "1", B: "" })).toBe("a");
     expect(renderTemplate(tmpl, { A: "", B: "1" })).toBe("");
-  });
-
-  it("substitutes FrontSide like a field", () => {
-    expect(
-      renderTemplate("{{FrontSide}}<hr>{{Back}}", {
-        FrontSide: "<b>Q</b>",
-        Back: "A",
-      }),
-    ).toBe("<b>Q</b><hr>A");
   });
 
   it("ignores filters, using the name after the last colon", () => {

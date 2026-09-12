@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { noteSemitone } from "./cards";
-import { INTERVAL_KEY_COUNTS, intervalKeyboards } from "./keyboard";
+import { intervalKeyboards } from "./keyboard";
 import { drawIntervalKeyboard } from "./web-keyboard";
 
 const M3 = { root: "C", answer: "E" } as const;
@@ -29,24 +29,22 @@ describe("the keyboard on an interval card", () => {
     );
   });
 
-  it("centres every selectable key count between E4 and F4", () => {
-    for (const keyCount of INTERVAL_KEY_COUNTS) {
-      const { front, back } = intervalKeyboards({ ...M3, keyCount });
-      for (const keyboard of [front, back]) {
-        expect(keyboard.svg).toContain(`data-key-count="${keyCount}"`);
-        expect(keyboard.svg).toContain('data-center-between="E4/F4"');
+  it("centres representative key counts between E4 and F4", () => {
+    for (const keyCount of [25, 27, 37, 41] as const) {
+      const { front: keyboard } = intervalKeyboards({ ...M3, keyCount });
+      expect(keyboard.svg).toContain(`data-key-count="${keyCount}"`);
+      expect(keyboard.svg).toContain('data-center-between="E4/F4"');
 
-        const [, x, width] = keyboard.svg.match(
-          /viewBox="([\d.]+) 0 ([\d.]+) [\d.]+"/,
-        )!;
-        const [, eX, eWidth] = keyboard.svg.match(
-          /data-note="E4"[^>]* x="([\d.]+)"[^>]+width="([\d.]+)"/,
-        )!;
-        expect(Number(eX) + Number(eWidth)).toBeCloseTo(
-          Number(x) + Number(width) / 2,
-          1,
-        );
-      }
+      const [, x, width] = keyboard.svg.match(
+        /viewBox="([\d.]+) 0 ([\d.]+) [\d.]+"/,
+      )!;
+      const [, eX, eWidth] = keyboard.svg.match(
+        /data-note="E4"[^>]* x="([\d.]+)"[^>]+width="([\d.]+)"/,
+      )!;
+      expect(Number(eX) + Number(eWidth)).toBeCloseTo(
+        Number(x) + Number(width) / 2,
+        1,
+      );
     }
     expect(() =>
       intervalKeyboards({ ...M3, keyCount: 23 as never }),

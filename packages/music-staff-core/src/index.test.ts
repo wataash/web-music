@@ -19,6 +19,7 @@ import {
   keyboardLabelPlacement,
   keyboardRangeFor,
   keyboardWidthForKeys,
+  pitchAtDiatonicIndex,
   pitchAtStaffStep,
   pitchSemitone,
   renderKeyboardRangeSvg,
@@ -36,7 +37,12 @@ describe("staff positions", () => {
     expect(diatonicIndex({ note: "B", octave: 3 })).toBe(27);
     expect(formatPitch({ note: "C", octave: 4 })).toBe("C4");
     expect(parsePitch("C4")).toEqual({ note: "C", octave: 4 });
-    expect(() => parsePitch("C#4")).toThrow('like "C4"');
+    expect(diatonicIndex({ note: "D", octave: 4 })).toBe(29);
+    expect(pitchAtDiatonicIndex(28)).toEqual({ note: "C", octave: 4 });
+    expect(pitchAtDiatonicIndex(27)).toEqual({ note: "B", octave: 3 });
+    for (const invalid of ["C#4", "H4", "C", "c4"]) {
+      expect(() => parsePitch(invalid)).toThrow('like "C4"');
+    }
   });
 
   it("covers six ledger lines either side of every clef", () => {
@@ -78,6 +84,7 @@ describe("staff positions", () => {
     expect(ledgerSteps(8)).toEqual([]);
     expect(ledgerSteps(-1)).toEqual([]);
     expect(ledgerSteps(-2)).toEqual([-2]);
+    expect(ledgerSteps(-3)).toEqual([-2]);
     expect(ledgerSteps(-4)).toEqual([-2, -4]);
     expect(ledgerSteps(11)).toEqual([10]);
     expect(ledgerSteps(12)).toEqual([10, 12]);

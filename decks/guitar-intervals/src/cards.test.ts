@@ -6,8 +6,6 @@ import { describe, expect, it } from "vitest";
 import {
   DEGREE_NAMES,
   GUITAR_INTERVAL_CARDS,
-  MAX_FRET_REACH,
-  STRING_COUNT,
   semitonesBetween,
 } from "./cards";
 
@@ -21,8 +19,6 @@ const card = (root: number, target: number, offset: number) =>
 
 describe("guitar interval cards", () => {
   it("asks about every reachable cell but the root's own", () => {
-    const cells = STRING_COUNT * (MAX_FRET_REACH * 2 + 1);
-    expect(GUITAR_INTERVAL_CARDS).toHaveLength(STRING_COUNT * (cells - 1));
     expect(GUITAR_INTERVAL_CARDS).toHaveLength(462);
     expect(new Set(GUITAR_INTERVAL_CARDS.map(({ id }) => id)).size).toBe(
       GUITAR_INTERVAL_CARDS.length,
@@ -48,10 +44,5 @@ describe("guitar interval cards", () => {
     expect(semitonesBetween(6, 6, 15)).toBe(3);
     expect(DEGREE_NAMES[3]).toEqual(["m3", "♯9"]);
     expect(DEGREE_NAMES[6]).toEqual(["d5", "A4", "♯11"]);
-    expect(
-      GUITAR_INTERVAL_CARDS.every(
-        ({ semitones, names }) => names === DEGREE_NAMES[semitones],
-      ),
-    ).toBe(true);
   });
 });

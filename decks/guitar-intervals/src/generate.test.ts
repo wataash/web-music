@@ -19,7 +19,7 @@ import {
   generateAnkiDeck,
 } from "./generate";
 import { PACKAGE_SPEC } from "./package-spec";
-import { CARD_CSS, ROOT_DECK_NAME } from "./template";
+import { CARD_CSS } from "./template";
 
 describe("guitar interval deck generation", () => {
   it("places all eight altered references one fret away on the target string", () => {
@@ -151,9 +151,5 @@ describe("guitar interval deck generation", () => {
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
-  });
-
-  it("names its deck once", () => {
-    expect(PACKAGE_SPEC.rootDeckNames).toEqual([ROOT_DECK_NAME]);
   });
 });

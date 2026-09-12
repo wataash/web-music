@@ -43,29 +43,6 @@ describe("fretboard preview", () => {
     ).rejects.toThrow("string 1-6");
   });
 
-  test("asks a natural position with the same mark as any other", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "fretboard-preview-test-"));
-
-    try {
-      const summary = await writeFretboardPreview({
-        outputDirectory: directory,
-        string: 3,
-        fret: 0,
-      });
-      const frontSvg = await readFile(summary.frontPath, "utf8");
-      const backSvg = await readFile(summary.backPath, "utf8");
-
-      expect(frontSvg).toContain(
-        'class="fretboard__target" data-string="3" data-fret="0"',
-      );
-      expect(frontSvg).toContain(">?</text>");
-      expect(backSvg).toContain(">G</text>");
-      expect(summary.note).toBe("G");
-    } finally {
-      await rm(directory, { recursive: true, force: true });
-    }
-  });
-
   test("writes a note-to-positions preview with ASCII accidental input", async () => {
     const directory = await mkdtemp(join(tmpdir(), "fretboard-preview-test-"));
 

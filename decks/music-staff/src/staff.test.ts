@@ -3,7 +3,7 @@
 
 import { describe, expect, test } from "vitest";
 
-import { CLEFS, ledgerSteps, staffStep } from "./cards";
+import { CLEFS } from "./cards";
 import {
   BOTTOM_LINE_Y,
   CLEF_GLYPHS,
@@ -83,11 +83,6 @@ describe("staff SVG", () => {
   });
 
   test("puts middle C where each clef expects it", () => {
-    expect(staffStep("treble", "C4")).toBe(-2);
-    expect(staffStep("bass", "C4")).toBe(10);
-    expect(staffStep("alto", "C4")).toBe(4);
-    expect(staffStep("tenor", "C4")).toBe(6);
-
     // Alto puts middle C on the middle line, tenor on the fourth line, and
     // both other clefs push it onto the first ledger line outside the staff.
     expect(noteY(renderStaffSvg({ clef: "alto", pitch: "C4" }))).toBe(
@@ -101,13 +96,6 @@ describe("staff SVG", () => {
   });
 
   test("places representative notes on their own line or space", () => {
-    expect(staffStep("treble", "E4")).toBe(0);
-    expect(staffStep("treble", "F5")).toBe(8);
-    expect(staffStep("bass", "G2")).toBe(0);
-    expect(staffStep("bass", "A3")).toBe(8);
-    expect(staffStep("alto", "F3")).toBe(0);
-    expect(staffStep("tenor", "D3")).toBe(0);
-
     expect(noteY(renderStaffSvg({ clef: "treble", pitch: "G4" }))).toBe(168);
     expect(noteY(renderStaffSvg({ clef: "treble", pitch: "B4" }))).toBe(152);
     expect(noteY(renderStaffSvg({ clef: "treble", pitch: "C6" }))).toBe(88);
@@ -118,11 +106,6 @@ describe("staff SVG", () => {
   });
 
   test("adds ledger lines above and below the staff", () => {
-    expect(ledgerSteps(12)).toEqual([10, 12]);
-    expect(ledgerSteps(11)).toEqual([10]);
-    expect(ledgerSteps(-3)).toEqual([-2]);
-    expect(ledgerSteps(-4)).toEqual([-2, -4]);
-
     const highC = renderStaffSvg({ clef: "treble", pitch: "C6" });
     expect(highC.match(/class="staff__ledger-line"/g)).toHaveLength(2);
     expect(highC).toContain(

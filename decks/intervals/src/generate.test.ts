@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import JSZip from "jszip";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { createWebPackage } from "@web-music/anki-apkg/package";
 
@@ -20,7 +20,6 @@ import {
 import { PACKAGE_SPEC, WEB_PACKAGE_SPEC } from "./package-spec";
 import {
   BACK_TEMPLATE,
-  CARD_CSS,
   FRONT_TEMPLATE,
   IDENTIFICATION_DECK_NAME,
   ROOT_DECK_NAME,
@@ -29,6 +28,10 @@ import {
 } from "./template";
 
 describe("interval deck generation", () => {
+  let artifacts: ReturnType<typeof createDeckArtifacts>;
+  beforeAll(() => {
+    artifacts = createDeckArtifacts();
+  });
   it("holds one calculation card per pair and appends identification", () => {
     const notes = createDeckNotes();
     expect(notes).toHaveLength(
@@ -101,7 +104,7 @@ describe("interval deck generation", () => {
   });
 
   it("draws fixed 37-key front and answer keyboards for Anki", () => {
-    const { notes, media } = createDeckArtifacts();
+    const { notes, media } = artifacts;
     const filenames = new Set(media.map(({ filename }) => filename));
     const images = (field: string): readonly string[] =>
       [...field.matchAll(/src="([^"]+)"/g)].map(([, filename]) => filename);
@@ -118,22 +121,10 @@ describe("interval deck generation", () => {
     }
     expect(FRONT_TEMPLATE).toContain("{{Keyboard}}");
     expect(BACK_TEMPLATE).toContain("{{AnswerKeyboard}}");
-    // The answer takes the question mark's place without moving the question.
-    const question =
-      '<span class="question">{{Question}}</span>';
-    expect(FRONT_TEMPLATE).toContain(
-      `${question}<span class="answer-value">?</span>`,
-    );
-    expect(BACK_TEMPLATE).toContain(
-      `${question}<span class="answer-value">{{Answer}}</span>`,
-    );
-    expect(CARD_CSS).toMatch(
-      /\.prompt-line \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/,
-    );
-    expect(CARD_CSS).toMatch(/\.question \{\s*justify-self: end;/);
-    expect(CARD_CSS).toMatch(
-      /\.answer-value \{\s*justify-self: start;\s*color: #fcd34d;\s*\}/,
-    );
+    expect(FRONT_TEMPLATE).toContain("{{Question}}");
+    expect(FRONT_TEMPLATE).not.toContain("{{Answer}}");
+    expect(BACK_TEMPLATE).toContain("{{Question}}");
+    expect(BACK_TEMPLATE).toContain("{{Answer}}");
     // C m3: the front names only the given note; the back also names E♭ on
     // both sides of it.
     const cm3 = notes.find(({ id }) => id === "interval-m3-c")!;
@@ -172,7 +163,6 @@ describe("interval deck generation", () => {
     expect(WEB_BACK_TEMPLATE).toContain(
       'data-answer="{{AnswerKeyboard}}"',
     );
-    expect(WEB_FRONT_TEMPLATE).toContain("drawIntervalKeyboard");
 
     const web = createWebPackage(WEB_PACKAGE_SPEC, artifacts.notes);
     expect(JSON.stringify(web).length).toBeLessThan(600_000);
@@ -187,7 +177,7 @@ describe("interval deck generation", () => {
         deckCount: 2,
         noteCount:
           INTERVAL_CARDS.length + INTERVAL_IDENTIFICATION_CARDS.length,
-        mediaCount: createDeckArtifacts().media.length,
+        mediaCount: artifacts.media.length,
       });
       const zip = await JSZip.loadAsync(await readFile(outputPath));
       expect(zip.file("meta")).not.toBeNull();

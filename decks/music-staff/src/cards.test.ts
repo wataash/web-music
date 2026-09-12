@@ -7,12 +7,9 @@ import {
   CARDS,
   CLEF_RANGES,
   CLEFS,
-  diatonicIndex,
   DIRECTIONS,
   findCard,
-  naturalPitchesInRange,
   parsePitch,
-  pitchAtDiatonicIndex,
   type Clef,
   type Direction,
 } from "./cards";
@@ -103,21 +100,5 @@ describe("staff reading card data", () => {
         `direction::${card.direction}`,
       ]);
     }
-  });
-
-  test("numbers diatonic steps so middle C is C4", () => {
-    expect(diatonicIndex({ note: "C", octave: 4 })).toBe(28);
-    expect(diatonicIndex({ note: "B", octave: 3 })).toBe(27);
-    expect(diatonicIndex({ note: "D", octave: 4 })).toBe(29);
-    expect(pitchAtDiatonicIndex(28)).toEqual({ note: "C", octave: 4 });
-    expect(pitchAtDiatonicIndex(27)).toEqual({ note: "B", octave: 3 });
-    expect(naturalPitchesInRange("alto")).toHaveLength(33);
-  });
-
-  test("rejects pitches that are not natural notes with an octave", () => {
-    expect(() => parsePitch("H4")).toThrow('like "C4"');
-    expect(() => parsePitch("C#4")).toThrow('like "C4"');
-    expect(() => parsePitch("C")).toThrow('like "C4"');
-    expect(() => parsePitch("c4")).toThrow('like "C4"');
   });
 });

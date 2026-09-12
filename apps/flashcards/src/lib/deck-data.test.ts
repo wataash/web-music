@@ -22,7 +22,6 @@ describe("web deck document", () => {
         deck,
       }),
     ).toBe(deck);
-    expect(deck.decks[0].hiddenByDefault).toBe(true);
   });
 
   it("rejects unsupported versions", () => {

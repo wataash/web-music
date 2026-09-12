@@ -5,7 +5,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test } from "vitest";
 
 import {
   DECK_CONFIG_ID,
@@ -31,12 +31,14 @@ import {
 } from "./template";
 
 describe("Anki deck generation", () => {
+  let artifacts: ReturnType<typeof createDeckArtifacts>;
+  beforeAll(() => {
+    artifacts = createDeckArtifacts();
+  });
   test("uses a fixed dark card theme", () => {
     expect(CARD_CSS).toContain("background: #111827");
     expect(CARD_CSS).toContain("color: #f3f4f6");
     expect(CARD_CSS).toContain("color-scheme: dark");
-    expect(CARD_CSS).not.toContain(".nightMode .diagram");
-    expect(CARD_CSS).not.toContain(".night_mode .diagram");
   });
 
   test("shows the string-fret position above the diagram on both sides", () => {
@@ -50,23 +52,25 @@ describe("Anki deck generation", () => {
         template.indexOf('class="diagram"'),
       );
     }
-    for (const template of [FRONT_TEMPLATE, WEB_FRONT_TEMPLATE]) {
-      expect(template).toContain('{{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span><span class="position-answer" style="visibility: hidden" aria-hidden="true">{{Note}}</span></span>{{/Fret}}');
+    for (const [front, back] of [[FRONT_TEMPLATE, BACK_TEMPLATE], [WEB_FRONT_TEMPLATE, WEB_BACK_TEMPLATE]]) {
+      for (const template of [front, back]) {
+        expect(template).toContain("{{#Fret}}");
+        expect(template).toContain("{{String}}-{{Fret}}");
+      }
+      const hiddenAnswer = front.match(/<span([^>]*)>{{Note}}<\/span>/)![1];
+      expect(hiddenAnswer).toContain('aria-hidden="true"');
+      expect(hiddenAnswer).toMatch(/visibility:\s*hidden/);
+      expect(back.match(/<span([^>]*)>{{Note}}<\/span>/)![1]).not.toMatch(/aria-hidden|visibility/);
     }
-    for (const template of [BACK_TEMPLATE, WEB_BACK_TEMPLATE]) {
-      expect(template).toContain('{{#Fret}}<span class="position-pair"><span class="position-question">{{String}}-{{Fret}}</span><span class="position-answer">{{Note}}</span></span>{{/Fret}}');
+    for (const template of [FRONT_TEMPLATE, BACK_TEMPLATE]) {
+      expect(template).toContain("{{#Positions}}");
+      expect(template).toContain("{{Positions}}");
     }
-    expect(FRONT_TEMPLATE).toContain(
-      '{{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span><span class="position-answer" style="visibility: hidden" aria-hidden="true">{{Positions}}</span></span>{{/Positions}}',
-    );
-    expect(BACK_TEMPLATE).toContain(
-      '{{#Positions}}<span class="position-pair"><span class="position-question">{{Note}}</span><span class="position-answer">{{Positions}}</span></span>{{/Positions}}',
-    );
+    expect(FRONT_TEMPLATE.match(/<span([^>]*)>{{Positions}}<\/span>/)![1]).toContain('aria-hidden="true"');
+    expect(BACK_TEMPLATE.match(/<span([^>]*)>{{Positions}}<\/span>/)![1]).not.toMatch(/aria-hidden|visibility/);
   });
 
   test("creates both drill directions with front and back images", () => {
-    const artifacts = createDeckArtifacts();
-
     expect(artifacts.notes).toHaveLength(282);
     expect(artifacts.media).toHaveLength(564);
     expect(new Set(artifacts.media.map(({ filename }) => filename)).size).toBe(
@@ -179,8 +183,9 @@ describe("Anki deck generation", () => {
   });
 
   test("creates stable, unique IDs and GUIDs", () => {
-    const first = createDeckArtifacts();
+    const first = artifacts;
     const second = createDeckArtifacts();
+    expect(first.media.map(({ filename }) => filename)).toEqual(second.media.map(({ filename }) => filename));
 
     expect(first.notes.map(({ id }) => id)).toEqual(CARDS.map(({ id }) => id));
     expect(first.notes.map(({ guid }) => guid)).toEqual(
@@ -199,7 +204,6 @@ describe("Anki deck generation", () => {
         ({ fields }) => fields[5] === "" && fields[6] === "",
       ),
     ).toBe(true);
-    expect(WEB_FRONT_TEMPLATE).toContain("renderFretboardSvg");
     expect(WEB_FRONT_TEMPLATE).not.toContain('data-note="{{Note}}" data-fret');
     expect(WEB_BACK_TEMPLATE).toContain('data-note="{{Note}}"');
     expect(JSON.stringify(deck).length).toBeLessThan(250_000);

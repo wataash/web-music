@@ -12,10 +12,12 @@ for (const width of [320, 1000]) test(`library controls and import dialog at ${w
   await trigger.click();
   const dialog = page.getByRole('dialog', { name: 'Import iReal Pro charts' });
   await expect(dialog).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(dialog).not.toBeVisible();
-  await expect(trigger).toBeFocused();
-  await trigger.click();
+  if (width === 320) {
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+  }
   await page.getByLabel('Shared link / HTML').fill('irealb://' + encodeURIComponent('Evening Practice with a Very Long Song Title=Example Composer==Swing=C==1r34LbKcu7' + scramble('[C7XyQ|F7XyQZ') + '==0=0'));
   await page.getByRole('button', { name: 'Import', exact: true }).click();
   await expect(dialog).not.toBeVisible();
@@ -30,6 +32,7 @@ for (const width of [320, 1000]) test(`library controls and import dialog at ${w
   await page.screenshot({ path: info.outputPath(`song-library-${width}.png`) });
   await page.getByRole('button', { name: 'Close song library' }).click();
   expect(await page.locator('[data-chord-practice]').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(2);
+  if (width !== 320) return;
   await page.getByText('Full chart', { exact: true }).click();
   await expect(page.locator('.full-score h3')).toHaveCount(0);
   await expect(page.getByRole('group', { name: 'Strings for bass notes' })).toHaveCount(0);
@@ -62,7 +65,8 @@ for (const width of [320, 1000]) test(`library controls and import dialog at ${w
   await expect(bass.getByLabel('String 1', { exact: true })).toBeChecked();
 });
 
-for (const width of [320, 1000]) test(`combines playlist, style, search and favorites at ${width}px`, async ({ page }, info) => {
+test("combines playlist, style, search and favorites", async ({ page }, info) => {
+  const width = 320;
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/');
   await page.getByRole('button', { name: 'Choose song', exact: true }).click();

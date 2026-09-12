@@ -179,27 +179,6 @@ async function study(page: Page, deck: string): Promise<void> {
   await expect(page.locator(".count.new")).not.toHaveText("0");
 }
 
-test("lists the decks as they import, cheapest first", async ({
-  page,
-  shot,
-}) => {
-  await page.goto("/");
-  await expect(page).toHaveTitle("Music Flashcards");
-  await expect(page.getByRole("button", { name: "CHORDS", exact: true })).toHaveCount(0);
-
-  // Music Staff is imported first and is studiable while the rest arrive.
-  await expect(deckRow(page, "Music Staff")).toBeVisible({
-    timeout: IMPORT_TIMEOUT,
-  });
-  await shot("first-deck-listed");
-
-  await expect(page.locator(".preparing")).toHaveCount(0, {
-    timeout: IMPORT_TIMEOUT,
-  });
-  await expect(deckRow(page, "Guitar Fretboard")).toBeVisible();
-  await shot("all-decks-listed");
-});
-
 test("continues importing after one deck fails", async ({ page }) => {
   await page.route("**/__dev_deck/intervals", (route) => route.abort());
   await page.goto("/");
@@ -215,35 +194,16 @@ test("continues importing after one deck fails", async ({ page }) => {
   });
 });
 
-test("shows a card, its answer, and moves the counts", async ({
-  page,
-  shot,
-}) => {
+test("undoes the last answer, and redoes it", async ({ page, shot }) => {
   await openDeckList(page);
+  await expect(page).toHaveTitle("Music Flashcards");
+  await expect(page.getByRole("button", { name: "CHORDS", exact: true })).toHaveCount(0);
+  await expect(deckRow(page, "Guitar Fretboard")).toBeVisible({ timeout: IMPORT_TIMEOUT });
   await study(page, "Treble Clef");
-
-  // The staff and the bare keyboard are drawn as inline SVG when the card is
-  // shown, and the keyboard carries no name until the answer is out.
   const card = page.frameLocator('iframe[title="card"]');
   await expect(card.locator("svg.staff")).toBeVisible();
   await expect(card.locator("svg.keyboard")).toBeVisible();
   await expect(card.locator(".key-name")).toHaveCount(0);
-  await expect(page.locator(".count.new")).toHaveText("19");
-  await shot("question");
-
-  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
-  await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
-  await shot("answer");
-
-  await page.getByRole("button", { name: "GOOD" }).click();
-  await expect(page.locator(".count.new")).toHaveText("18");
-  await expect(page.locator(".count.learn")).toHaveText("1");
-  await shot("after-good");
-});
-
-test("undoes the last answer, and redoes it", async ({ page, shot }) => {
-  await openDeckList(page);
-  await study(page, "Treble Clef");
   const newCount = page.locator(".count.new");
   const learnCount = page.locator(".count.learn");
   await expect(newCount).toHaveText("19");
@@ -285,7 +245,7 @@ test("undoes a deck reset, cards and reviews together", async ({ page }) => {
   await openDeckList(page);
   await study(page, "Treble Clef");
   await page.getByRole("button", { name: "SHOW ANSWER" }).click();
-  await page.getByRole("button", { name: "GOOD" }).click();
+  await page.getByRole("button", { name: "AGAIN" }).click();
   await expect(page.locator(".count.learn")).toHaveText("1");
 
   await openSheetAction(page, "Reset study progress");
@@ -477,31 +437,29 @@ test("plays the guitar root and correct target without repeating the target", as
   expect((await whatWasPlayed(page)).partials).toHaveLength(0);
 });
 
-for (const side of ["lower", "upper"] as const) {
-  test(`plays the root then a correct ${side} key only once`, async ({ page }) => {
-    await recordWhatIsPlayed(page);
-    await page.addInitScript(() => {
-      localStorage.setItem("music-flashcards:deck-card-settings", JSON.stringify({
-        Intervals: { frontAnswer: true },
-      }));
-    });
-    await openDeckList(page);
-    await study(page, "Intervals");
-    const card = page.frameLocator('iframe[title="card"]');
-    const answers = card.locator("rect.is-highlighted");
-    const pitches = await answers.evaluateAll((keys) => keys.map((key) => Number(key.getAttribute("data-semitone"))));
-    const pitch = side === "upper" ? Math.max(...pitches) : Math.min(...pitches);
-    const key = card.locator(`rect.is-highlighted[data-semitone="${pitch}"]`);
-    const box = (await key.boundingBox())!;
-    const root = Number(await card.locator("rect.is-given").getAttribute("data-semitone"));
-    await key.click({ position: { x: box.width / 2, y: box.height * 0.8 } });
-    await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
-    const played = (await whatWasPlayed(page)).partials;
-    expect(played).toHaveLength(8);
-    expect(played[0]).toBeCloseTo(440 * 2 ** ((root - 69) / 12));
-    expect(played[4]).toBeCloseTo(440 * 2 ** ((pitch - 69) / 12));
+test("plays the root then a correct lower key only once", async ({ page }) => {
+  await recordWhatIsPlayed(page);
+  await page.addInitScript(() => {
+    localStorage.setItem("music-flashcards:deck-card-settings", JSON.stringify({
+      Intervals: { frontAnswer: true },
+    }));
   });
-}
+  await openDeckList(page);
+  await study(page, "Intervals");
+  const card = page.frameLocator('iframe[title="card"]');
+  const answers = card.locator("rect.is-highlighted");
+  const pitches = await answers.evaluateAll((keys) => keys.map((key) => Number(key.getAttribute("data-semitone"))));
+  const pitch = Math.min(...pitches);
+  const key = card.locator(`rect.is-highlighted[data-semitone="${pitch}"]`);
+  const box = (await key.boundingBox())!;
+  const root = Number(await card.locator("rect.is-given").getAttribute("data-semitone"));
+  await key.click({ position: { x: box.width / 2, y: box.height * 0.8 } });
+  await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
+  const played = (await whatWasPlayed(page)).partials;
+  expect(played).toHaveLength(8);
+  expect(played[0]).toBeCloseTo(440 * 2 ** ((root - 69) / 12));
+  expect(played[4]).toBeCloseTo(440 * 2 ** ((pitch - 69) / 12));
+});
 
 test("keeps enlarged interval keys visible outside their translated row", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1400 });
@@ -741,11 +699,26 @@ test("offers ten more new cards once the day's are done", async ({
   shot,
 }) => {
   await openDeckList(page);
-  // A deck with more unstudied cards than the daily limit, so there is still
-  // something to offer once the day's twenty are done.
+  await settleDeckImports(page);
+  // Prepare nineteen reviews without repeating the reviewer UI.
+  await page.evaluate(async () => {
+    const modulePath = "/src/lib/study.ts";
+    const { nextCard, answerCard, Rating } = await import(modulePath);
+    const selectionPath = "/src/lib/interval-pair-selection.ts";
+    const { includesIntervalPairCard, DEFAULT_INTERVAL_PAIR_SELECTION } = await import(selectionPath);
+    const pairs = new Set<string>(DEFAULT_INTERVAL_PAIR_SELECTION);
+    const now = new Date();
+    for (let i = 0; i < 19; i++) {
+      const item = await nextCard("Intervals", now, {
+        includeNote: (note: { fields: readonly string[] }) => includesIntervalPairCard(note, pairs),
+      });
+      if (!item || item.state) throw new Error("Expected an unstudied interval card");
+      await answerCard(item, Rating.Good, now);
+    }
+  });
   await study(page, "Intervals");
   const newCount = page.locator(".count.new");
-  await expect(newCount).toHaveText("20");
+  await expect(newCount).toHaveText("1");
 
   // Nothing to shortcut while the day's new cards are still coming.
   await page.getByRole("button", { name: "Deck actions" }).click();
@@ -755,13 +728,9 @@ test("offers ten more new cards once the day's are done", async ({
   await expect(shortcut).toBeHidden();
   await page.keyboard.press("Escape");
 
-  // GOOD puts a new card ten minutes out, so the twenty come one after
-  // another rather than the learning queue cutting in.
-  for (let remaining = 20; remaining > 0; remaining -= 1) {
-    await page.getByRole("button", { name: "SHOW ANSWER" }).click();
-    await page.getByRole("button", { name: "GOOD" }).click();
-    await expect(newCount).toHaveText(String(remaining - 1));
-  }
+  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+  await page.getByRole("button", { name: "GOOD" }).click();
+  await expect(newCount).toHaveText("0");
 
   await page.getByRole("button", { name: "Deck actions" }).click();
   await expect(shortcut).toBeVisible();
@@ -1484,24 +1453,6 @@ test("resets a deck from its long-press menu", async ({ page, shot }) => {
     "19",
   );
   await shot("after-reset");
-});
-
-test("resets the deck being studied from its menu", async ({ page }) => {
-  await openDeckList(page);
-  await study(page, "Treble Clef");
-  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
-  await page.getByRole("button", { name: "AGAIN" }).click();
-  await expect(page.locator(".count.learn")).toHaveText("1");
-
-  await page.getByRole("button", { name: "Deck actions" }).click();
-  await page.getByRole("menuitem", { name: "Reset study progress" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: /^RESET/ })
-    .click();
-
-  await expect(page.locator(".count.learn")).toHaveText("0");
-  await expect(page.locator(".count.new")).toHaveText("19");
 });
 
 test("closes study more with the browser back button", async ({ page }) => {

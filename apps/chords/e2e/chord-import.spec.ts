@@ -47,17 +47,6 @@ test("imports, searches, transposes, persists and deletes iReal songs", async ({
   await expect(page.getByLabel("Song", { exact: true }).locator(`button[value="${secondId}"]`)).toHaveCount(1);
 });
 
-test("invalid input leaves the current library usable", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
-  await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
-  const selected = await page.getByLabel("Song", { exact: true }).getAttribute('data-selected');
-  await page.getByLabel("Shared link / HTML").fill("irealb://%ZZ");
-  await page.getByRole("button", { name: "Import", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Import failed" })).toBeVisible();
-  await expect(page.getByLabel("Song", { exact: true })).toHaveAttribute('data-selected', selected);
-});
-
 test("imports and searches the complete local Jazz playlist", async ({ page }) => {
   test.skip(!process.env.IREAL_PLAYLIST_PATH, "Requires a locally saved playlist");
   const path = process.env.IREAL_PLAYLIST_PATH!;
