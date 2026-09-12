@@ -157,6 +157,31 @@ test('selects written and repeated chords from the score in practice and list vi
   await expect(page.getByLabel('Chord number', { exact: true })).toHaveValue('2');
 });
 
+test('sounds the chord chosen from the score', async ({ page }) => {
+  await page.addInitScript(() => {
+    const started: number[] = [];
+    (window as unknown as { started: number[] }).started = started;
+    const start = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (this: AudioBufferSourceNode, ...args: [number?]) {
+      started.push(this.buffer?.length ?? 0);
+      return start.apply(this, args);
+    };
+  });
+  const sheet = await openScore(page, '[C7XyQ|D7XyQ|XyQr| XyQZ');
+  const plucks = () => page.evaluate(() => (window as unknown as { started: number[] }).started.length);
+  expect(await plucks()).toBe(0);
+  await sheet.getByRole('button', { name: 'D7', exact: true }).click();
+  await expect.poll(plucks).toBe(4);
+  await sheet.getByRole('button', { name: 'Practice Repeat previous two bars', exact: true }).click();
+  await expect.poll(plucks).toBe(8);
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Sound', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await sheet.getByRole('button', { name: 'C7', exact: true }).click();
+  await expect(page.getByLabel('Chord number', { exact: true })).toHaveValue('1');
+  expect(await plucks()).toBe(8);
+});
+
 test('zooms the chart without changing its rows or the fretboard and restores the size', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 1000 });
   const sheet = await openScore(page, '[C7XyQ|D7XyQ|E7XyQ|F7XyQ|G7XyQZ');

@@ -504,6 +504,7 @@ SPDX-License-Identifier: Apache-2.0
 
   function selectScore(indexValue: number): void {
     index = indexValue; separator = false; revealed = true;
+    playChord();
   }
 
   function updateChordNumber(event: Event): void {
