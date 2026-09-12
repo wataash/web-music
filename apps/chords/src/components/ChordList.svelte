@@ -3,19 +3,19 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import { DEFAULT_TUNING } from "../lib/tuning";
   import { onMount } from "svelte";
   import { chordViewPersistence } from "../lib/chord-view";
   const { remember, viewKey, hasView } = chordViewPersistence();
-  import { CHORD_BOARD_NUT_X, CHORD_BOARD_FRET_WIDTH, CHORD_BOARD_HEIGHT } from "../lib/chord-fretboard";
+  import { CHORD_BOARD_NUT_X, CHORD_BOARD_FRET_WIDTH, chordBoardHeight } from "../lib/chord-fretboard";
   import type { ChordDescription } from "../lib/chords";
   import type { AnnotatedChord } from "../lib/chord-metadata";
   import ChordMetadata from "./ChordMetadata.svelte";
   import SongSource from "./SongSource.svelte";
   import ChordSource from "./ChordSource.svelte";
-  import { SCREEN_WIDTH } from "@web-music/practice-ui/card-scale";
+  import { SCREEN_WIDTH, type CardScale } from "@web-music/practice-ui/card-scale";
   import ChordFretboard from "./ChordFretboard.svelte";
   import ChordTones from "./ChordTones.svelte";
-  import BassStringPicker from "./BassStringPicker.svelte";
 
   let {
     chords,
@@ -24,6 +24,7 @@ SPDX-License-Identifier: Apache-2.0
     sourceSymbols = [],
     sourceIndex = $bindable(0),
     fretCount,
+    tuning = DEFAULT_TUNING,
     bassStrings = $bindable<number[]>([]),
     soundEnabled,
     shortcutsEnabled = true,
@@ -39,6 +40,7 @@ SPDX-License-Identifier: Apache-2.0
     sourceIndex?: number;
     fretCount: number;
     bassStrings: number[];
+    tuning?: readonly number[];
     soundEnabled: boolean;
     shortcutsEnabled?: boolean;
     uniqueChordsOnly?: boolean;
@@ -49,6 +51,8 @@ SPDX-License-Identifier: Apache-2.0
 
   const currentIndex = $derived(Math.max(0, chords.findIndex((chord, index) =>
     chord.sourceIndices ? chord.sourceIndices.includes(sourceIndex) : index === sourceIndex)));
+  let fullChartOpen = $state(false);
+  let boardScale = $state<CardScale>(SCREEN_WIDTH);
   const entries: HTMLLIElement[] = [];
   let scrollElement: HTMLElement;
   let loaded = $state<Set<number>>(new Set());
@@ -81,7 +85,7 @@ SPDX-License-Identifier: Apache-2.0
   function handleKey(event: KeyboardEvent): void {
     const target = event.target as HTMLElement | null;
     if (!shortcutsEnabled || event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
-      target?.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target?.tagName ?? "")) return;
+      target?.closest('dialog') || target?.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target?.tagName ?? "")) return;
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
     event.preventDefault();
     move(event.key === "ArrowUp" ? -1 : 1);
@@ -95,14 +99,13 @@ SPDX-License-Identifier: Apache-2.0
 <main class="chord-list" aria-label="Chord list" tabindex="0" bind:this={scrollElement} use:remember={viewKey("list-scroll")}>
   <div class="list-content">
     <ChordMetadata annotation={{ comments }} label="Song comments" />
-    <SongSource {songId} symbols={sourceSymbols} />
-    <BassStringPicker bind:value={bassStrings} />
+    <SongSource {songId} symbols={sourceSymbols} bind:open={fullChartOpen} onselect={(value) => sourceIndex = value} selected={[sourceIndex]} />
     <p class="count">{chords.length} chords · {uniqueChordsOnly ? uniqueBySection ? "Unique chords in first-appearance order within each section" : "Unique chords in first-appearance order" : "In chart order"}</p>
     <ol>
       {#each chords as chord, index}
         <li bind:this={entries[index]} aria-current={currentIndex === index ? "true" : undefined}>
           <ChordMetadata annotation={chord.annotation} />
-          <ChordSource {songId} indices={chord.sourceIndices ?? []} symbols={sourceSymbols} />
+          {#if !fullChartOpen}<ChordSource {songId} onselect={(value) => sourceIndex = value} indices={chord.sourceIndices ?? []} symbols={sourceSymbols} />{/if}
           <div class="heading">
             <span class="number">{index + 1} / {chords.length}</span>
             <h2>{chord.symbol}</h2>
@@ -110,9 +113,9 @@ SPDX-License-Identifier: Apache-2.0
               <button disabled={!soundEnabled} aria-label={`${index + 1}: Play ${chord.symbol}`} onclick={() => selectChord(index)}>Play chord</button>
             {/if}
           </div>
-          <div data-list-board={index} class="list-board" style:aspect-ratio={`${CHORD_BOARD_NUT_X + fretCount * CHORD_BOARD_FRET_WIDTH} / ${CHORD_BOARD_HEIGHT}`}>
+          <div data-list-board={index} class="list-board" class:loaded={loaded.has(index)} style:aspect-ratio={`${CHORD_BOARD_NUT_X + fretCount * CHORD_BOARD_FRET_WIDTH} / ${chordBoardHeight(tuning.length)}`}>
             {#if loaded.has(index)}
-              <ChordFretboard {chord} {fretCount} {bassStrings} revealed={true} scale={SCREEN_WIDTH} onplay={onplayfret} />
+              <ChordFretboard {tuning} {chord} {fretCount} {bassStrings} revealed={true} bind:scale={boardScale} onplay={onplayfret} />
             {/if}
           </div>
           {#if chord.noChord}
@@ -141,10 +144,13 @@ SPDX-License-Identifier: Apache-2.0
   .count, .number { color: var(--on-surface-muted); font-size: 12px; }
   ol { list-style: none; margin: 0; padding: 0; }
   li { padding: 16px 0; border-top: 1px solid var(--divider); }
+  .list-board.loaded { aspect-ratio: auto !important; background: transparent; }
   .list-board { background: #111827; border-radius: 8px; }
   li[aria-current="true"] { box-shadow: inset 3px 0 var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--bg)); }
   .heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
-  h2 { flex: 1; margin: 0; font-size: 28px; }
-  button { padding: 8px 12px; color: var(--on-surface); background: var(--surface); border: 1px solid var(--primary); border-radius: 6px; }
+  h2 { margin: 0; font-size: 28px; }
+  button { padding: 8px 12px; color: var(--on-surface); background: var(--surface); border: 1px solid var(--divider); border-radius: 6px; }
+  button:hover { background: color-mix(in srgb, var(--on-surface) 6%, var(--surface)); }
+  button:focus-visible { outline: 2px solid var(--text-accent); outline-offset: 2px; }
   .chord-tones { margin-top: 12px; }
 </style>

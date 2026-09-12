@@ -12,14 +12,16 @@ const link = 'irealb://' + encodeURIComponent('Layout Example=Original Example==
 
 test('preserves four-bar rows at desktop and phone widths', async ({ page }, testInfo) => {
   await page.goto('/');
-  await page.getByText('Import iReal Pro charts', { exact: true }).click();
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
   await page.getByLabel('Shared link / HTML').fill(link);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Imported 1 song' })).toBeVisible();
-  await page.getByText('Full chart and song information', { exact: true }).click();
+  await page.getByRole('button', { name: 'Close song library' }).click();
+  await page.getByText('Full chart', { exact: true }).click();
   if (!localSong) {
-    await expect(page.locator('.score-heading h3')).toHaveText('Layout Example');
-    await expect(page.locator('.score-heading')).toContainText('Original Example');
+    await expect(page.locator('.song-title')).toHaveText('Layout Example');
+    await expect(page.locator('.titles')).toContainText('Original Example');
     await expect(page.locator('.full-score .meter span')).toHaveText(['4', '4']);
   }
   const sheet = page.locator('.full-score .ireal-sheet');
@@ -28,8 +30,8 @@ test('preserves four-bar rows at desktop and phone widths', async ({ page }, tes
   for (const width of [1259, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 });
     await expect(sheet.locator('.ireal-row')).toHaveCount(5);
-    await expect(context.locator('.ireal-row')).toHaveCount(1);
-    await expect.poll(() => labels(context.locator('.chord'))).toEqual(await labels(sheet.locator('.ireal-row').first().locator('.chord')));
+    await expect(context).toHaveCount(0);
+    await expect(sheet.locator('.selected')).toHaveCount(1);
     await expect(sheet.locator('.ireal-row').nth(2).locator('.section')).toHaveText('B');
     const dimensions = await sheet.evaluate(element => ({ client: element.clientWidth, scroll: element.scrollWidth }));
     expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client + 2);
@@ -47,15 +49,26 @@ test('preserves four-bar rows at desktop and phone widths', async ({ page }, tes
       return true;
     })).toBe(true);
     await page.locator('.full-score').screenshot({ path: testInfo.outputPath(`score-${width}.png`) });
+    const firstRow = await labels(sheet.locator('.ireal-row').first().locator('.chord'));
+    await page.getByText('Full chart', { exact: true }).click();
+    await expect(context.locator('.ireal-row')).toHaveCount(1);
+    await expect.poll(() => labels(context.locator('.chord'))).toEqual(firstRow);
     await context.screenshot({ path: testInfo.outputPath(`context-${width}.png`) });
+    await page.getByText('Full chart', { exact: true }).click();
   }
+  await expect(sheet.locator('.ireal-row')).toHaveCount(5);
   const thirdRowIndex = await sheet.locator('.ireal-row').nth(0).locator('.chord').count() + await sheet.locator('.ireal-row').nth(1).locator('.chord').count();
   for (const [number, row] of [[2, 0], [thirdRowIndex + 1, 2]]) {
     await page.getByLabel('Chord number', { exact: true }).fill(String(number));
     await page.getByLabel('Chord number', { exact: true }).press('Tab');
+    await expect(sheet.locator('.ireal-row').nth(row).locator('.selected')).toHaveCount(1);
+    const rowChords = await labels(sheet.locator('.ireal-row').nth(row).locator('.chord'));
+    await page.getByText('Full chart', { exact: true }).click();
     await expect(context.locator('.ireal-row')).toHaveCount(1);
-    await expect.poll(() => labels(context.locator('.chord'))).toEqual(await labels(sheet.locator('.ireal-row').nth(row).locator('.chord')));
+    await expect.poll(() => labels(context.locator('.chord'))).toEqual(rowChords);
     await expect(context.locator('.selected')).toHaveCount(1);
+    await page.getByText('Full chart', { exact: true }).click();
   }
+  await page.getByText('Full chart', { exact: true }).click();
   await expect(context.locator('.section')).toHaveText('B');
 });

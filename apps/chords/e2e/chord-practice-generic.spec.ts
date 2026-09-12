@@ -10,8 +10,9 @@ test('navigates, saves the position and resets in single and list modes', async 
   await expect(number).toHaveValue('2');
   await page.reload();
   await expect(number).toHaveValue('2');
-  await page.getByRole('button', { name: 'Chord list', exact: true }).click();
+  await page.getByRole('button', { name: 'List', exact: true }).click();
   await expect(page.getByRole('main', { name: 'Chord list', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
   await page.getByRole('button', { name: 'Reset settings and position', exact: true }).click();
   await expect(number).toHaveValue('1');
 });
