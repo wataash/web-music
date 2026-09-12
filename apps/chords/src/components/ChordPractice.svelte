@@ -24,6 +24,7 @@ SPDX-License-Identifier: Apache-2.0
   import { CHORD_SONGS, type ChordSong } from "../lib/chord-songs";
   import ChordExport from "./ChordExport.svelte";
   import ChordImport from "./ChordImport.svelte";
+  import CustomChartEditor from "./CustomChartEditor.svelte";
   import { loadImportedSongs, saveImportedSongs, deleteImportedSong, type ImportedSong } from "../lib/chord-import";
   import { loadChordFavorites, saveChordFavorites } from "../lib/chord-favorites";
 
@@ -583,6 +584,12 @@ SPDX-License-Identifier: Apache-2.0
       {#if songSearch || playlistFilter || styleFilter || favoritesOnly}<button onclick={() => { songSearch = ''; playlistFilter = ''; styleFilter = ''; favoritesOnly = false; }}>Clear filters</button>{/if}
       {#if !matchingSongs.length && (!favoritesOnly || favoriteSongs.length)}<span role="status">No matching songs.</span>{/if}
       <ChordImport onimport={importSongs} bind:open={importOpen} />
+      <CustomChartEditor song={importedById.get(selectedSong.id)} onsave={async (song) => {
+        await importSongs([song]);
+        index = 0; targetKey = song.originalKey; fullChartOpen = true; listMode = false;
+        savedProgress.views[`${song.id}:false:${uniqueScope}:song-open`] = { open: true };
+        viewRevision++; libraryOpen = false;
+      }} />
       <ChordExport song={importedById.get(selectedSong.id)} songs={importedSongs} />
       {#if favoritesOnly && !favoriteSongs.length}<span role="status">No favorites yet.</span>{/if}
     </div>

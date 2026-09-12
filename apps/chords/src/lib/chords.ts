@@ -42,6 +42,8 @@ export type ParsedChord = Readonly<{
 // App spellings and voicings override iReal's literal degree lists. Keep the
 // displayed interval labels (M9, P11, etc.) used by the practice UI.
 const APP_QUALITIES: Readonly<Record<string, string>> = {
+  add2: 'M3 P5 M2', '-add2': 'm3 P5 M2', '^7b5': 'M3 d5 M7',
+  sus2: 'M2 P5', '7susb9': 'P4 P5 m7 b9', '7susb9b13': 'P4 P5 m7 b9 b13',
   M7: 'M3 P5 M7', M9: 'M3 P5 M7 M9',
   '(b9)': 'M3 P5 m9', '7(b9)': 'M3 P5 m7 m9',
   '7(13)': 'M3 P5 m7 M13', '9': 'M3 P5 m7 M9',
@@ -64,6 +66,8 @@ const QUALITY_INTERVALS: Readonly<Record<string, readonly IntervalDefinition[]>>
       }),
     ]]),
 );
+
+export const SUPPORTED_CHORD_QUALITIES: readonly string[] = Object.keys(QUALITY_INTERVALS);
 
 export const PRACTICE_KEYS = [
   "F#",

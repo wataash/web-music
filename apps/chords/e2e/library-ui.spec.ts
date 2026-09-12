@@ -98,7 +98,8 @@ for (const width of [320, 1000]) test(`combines playlist, style, search and favo
   await expect.poll(() => results.evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(expect.arrayContaining(['Blue Example · Example', 'Quiet Example · Example', 'Red Example · Example']));
 });
 
-test('sorts imported songs without changing selection and copies an importable link', async ({ page, context }) => {
+test('sorts imported songs without changing selection and copies an importable link', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Playwright clipboard-read/write permissions are supported only in Chromium.');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/');
   await page.getByRole('button', { name: 'Choose song', exact: true }).click();
@@ -139,6 +140,8 @@ for (const width of [320, 1000]) test(`keeps the view switch fixed at ${width}px
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/');
   const toggle = page.getByRole('group', { name: 'View mode', exact: true });
+  await expect(page.getByRole('button', { name: 'Choose song', exact: true })).toBeEnabled();
+  await expect(toggle).toBeVisible();
   const original = await toggle.boundingBox();
   await toggle.getByRole('button', { name: 'List', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Unique chords', exact: true })).toBeVisible();

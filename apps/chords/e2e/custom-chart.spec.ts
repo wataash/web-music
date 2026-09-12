@@ -1,0 +1,152 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+import { expect, test } from '@playwright/test';
+
+for (const width of [360, 1000]) test(`create, preview, transpose and edit a custom chart at ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByRole('button', { name: 'New chart', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: 'New chart', exact: true });
+  await editor.getByLabel('Title (optional)').fill('My blues');
+  await editor.getByLabel('Original key', { exact: true }).selectOption('A');
+  const text = 'A7 D7 A7 A7\nD7 D7 A7 A7\nE7 D7 A7 A7';
+  await editor.getByLabel('Chord progression').fill('A7 wrong');
+  await editor.getByRole('button', { name: 'Preview', exact: true }).click();
+  await expect(editor.getByRole('alert')).toContainText('Line 1, bar 2');
+  await editor.getByLabel('Chord progression').fill(text);
+  await editor.getByRole('button', { name: 'Preview', exact: true }).click();
+  await expect(editor.locator('.ireal-row')).toHaveCount(3);
+  await expect(editor.locator('.chord')).toHaveCount(12);
+  expect(await editor.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: info.outputPath(`custom-preview-${width}.png`) });
+  await editor.getByRole('button', { name: 'Save and display' }).click();
+  await expect(editor).not.toBeVisible();
+  await expect(page.locator('.song-title')).toHaveText('My blues');
+  await expect(page.getByRole('dialog', { name: 'Choose song', exact: true })).not.toBeVisible();
+  await expect(page.locator('.full-score .ireal-row')).toHaveCount(3);
+  await page.getByLabel('Song key', { exact: true }).selectOption('C');
+  await expect(page.locator('.full-score .chord').first()).toHaveAttribute('aria-label', 'C7');
+  await page.getByRole('button', { name: 'Add to favorites', exact: true }).click();
+  await page.reload();
+  await expect(page.locator('.song-title')).toHaveText('My blues');
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit chart', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit chart', exact: true });
+  await expect(edit.getByLabel('Chord progression')).toHaveValue(text);
+  await expect(edit.getByLabel('Original key', { exact: true })).toHaveValue('A');
+  await edit.getByLabel('Chord progression').fill('Dm7 G7 | Cmaj7');
+  await edit.getByLabel('Original key', { exact: true }).selectOption('C');
+  await edit.getByRole('button', { name: 'Save and display' }).click();
+  await expect(edit).not.toBeVisible();
+  await expect(page.locator('.full-score .chord')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Remove from favorites', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'List', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByLabel('Search songs').fill('My blues');
+  await expect(page.locator('.song-count')).toHaveText('1 songs');
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download chord text' }).click();
+  expect((await download).suggestedFilename()).toBe('My blues.txt');
+});
+
+test('accepts extended qualities and aliases through preview, save and reload', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByRole('button', { name: 'New chart', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: 'New chart', exact: true });
+  const text = 'A^7 Amaj13#11 Amin13 Amaj7b5\nAmaj7#9 Amin7b6 Amin9b6 A△7\nAø7 Adim Aaug A7sus4';
+  await editor.getByLabel('Chord progression').fill(text);
+  await editor.getByRole('button', { name: 'Preview', exact: true }).click();
+  await expect(editor.getByRole('alert')).toHaveCount(0);
+  await expect(editor.locator('.chord')).toHaveCount(12);
+  await editor.getByRole('button', { name: 'Save and display' }).click();
+  await expect(editor).not.toBeVisible();
+  await expect(page.locator('.full-score .chord')).toHaveCount(12);
+  await page.getByLabel('Song key', { exact: true }).selectOption('D');
+  await expect(page.locator('.full-score .chord').first()).toHaveAttribute('aria-label', 'B^7');
+  await page.reload();
+  await expect(page.locator('.full-score .chord')).toHaveCount(12);
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit chart', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Edit chart', exact: true }).getByLabel('Chord progression')).toHaveValue(text);
+});
+
+for (const width of [360, 1000]) test(`notation help is readable and reachable from errors at ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByRole('button', { name: 'New chart', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: 'New chart', exact: true });
+  const help = editor.locator('.notation-help');
+  await expect(help).not.toHaveAttribute('open', '');
+  await editor.getByLabel('Chord progression').fill('Aunknown');
+  await editor.getByRole('button', { name: 'Preview', exact: true }).click();
+  await editor.getByRole('button', { name: 'Check chord notation', exact: true }).click();
+  await expect(help).toHaveAttribute('open', '');
+  await expect(help.locator(':scope > summary')).toBeFocused();
+  await expect(help.getByRole('table', { name: 'Common chord notation' })).toContainText('Amaj7 = AM7 = A^7 = A△7 = AΔ7');
+  await expect(editor.getByLabel('Chord progression')).toHaveValue('Aunknown');
+  await help.getByText('All supported chord spellings', { exact: true }).click();
+  await expect(help.getByRole('list', { name: 'Major', exact: true })).toContainText('Amaj13#11');
+  await expect(help.getByRole('list', { name: 'Minor', exact: true })).toContainText('Amin13');
+  expect(await editor.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+  await help.locator(':scope > summary').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath(`notation-help-${width}.png`) });
+  await help.locator(':scope > summary').click();
+  await editor.getByLabel('Chord progression').fill('A△7 Aø7 Adim Aaug');
+  await editor.getByRole('button', { name: 'Save and display' }).click();
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit chart', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit chart', exact: true });
+  await edit.getByText('Chord notation help', { exact: true }).click();
+  await expect(edit.getByRole('table', { name: 'Common chord notation' })).toBeVisible();
+  await expect(edit.getByLabel('Chord progression')).toHaveValue('A△7 Aø7 Adim Aaug');
+});
+
+test('uses iReal rewrites in previews and reloads legacy custom charts without losing favorites', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByRole('button', { name: 'New chart', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: 'New chart', exact: true });
+  const input = 'A^ Ah A11 A7b5 A7b13 n';
+  await editor.getByLabel('Title (optional)').fill('iReal input');
+  await editor.getByLabel('Original key', { exact: true }).selectOption('A');
+  await editor.getByLabel('Chord progression').fill(input);
+  await editor.getByRole('button', { name: 'Preview', exact: true }).click();
+  const expected = ['A^7', 'Ah7', 'A9sus', 'A7#11', 'A7#5', 'N.C.'];
+  for (const [index, symbol] of expected.entries()) await expect(editor.locator('.chord').nth(index)).toHaveAttribute('aria-label', symbol);
+  await editor.getByRole('button', { name: 'Save and display' }).click();
+  await expect(editor).not.toBeVisible();
+  await page.getByRole('button', { name: 'Add to favorites', exact: true }).click();
+  // Simulate the stored chord sequence produced before the compatibility fix.
+  await page.evaluate(() => new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open('music-flashcards-chord-library');
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction('songs', 'readwrite');
+      const store = tx.objectStore('songs');
+      const rows = store.getAll();
+      rows.onsuccess = () => {
+        const song = rows.result.find(song => song.title === 'iReal input');
+        song.chords = ['A^', 'Ah', 'A11', 'A7b5', 'A7b13', 'N.C.'];
+        store.put(song);
+      };
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    };
+  }));
+  await page.reload();
+  await expect(page.locator('.song-title')).toHaveText('iReal input');
+  await expect(page.getByRole('button', { name: 'Remove from favorites', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const fullChart = page.locator('details.song-source');
+  if (await fullChart.getAttribute('open') === null) await fullChart.locator(':scope > summary').click();
+  for (const [index, symbol] of expected.entries()) await expect(page.locator('.full-score .chord').nth(index)).toHaveAttribute('aria-label', symbol);
+  await page.getByLabel('Song key', { exact: true }).selectOption('B');
+  await expect(page.locator('.full-score .chord').first()).toHaveAttribute('aria-label', 'B^7');
+  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit chart', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Edit chart', exact: true }).getByLabel('Chord progression')).toHaveValue(input);
+});
