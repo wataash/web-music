@@ -8,6 +8,7 @@ const headers = ['Title', 'Composer / artist', 'Additional information', 'Style'
 const playback = ['Accompaniment style', 'Tempo (BPM)', 'Choruses'];
 
 function songPayload(song: ImportedSong): string {
+  if (song.customText !== undefined) throw new Error('Use text export for custom charts.');
   const before: string[] = Array(6).fill('');
   const after: string[] = [];
   for (const field of song.metadata.score.fields) {

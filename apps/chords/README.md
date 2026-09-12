@@ -95,3 +95,44 @@ Audio playback, card layout settings, the settings menu, theme and PWA update he
 Use **Print / PDF**, Ctrl+P (Cmd+P on macOS), or the browser’s Print menu to print the current key and notation on a white background, without practice controls or selection highlights. All entry points use the full chart, even when it is collapsed or List is selected. Save as PDF through the browser’s print dialog.
 
 The library sorts by title, artist, or import order. Import order is recorded for new imports; older charts without this information appear first, sorted by title. Reimporting a chart preserves its recorded position. **Export → Copy song link** copies the original iReal chart directly; HTML export remains available if clipboard access fails.
+
+### Custom charts
+
+Choose the song title → **New chart**, enter an optional title and original key,
+then paste a chord progression. Spaces separate bars and line breaks preserve
+chart rows. If a line contains `|`, those separators define its bars, allowing
+multiple chords in a bar (`Dm7 G7 | Cmaj7`). Leading/trailing barlines, full-width
+spaces, blank lines, `maj7` spelling and Unicode accidentals are accepted. Each
+line supports up to 16 chords; invalid symbols show their line and bar number.
+Use Preview, then Save and display to open the full chart and practice it with
+transposition, fretboards and List. Charts are stored locally in the same browser
+library. **Edit chart** restores the source text and updates the same song,
+preserving favorites and its library order; saving starts at the first chord in
+the original key. **Export** downloads the original progression as a text file;
+paste it into New chart and set its original key to recreate it. Custom charts do
+not export as iReal links or join iReal playlist exports.
+
+Custom input accepts qualities such as `A^7`, `Amaj13#11`,
+`Amin13`, `Amaj7b5`, `Amaj7#9`, `Amin7b6` and `Amin9b6`. Major spellings
+(`maj`, `M`, `^`, `△`, `Δ`) and minor spellings (`min`, `m`, `-`) resolve to a
+supported quality when available. Common aliases include `A△7`, `Aø7` (or
+`Aø`), `Adim`, `Aaug` and `A7sus4`. Slash bass notes work with these aliases;
+editing and text export retain exactly what you entered. Unknown qualities
+still produce an input error.
+
+Chord input follows the [iReal Pro editor's shorthand conversions](https://www.irealpro.com/learn/chord-symbols/).
+For example, `A^` becomes `A^7`, `Ah` becomes `Ah7`, `A11` becomes `A9sus`,
+`A7b5` becomes `A7#11`, and `A7b13` becomes `A7#5`. These conversions determine
+both the displayed chord and its tones. Other accepted shorthands include
+`A-^`, `A^#11`, `Ao^`, `Aadd6`, `A+7`, `Aalt`, `Asus2`, `Amadd9` and
+`A7susb9`. `n` is an alias for `N.C.`. Saved custom charts are reinterpreted
+from their original input on load while retaining song IDs, favorites and import
+order. This is chord-input compatibility; the space/newline entry format does
+not interpret iReal chart control tokens, rhythmic spacing or navigation signs.
+
+**Chord notation help** below the input expands to explain bar separators,
+line breaks, common aliases, accidentals, slash bass notes and N.C. A nested
+**All supported chord spellings** list groups examples generated from the same
+quality definitions and alias rules used by the input parser. **Check chord
+notation** beside an input error opens and focuses the help without changing
+your text. The help is available when creating and editing charts.

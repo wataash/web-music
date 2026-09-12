@@ -7,8 +7,9 @@ import { extractIrealPlaylist } from "@web-music/ireal";
 import type { ChordSong } from "./chord-songs";
 import type { SongMetadata } from "./chord-metadata";
 import { describeChord, parseNote } from "./chords";
+import { refreshCustomChart } from "./custom-chart";
 
-export type ImportedSong = ChordSong & { metadata: SongMetadata; playlist: string; importedAt?: number };
+export type ImportedSong = ChordSong & { metadata: SongMetadata; playlist: string; importedAt?: number; customText?: string };
 
 // IndexedDB has room for whole playlists, including their source notation.
 // No uploaded chart is sent to a server or added to the built-in song data.
@@ -20,7 +21,7 @@ class ChordLibrary extends Dexie {
   }
 }
 const library = new ChordLibrary();
-export const loadImportedSongs = () => library.songs.toArray();
+export const loadImportedSongs = async () => (await library.songs.toArray()).map(refreshCustomChart);
 export const saveImportedSongs = (songs: ImportedSong[]) => library.transaction("rw", library.songs, async () => {
   const existing = await library.songs.bulkGet(songs.map(song => song.id));
   const start = Date.now();

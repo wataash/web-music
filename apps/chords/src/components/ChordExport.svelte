@@ -15,16 +15,17 @@ SPDX-License-Identifier: Apache-2.0
     try { await navigator.clipboard.writeText(exportIrealLink([song], song.playlist)); copied = true; }
     catch { error = 'Could not copy the link. Export an HTML file instead.'; }
   }
-  const playlistSongs = $derived(song ? songs.filter(candidate => candidate.playlist === song.playlist) : []);
+  const playlistSongs = $derived(song ? songs.filter(candidate => candidate.playlist === song.playlist && candidate.customText === undefined) : []);
   function download(playlist: boolean) {
     if (!song) return;
     try {
       const title = playlist ? song.playlist || 'Unlisted imports' : song.title;
-      const html = exportIrealHtml(playlist ? playlistSongs : [song], song.playlist);
-      const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+      const custom = song.customText !== undefined;
+      const content = custom ? song.customText! : exportIrealHtml(playlist ? playlistSongs : [song], song.playlist);
+      const url = URL.createObjectURL(new Blob([content], { type: custom ? 'text/plain;charset=utf-8' : 'text/html;charset=utf-8' }));
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = (title.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').slice(0, 120) || 'chords') + '.html';
+      anchor.download = (title.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').slice(0, 120) || 'chords') + (custom ? '.txt' : '.html');
       anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       dialog.close();
@@ -34,9 +35,12 @@ SPDX-License-Identifier: Apache-2.0
 
 <button disabled={!song} onclick={() => { error = ''; copied = false; dialog.showModal(); }}>Export</button>
 <dialog bind:this={dialog} aria-labelledby="export-title">
-  <h2 id="export-title">Export iReal charts</h2>
-  <p>Save an HTML file to import on another device. Original keys and notation are preserved.</p>
-  {#if song}
+  <h2 id="export-title">{song?.customText !== undefined ? 'Export chart text' : 'Export iReal charts'}</h2>
+  {#if song?.customText !== undefined}
+    <p>Save your original chord text. Paste it into New chart to recreate it. Set the original key to {song.originalKey}.</p>
+    <button onclick={() => download(false)}>Download chord text</button>
+  {:else if song}
+    <p>Save an HTML file to import on another device. Original keys and notation are preserved.</p>
     <button onclick={copyLink}>Copy song link</button>
     {#if copied}<p role="status">Song link copied.</p>{/if}
     <button onclick={() => download(false)}>Export song: {song.title}</button>
