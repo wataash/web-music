@@ -3,12 +3,12 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import { chordAnnotation, songScore } from "../lib/chord-metadata";
+  import { practiceAnnotation, songScore } from "../lib/chord-metadata";
   import ChordMetadata from "./ChordMetadata.svelte";
   import SourceScore from "./SourceScore.svelte";
   import { chordViewPersistence } from "../lib/chord-view";
   const { remember, viewKey } = chordViewPersistence();
-  let { songId, indices, symbols }: { songId: string; indices: number[]; symbols: string[] } = $props();
+  let { songId, indices, symbols, onselect }: { songId: string; indices: number[]; symbols: string[]; onselect?: (index: number) => void } = $props();
   const score = $derived(songScore(songId));
   let open = $state(false);
 </script>
@@ -16,8 +16,8 @@ SPDX-License-Identifier: Apache-2.0
 {#snippet occurrence(index: number, additional = false)}
   <div class="occurrence" aria-label={`Source chord ${index + 1}`}>
     {#if indices.length > 1}<div class="number">Source #{index + 1}</div>{/if}
-    {#if additional}<ChordMetadata annotation={chordAnnotation(songId, index)} />{/if}
-    <SourceScore blocks={score!.blocks} {symbols} selected={indices} contextIndex={index} storageId={`context:${indices[0]}:${index}`} />
+    {#if additional}<ChordMetadata annotation={practiceAnnotation(songId, index)} />{/if}
+    <SourceScore blocks={score!.blocks} {symbols} selected={indices} contextIndex={index} {onselect} storageId={`context:${indices[0]}:${index}`} />
   </div>
 {/snippet}
 

@@ -1,0 +1,15 @@
+/* SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
+ * SPDX-License-Identifier: Apache-2.0 */
+.chart-print { display: none; }
+@media print {
+  @page { margin: 12mm; }
+  html, body { height: auto !important; overflow: visible !important; background: white !important; }
+  body:has(> .chart-print) > :not(.chart-print) { display: none !important; }
+  .chart-print { display: block; color: black; background: white; font: 14px/1.4 sans-serif; --on-surface: black; --surface: white; --text-accent: black; }
+  .chart-print h1 { text-align: center; font-size: 24px; margin: 0 0 4px; }
+  .chart-print > p { text-align: center; margin: 0 0 16px; }
+  .chart-print .ireal-row { break-inside: avoid; }
+  .chart-print .ireal-sheet { width: 100%; }
+  .chart-print .meter, .chart-print .section { color: black !important; background: white !important; }
+  .chart-print .repeat-pick { display: none; }
+}

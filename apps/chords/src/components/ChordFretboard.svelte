@@ -3,15 +3,17 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import { DEFAULT_TUNING, NOTE_NAMES } from "../lib/tuning";
   import { chordViewPersistence } from "../lib/chord-view";
   const { remember, viewKey } = chordViewPersistence();
   import {
     clampFretCount,
+    chordBoardHeight,
+    CHORD_STRING_GAP as STRING_GAP,
     DEFAULT_BASS_STRINGS,
     fretboardMarkers,
     CHORD_BOARD_NUT_X as NUT_X,
     CHORD_BOARD_FRET_WIDTH as FRET_WIDTH,
-    CHORD_BOARD_HEIGHT as CANVAS_HEIGHT,
   } from "../lib/chord-fretboard";
   import { SCREEN_WIDTH, type CardScale } from "@web-music/practice-ui/card-scale";
   import { omittedChordIntervals, type ChordDescription } from "../lib/chords";
@@ -20,14 +22,16 @@ SPDX-License-Identifier: Apache-2.0
     chord,
     fretCount,
     bassStrings = DEFAULT_BASS_STRINGS,
+    tuning = DEFAULT_TUNING,
     revealed,
-    scale = 1,
+    scale = $bindable<CardScale>(1),
     interactive = true,
     onplay,
   }: {
     chord: ChordDescription;
     fretCount: number;
     bassStrings?: readonly number[];
+    tuning?: readonly number[];
     revealed: boolean;
     scale?: CardScale;
     interactive?: boolean;
@@ -35,8 +39,10 @@ SPDX-License-Identifier: Apache-2.0
   } = $props();
 
   const STRING_TOP = 46;
+  let viewportWidth = $state(0);
   const omitted = $derived(omittedChordIntervals(chord));
-  const STRING_GAP = 38;
+  const strings = $derived(tuning.map((_, i) => i + 1));
+  const CANVAS_HEIGHT = $derived(chordBoardHeight(tuning.length));
   const visibleFretCount = $derived(clampFretCount(fretCount));
   const boardRight = $derived(NUT_X + visibleFretCount * FRET_WIDTH);
   const boardWidth = $derived(
@@ -44,6 +50,7 @@ SPDX-License-Identifier: Apache-2.0
       ? "100%"
       : `${Number((boardRight * scale).toFixed(2))}px`,
   );
+  const renderedHeight = $derived(scale === SCREEN_WIDTH ? viewportWidth * CANVAS_HEIGHT / boardRight : CANVAS_HEIGHT * scale);
   const boardHeight = $derived(
     scale === SCREEN_WIDTH
       ? "auto"
@@ -55,7 +62,7 @@ SPDX-License-Identifier: Apache-2.0
     ),
   );
   const markers = $derived(
-    revealed ? fretboardMarkers(chord, visibleFretCount, bassStrings) : [],
+    revealed ? fretboardMarkers(chord, visibleFretCount, bassStrings, tuning) : [],
   );
   const markerDescription = $derived(
     chord.tones.map(({ interval, note }) => `${interval} ${note}`).join(", "),
@@ -99,11 +106,21 @@ SPDX-License-Identifier: Apache-2.0
   }
 </script>
 
+<div class="board-tools" role="group" aria-label="Fretboard view">
+  <button aria-pressed={scale === SCREEN_WIDTH} disabled={!interactive} onclick={() => scale = SCREEN_WIDTH}>Fit</button>
+  <button aria-pressed={scale !== SCREEN_WIDTH} disabled={!interactive} onclick={() => scale = 1}>Zoom</button>
+  {#if scale !== SCREEN_WIDTH && viewportWidth < boardRight * scale}<span>Scroll horizontally ↔</span>{/if}
+</div>
+<div class="board-frame">
+  <div class="open-strings" aria-label="Open string pitches" style:height={renderedHeight + 'px'}>
+    {#each tuning as midi, i}<span title={'String ' + (i + 1)} style:top={stringY(i + 1) / CANVAS_HEIGHT * 100 + '%'} style:font-size={Math.min(12, renderedHeight * STRING_GAP / CANVAS_HEIGHT * 0.8) + 'px'}>{NOTE_NAMES[midi % 12].split(' / ')[0]}{Math.floor(midi / 12) - 1}</span>{/each}
+  </div>
 <div
   class="board-scroll"
+  bind:clientWidth={viewportWidth}
   use:remember={viewKey(`board:${chord.symbol}`)}
   role="region"
-  aria-label="Guitar fretboard"
+  aria-label={`${tuning.length}-string fretboard`}
 >
   <svg
     class="fretboard"
@@ -118,7 +135,7 @@ SPDX-License-Identifier: Apache-2.0
     onlostpointercapture={() => lastCell = null}
     aria-label={revealed
       ? `${chord.symbol} chord tones: ${markerDescription || "No chord tones"}`
-      : `Empty guitar fretboard for ${chord.symbol}`}
+      : `Empty fretboard for ${chord.symbol}`}
   >
     <rect class="background" width={boardRight} height={CANVAS_HEIGHT} />
 
@@ -129,7 +146,7 @@ SPDX-License-Identifier: Apache-2.0
         x={fretCenter(fret) - 15}
         y={STRING_TOP + 8}
         width="30"
-        height={STRING_GAP * 5 - 16}
+        height={STRING_GAP * (tuning.length - 1) - 16}
         rx="3"
       />
     {/each}
@@ -139,7 +156,7 @@ SPDX-License-Identifier: Apache-2.0
       x1={NUT_X}
       y1={STRING_TOP - 8}
       x2={NUT_X}
-      y2={STRING_TOP + STRING_GAP * 5 + 8}
+      y2={STRING_TOP + STRING_GAP * (tuning.length - 1) + 8}
     />
     {#each Array.from({ length: visibleFretCount }, (_, index) => index + 1) as fret}
       <line
@@ -148,10 +165,10 @@ SPDX-License-Identifier: Apache-2.0
         x1={NUT_X + fret * FRET_WIDTH}
         y1={STRING_TOP}
         x2={NUT_X + fret * FRET_WIDTH}
-        y2={STRING_TOP + STRING_GAP * 5}
+        y2={STRING_TOP + STRING_GAP * (tuning.length - 1)}
       />
     {/each}
-    {#each Array.from({ length: 6 }, (_, index) => index + 1) as string}
+    {#each strings as string}
       <line
         class="string"
         data-string={string}
@@ -165,7 +182,7 @@ SPDX-License-Identifier: Apache-2.0
 
     {#each Array.from({ length: visibleFretCount + 1 }, (_, fret) => fret) as fret}
       <text class="fret-number top" x={fretCenter(fret)} y="20">{fret}</text>
-      <text class="fret-number bottom" x={fretCenter(fret)} y="270">
+      <text class="fret-number bottom" x={fretCenter(fret)} y={CANVAS_HEIGHT - 12}>
         {fret}
       </text>
     {/each}
@@ -192,7 +209,7 @@ SPDX-License-Identifier: Apache-2.0
       </g>
     {/each}
     {#if interactive && onplay}
-      {#each [1, 2, 3, 4, 5, 6] as string}
+      {#each strings as string}
         {#each Array.from({ length: visibleFretCount + 1 }, (_, fret) => fret) as fret}
           <rect
             class="fret-cell"
@@ -222,12 +239,18 @@ SPDX-License-Identifier: Apache-2.0
     {/if}
   </svg>
 </div>
+</div>
 
 <style>
   .fret-cell { fill: transparent; cursor: pointer; }
   .fret-cell:focus-visible { outline: none; stroke: #fff; stroke-width: 2; fill: #ffffff30; }
-  .board-scroll {
-    overflow-x: auto;
+  .board-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; font-size: 12px; }
+  .board-tools button { padding: 5px 10px; min-height: 32px; border: 0; border-radius: 6px; color: var(--on-surface-muted); background: transparent; font: inherit; cursor: pointer; }
+  .board-tools button[aria-pressed="true"] { color: var(--text-accent); background: color-mix(in srgb, var(--text-accent) 8%, transparent); }
+  .board-tools span { margin-left: 8px; color: var(--on-surface-muted); }
+  .board-frame {
+    display: flex;
+    overflow: hidden;
     border: 1px solid #374151;
     border-radius: 8px;
     background: #111827;
@@ -235,6 +258,9 @@ SPDX-License-Identifier: Apache-2.0
     scrollbar-color: #6b7280 #111827;
   }
 
+  .board-scroll { flex: 1; min-width: 0; overflow-x: auto; scrollbar-color: #6b7280 #111827; }
+  .open-strings { flex: none; width: 36px; position: relative; color: #d1d5db; background: #111827; border-right: 1px solid #374151; }
+  .open-strings span { position: absolute; left: 0; right: 0; text-align: center; transform: translateY(-50%); line-height: 1; }
   .fretboard {
     display: block;
     max-width: none;

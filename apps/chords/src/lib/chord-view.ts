@@ -9,6 +9,12 @@ export type ChordViewStore = {
   scope: () => string;
   views: () => Record<string, ChordView>;
   save: () => void;
+  minorNotation?: () => '-' | 'm';
+  setMinorNotation?: (value: '-' | 'm') => void;
+  highlightAnnotations?: () => boolean;
+  setHighlightAnnotations?: (value: boolean) => void;
+  chartZoom?: () => number;
+  setChartZoom?: (zoom: number) => void;
 };
 
 export function chordViewPersistence() {
@@ -55,5 +61,13 @@ export function chordViewPersistence() {
       destroy() { save(); revision++; cancelAnimationFrame(frame); node.removeEventListener("scroll", save); node.removeEventListener("toggle", save); },
     };
   }
-  return { remember, viewKey, hasView };
+  return {
+    remember, viewKey, hasView,
+    minorNotation: () => store?.minorNotation?.() ?? '-',
+    setMinorNotation: (value: '-' | 'm') => store?.setMinorNotation?.(value),
+    highlightAnnotations: () => store?.highlightAnnotations?.() ?? false,
+    setHighlightAnnotations: (value: boolean) => store?.setHighlightAnnotations?.(value),
+    chartZoom: () => store?.chartZoom?.() ?? 1,
+    setChartZoom: (zoom: number) => store?.setChartZoom?.(zoom),
+  };
 }

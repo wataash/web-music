@@ -3,12 +3,12 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  let { value = $bindable<number[]>([]) }: { value: number[] } = $props();
+  let { stringCount = 6, value = $bindable<number[]>([]) }: { value: number[]; stringCount?: number } = $props();
 </script>
 
 <fieldset class="bass-strings">
   <legend>Strings for bass notes</legend>
-  {#each [1, 2, 3, 4, 5, 6] as string}
+  {#each Array.from({ length: stringCount }, (_, i) => i + 1) as string}
     <label><input type="checkbox" bind:group={value} value={string} />String {string}</label>
   {/each}
 </fieldset>

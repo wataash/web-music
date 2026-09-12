@@ -1,14 +1,15 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { GUITAR_OPEN_STRINGS } from "@web-music/practice-ui/guitar";
+import { DEFAULT_TUNING } from "./tuning";
 import type { ChordDescription } from "./chords";
 
 export const DEFAULT_FRET_COUNT = 24;
 export const MAX_FRET_COUNT = 24;
 export const CHORD_BOARD_NUT_X = 54;
 export const CHORD_BOARD_FRET_WIDTH = 48;
-export const CHORD_BOARD_HEIGHT = 282;
+export const CHORD_STRING_GAP = 38;
+export const chordBoardHeight = (stringCount: number) => 92 + (stringCount - 1) * CHORD_STRING_GAP;
 export const DEFAULT_BASS_STRINGS: readonly number[] = [4, 5, 6];
 
 export type FretboardMarker = Readonly<{
@@ -29,6 +30,7 @@ export function fretboardMarkers(
   chord: ChordDescription,
   fretCount = DEFAULT_FRET_COUNT,
   bassStrings: readonly number[] = DEFAULT_BASS_STRINGS,
+  tuning: readonly number[] = DEFAULT_TUNING,
 ): readonly FretboardMarker[] {
   const visibleFretCount = clampFretCount(fretCount);
   const labels = new Map<
@@ -41,7 +43,7 @@ export function fretboardMarkers(
       role: tone.interval === "R" ? "root" : "tone",
     });
   }
-  return GUITAR_OPEN_STRINGS.flatMap((openPitch, stringIndex) =>
+  return tuning.flatMap((openPitch, stringIndex) =>
     Array.from({ length: visibleFretCount + 1 }, (_, fret) => {
       const pitchClass = (openPitch + fret) % 12;
       const marker = chord.bass?.pitchClass === pitchClass && bassStrings.includes(stringIndex + 1)

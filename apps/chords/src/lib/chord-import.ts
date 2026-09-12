@@ -8,7 +8,7 @@ import type { ChordSong } from "./chord-songs";
 import type { SongMetadata } from "./chord-metadata";
 import { describeChord, parseNote } from "./chords";
 
-export type ImportedSong = ChordSong & { metadata: SongMetadata; playlist: string };
+export type ImportedSong = ChordSong & { metadata: SongMetadata; playlist: string; importedAt?: number };
 
 // IndexedDB has room for whole playlists, including their source notation.
 // No uploaded chart is sent to a server or added to the built-in song data.
@@ -21,7 +21,11 @@ class ChordLibrary extends Dexie {
 }
 const library = new ChordLibrary();
 export const loadImportedSongs = () => library.songs.toArray();
-export const saveImportedSongs = (songs: ImportedSong[]) => library.transaction("rw", library.songs, () => library.songs.bulkPut(songs));
+export const saveImportedSongs = (songs: ImportedSong[]) => library.transaction("rw", library.songs, async () => {
+  const existing = await library.songs.bulkGet(songs.map(song => song.id));
+  const start = Date.now();
+  return library.songs.bulkPut(songs.map((song, index) => ({ ...song, importedAt: existing[index]?.importedAt ?? start + index / Math.max(1, songs.length) })));
+});
 export const deleteImportedSong = (id: string) => library.songs.delete(id);
 
 export async function parseChordImport(text: string) {

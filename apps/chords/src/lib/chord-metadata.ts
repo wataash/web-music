@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { resolveIreal, commentText, type IrealEvent } from "./ireal-layout";
 import type { ChordDescription } from "./chords";
 import type { IrealSong } from "@web-music/ireal";
 
@@ -9,8 +10,10 @@ export type AnnotatedChord = ChordDescription & { annotation?: ChordAnnotation; 
 export type SourceScore = IrealSong["score"];
 export type ScoreToken = SourceScore["blocks"][number][number];
 export type SongMetadata = Pick<IrealSong, "comments" | "annotations" | "score">;
+let practiceCache: Record<string, IrealEvent[]> = {};
 let bySong: Record<string, SongMetadata> = {};
 export function setImportedMetadata(songs: readonly { id: string; metadata: SongMetadata }[]): void {
+  practiceCache = {};
   bySong = Object.fromEntries(songs.map(song => [song.id, song.metadata]));
 }
 
@@ -52,4 +55,18 @@ export function chordAnnotation(id: string, index: number): ChordAnnotation {
     if (annotation.chordIndex === index) comments.push(...annotation.comments);
   }
   return { section, comments };
+}
+
+// Resolve repetitions at read time so existing imports and their IDs stay intact.
+export function practiceEntries(id: string, chordCount: number): IrealEvent[] {
+  const score = songScore(id);
+  return score ? practiceCache[id] ??= resolveIreal(score.blocks).events : Array.from({ length: chordCount }, (_, chordIndex) => ({ chordIndex, comments: [] }));
+}
+
+export function practiceAnnotation(id: string, index: number): ChordAnnotation {
+  const entry = practiceEntries(id, 0)[index];
+  if (!entry) return chordAnnotation(id, index);
+  const original = chordAnnotation(id, entry.chordIndex);
+  return { section: entry.section ?? original.section,
+    comments: entry.repeated ? entry.comments : original.comments.map(commentText) };
 }

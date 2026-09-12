@@ -3,23 +3,26 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import { onMount, setContext, untrack } from "svelte";
+  import { onMount, onDestroy, getAllContexts, setContext, untrack } from "svelte";
   import { CHORD_VIEW_CONTEXT, chordViewPersistence, type ChordViewStore } from "../lib/chord-view";
 
   import { arrangePart } from "../lib/arrange-part";
-  import { guitarSemitone } from "@web-music/practice-ui/guitar";
+  import { fretPitch, matchingPreset } from "../lib/tuning";
   import { chordSemitones } from "../lib/chord-audio";
   import { playSemitones } from "@web-music/practice-ui/tones";
   import ChordFretboard from "./ChordFretboard.svelte";
   import ChordList from "./ChordList.svelte";
   import ChordTones from "./ChordTones.svelte";
-  import BassStringPicker from "./BassStringPicker.svelte";
   import ChordMetadata from "./ChordMetadata.svelte";
-  import { chordAnnotation, sectionStarts, songComments, uniqueAnnotatedChords, setImportedMetadata } from "../lib/chord-metadata";
+  import { practiceAnnotation, practiceEntries, songComments, uniqueAnnotatedChords, setImportedMetadata, songScore } from "../lib/chord-metadata";
+  import { prepareChartPrint } from "../lib/chart-print";
+  import SongPicker from "./SongPicker.svelte";
   import SongSource from "./SongSource.svelte";
   import ChordSource from "./ChordSource.svelte";
-  import DeckActionsSheet from "@web-music/practice-ui/DeckActionsSheet.svelte";
+  import ChordSettings from "./ChordSettings.svelte";
+  import InstrumentSettings from "./InstrumentSettings.svelte";
   import { CHORD_SONGS, type ChordSong } from "../lib/chord-songs";
+  import ChordExport from "./ChordExport.svelte";
   import ChordImport from "./ChordImport.svelte";
   import { loadImportedSongs, saveImportedSongs, deleteImportedSong, type ImportedSong } from "../lib/chord-import";
   import { loadChordFavorites, saveChordFavorites } from "../lib/chord-favorites";
@@ -51,7 +54,6 @@ SPDX-License-Identifier: Apache-2.0
   } from "@web-music/practice-ui/card-scale";
   import {
     clampFretCount,
-    MAX_FRET_COUNT,
   } from "../lib/chord-fretboard";
   import { describeChord, PRACTICE_KEYS } from "../lib/chords";
   import {
@@ -66,11 +68,29 @@ SPDX-License-Identifier: Apache-2.0
   let libraryReady = $state(false);
   let libraryError = $state("");
   let songSearch = $state("");
+  let songSort = $state("title");
+  let playlistFilter = $state("");
+  let styleFilter = $state("");
+  const importedById = $derived(new Map(importedSongs.map(song => [song.id, song])));
+  const playlists = $derived([...new Set(importedSongs.map(song => song.playlist))].sort());
+  const songStyles = $derived(new Map(importedSongs.map(song => [song.id, song.metadata.score.fields.find(field => ['Style', 'スタイル'].includes(field.label))?.value ?? ""])));
+  const styles = $derived([...new Set(songStyles.values())].filter(Boolean).sort());
+  function matchesLibrary(song: ChordSong): boolean {
+    const imported = importedById.get(song.id);
+    return (!playlistFilter || (playlistFilter === 'examples' ? !imported : !!imported && 'playlist:' + imported.playlist === playlistFilter)) &&
+      (!styleFilter || songStyles.get(song.id) === styleFilter) &&
+      (song.title + " " + song.artist).toLocaleLowerCase().includes(songSearch.toLocaleLowerCase());
+  }
   let favoriteIds = $state(loadChordFavorites());
   let favoritesOnly = $state(false);
   const favoriteSongs = $derived(songs.filter(song => favoriteIds.includes(song.id)));
   const matchingSongs = $derived(songs.filter(song => (!favoritesOnly || favoriteIds.includes(song.id)) &&
-    (song.id === songId || (song.title + " " + song.artist).toLocaleLowerCase().includes(songSearch.toLocaleLowerCase()))));
+    matchesLibrary(song)).sort((a, b) => {
+      const titleOrder = a.title.localeCompare(b.title, 'en', { numeric: true, sensitivity: 'base' }) || a.id.localeCompare(b.id);
+      if (songSort === 'artist') return a.artist.localeCompare(b.artist, 'en', { sensitivity: 'base' }) || titleOrder;
+      if (songSort === 'import') return (importedById.get(a.id)?.importedAt ?? 0) - (importedById.get(b.id)?.importedAt ?? 0) || titleOrder;
+      return titleOrder;
+    }));
 
   function toggleFavorite() {
     const next = isFavorite ? favoriteIds.filter(id => id !== selectedSong.id) : [...favoriteIds, selectedSong.id];
@@ -78,8 +98,8 @@ SPDX-License-Identifier: Apache-2.0
       saveChordFavorites(next);
       favoriteIds = next;
       if (favoritesOnly && !next.includes(selectedSong.id)) {
-        const first = songs.find(song => next.includes(song.id));
-        if (first) { songSearch = ""; selectSong(first); }
+        const first = songs.find(song => next.includes(song.id) && matchesLibrary(song));
+        if (first) selectSong(first);
       }
     } catch { libraryError = "Could not save favorites. Check your browser storage settings."; }
   }
@@ -87,8 +107,8 @@ SPDX-License-Identifier: Apache-2.0
   function toggleFavoritesOnly() {
     favoritesOnly = !favoritesOnly;
     if (favoritesOnly && !isFavorite && favoriteSongs.length) {
-      songSearch = "";
-      selectSong(favoriteSongs[0]);
+      const first = favoriteSongs.find(matchesLibrary);
+      if (first) selectSong(first);
     }
   }
 
@@ -116,8 +136,9 @@ SPDX-License-Identifier: Apache-2.0
 
   async function importSongs(incoming: ImportedSong[]) {
     await saveImportedSongs(incoming);
-    setLibrary([...new Map([...importedSongs, ...incoming].map(song => [song.id, song])).values()]);
+    setLibrary(await loadImportedSongs());
     songSearch = "";
+    playlistFilter = ""; styleFilter = "";
     favoritesOnly = false;
     selectSong(incoming[0]);
   }
@@ -139,12 +160,30 @@ SPDX-License-Identifier: Apache-2.0
   } as const;
 
   const savedProgress = loadChordProgress();
+  let minorNotation = $state(savedProgress.minorNotation);
+  let highlightAnnotations = $state(savedProgress.highlightAnnotations);
+  let chartZoom = $state(savedProgress.chartZoom);
   let viewRevision = $state(0);
   setContext<ChordViewStore>(CHORD_VIEW_CONTEXT, {
     scope: () => `${songId}:${listMode}:${uniqueScope}`,
     views: () => savedProgress.views,
     save: () => saveChordProgress(savedProgress),
+    minorNotation: () => minorNotation,
+    setMinorNotation: (value) => { minorNotation = value; },
+    highlightAnnotations: () => highlightAnnotations,
+    setHighlightAnnotations: (value) => { highlightAnnotations = value; },
+    chartZoom: () => chartZoom,
+    setChartZoom: (zoom) => { chartZoom = zoom; },
   });
+  const printContext = getAllContexts();
+  let clearPrint = () => {};
+  function beforePrint() {
+    afterPrint();
+    const score = songScore(songId);
+    if (score) clearPrint = prepareChartPrint(score, sourceSymbols, selectedSong.title, [selectedSong.artist, songStyle].filter(Boolean).join(" · "), printContext);
+  }
+  function afterPrint() { clearPrint(); clearPrint = () => {}; }
+  onDestroy(afterPrint);
   const { remember, viewKey } = chordViewPersistence();
   let index = $state(savedProgress.positions[savedProgress.songId] ?? 0);
   let listMode = $state(savedProgress.listMode);
@@ -159,6 +198,16 @@ SPDX-License-Identifier: Apache-2.0
   const selectedSong = $derived(
     songs.find(({ id }) => id === songId) ?? CHORD_SONGS[0],
   );
+  const songStyle = $derived(songScore(selectedSong.id)?.fields.find(field => ['Style', 'スタイル'].includes(field.label))?.value);
+  let importOpen = $state(false);
+  let libraryOpen = $state(false);
+  let libraryDialog = $state<HTMLDialogElement>();
+  $effect(() => {
+    if (libraryOpen) { libraryDialog?.showModal(); libraryDialog?.querySelector<HTMLInputElement>(".song-search")?.focus(); }
+    else libraryDialog?.close();
+  });
+  let instrumentOpen = $state(false);
+  let fullChartOpen = $state(false);
   const isFavorite = $derived(favoriteIds.includes(selectedSong.id));
   const settingsId = $derived(`Chord positions: ${selectedSong.id}`);
   let targetKey = $state<string>(untrack(() => savedProgress.keys[songId] ?? selectedSong.originalKey));
@@ -166,14 +215,15 @@ SPDX-License-Identifier: Apache-2.0
     if (!libraryReady) return;
     savedProgress.positions[songId] = index;
     savedProgress.keys[songId] = targetKey;
-    Object.assign(savedProgress, { songId, listMode, uniqueChordsOnly, uniqueBySection,
-      insertBlankBoards, revealed, separator, bassStrings: [...bassStrings], fretCount });
+    Object.assign(savedProgress, { songId, listMode, uniqueChordsOnly, uniqueBySection, minorNotation, highlightAnnotations, chartZoom,
+      insertBlankBoards, revealed, separator, bassStrings: [...bassStrings], tuning: [...tuning], tuningPreset, fretCount });
     saveChordProgress(savedProgress);
   });
 
   function resetProgress(): void {
     favoritesOnly = false;
     songSearch = "";
+    playlistFilter = ""; styleFilter = "";
     const defaults = defaultChordProgress();
     Object.assign(savedProgress, defaults);
     songId = defaults.songId;
@@ -186,6 +236,8 @@ SPDX-License-Identifier: Apache-2.0
     separator = defaults.separator;
     targetKey = CHORD_SONGS[0].originalKey;
     bassStrings = [...defaults.bassStrings];
+    tuning = [...defaults.tuning];
+    tuningPreset = defaults.tuningPreset;
     fretCount = defaults.fretCount;
     cardScales = { ...cardScales, board: DEFAULT_CARD_SCALES.board, answer: DEFAULT_CARD_SCALES.answer,
       minimalAppBar: DEFAULT_CARD_SCALES.minimalAppBar };
@@ -194,21 +246,29 @@ SPDX-License-Identifier: Apache-2.0
     for (const song of songs) delete settings[`Chord positions: ${song.id}`];
     cardSettingsByDeck = settings;
     saveCardSettingsByDeck(settings);
+    minorNotation = defaults.minorNotation;
+    highlightAnnotations = defaults.highlightAnnotations;
+    chartZoom = defaults.chartZoom;
     viewRevision++;
     saveChordProgress(defaults);
   }
+  const sourceChords = $derived(selectedSong.chords.map(chord => describeChord(chord, selectedSong.originalKey, targetKey, selectedSong.id.startsWith("ireal-"))));
+  const entries = $derived(practiceEntries(selectedSong.id, selectedSong.chords.length));
   const songChords = $derived(
-    selectedSong.chords.map((chord, index) => ({
-      ...describeChord(chord, selectedSong.originalKey, targetKey, selectedSong.id.startsWith("ireal-")),
-      annotation: chordAnnotation(selectedSong.id, index),
+    entries.map((entry, index) => ({
+      ...sourceChords[entry.chordIndex],
+      annotation: practiceAnnotation(selectedSong.id, index),
       sourceIndices: [index],
     })),
   );
-  const sourceSymbols = $derived(songChords.map(chord => chord.symbol));
+  const sourceSymbols = $derived(sourceChords.map(chord => chord.symbol));
   const listChords = $derived(uniqueChordsOnly
-    ? uniqueAnnotatedChords(songChords, uniqueBySection ? sectionStarts(selectedSong.id) : [])
+    ? uniqueAnnotatedChords(songChords, uniqueBySection ? songChords.flatMap((chord, i) => chord.annotation.section !== songChords[i - 1]?.annotation.section ? [i] : []) : [])
     : songChords);
   let fretCount = $state(savedProgress.fretCount);
+  let tuningPreset = $state(savedProgress.tuningPreset);
+  let tuning = $state<number[]>([...savedProgress.tuning]);
+  const instrumentLabel = $derived(`${matchingPreset(tuning, tuningPreset)?.instrument ?? "Custom"} · ${tuning.length} strings`);
   let bassStrings = $state<number[]>([...savedProgress.bassStrings]);
   let actionsOpen = $state(
     untrack(() => deckActionsFromHistoryState(history.state) === settingsId),
@@ -247,7 +307,7 @@ SPDX-License-Identifier: Apache-2.0
     !separator && (insertBlankBoards || index > 0),
   );
   const canGoForward = $derived(
-    separator || !revealed || index < selectedSong.chords.length - 1,
+    separator || !revealed || index < songChords.length - 1,
   );
 
   function setScale(kind: CardScaleKind, scale: CardScale, save = true): void {
@@ -325,7 +385,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function playFret(string: number, fret: number): void {
-    const semitone = guitarSemitone(string, fret);
+    const semitone = fretPitch(tuning, string, fret);
     if (semitone !== null) sound([semitone]);
   }
 
@@ -398,7 +458,7 @@ SPDX-License-Identifier: Apache-2.0
       revealed = !insertBlankBoards;
     } else if (!revealed) {
       revealed = true;
-    } else if (index < selectedSong.chords.length - 1) {
+    } else if (index < songChords.length - 1) {
       index += 1;
       revealed = !insertBlankBoards;
     }
@@ -406,7 +466,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function handleKey(event: KeyboardEvent): void {
-    if (event.repeat) return;
+    if (event.repeat || libraryOpen || importOpen || instrumentOpen) return;
     if (positioning) {
       if (event.key === "Escape") closeCardLayout();
       return;
@@ -420,7 +480,7 @@ SPDX-License-Identifier: Apache-2.0
       event.altKey ||
       event.ctrlKey ||
       event.metaKey ||
-      target?.isContentEditable === true ||
+      target?.closest('dialog') || target?.isContentEditable === true ||
       ["INPUT", "SELECT", "TEXTAREA"].includes(target?.tagName ?? "")
     ) {
       return;
@@ -431,17 +491,6 @@ SPDX-License-Identifier: Apache-2.0
     event.preventDefault();
   }
 
-  function updateFretCount(event: Event): void {
-    const input = event.currentTarget as HTMLInputElement;
-    fretCount = clampFretCount(input.valueAsNumber);
-    input.value = String(fretCount);
-  }
-
-  function updateSong(event: Event): void {
-    const input = event.currentTarget as HTMLSelectElement;
-    const song = songs.find(({ id }) => id === input.value);
-    if (song) selectSong(song);
-  }
 
   function selectSong(song: ChordSong, restoring = false): void {
     songId = song.id;
@@ -453,12 +502,16 @@ SPDX-License-Identifier: Apache-2.0
     }
   }
 
+  function selectScore(indexValue: number): void {
+    index = indexValue; separator = false; revealed = true;
+  }
+
   function updateChordNumber(event: Event): void {
     const input = event.currentTarget as HTMLInputElement;
     if (Number.isFinite(input.valueAsNumber)) {
       const minimum = insertBlankBoards ? 0 : 1;
       const number = Math.min(
-        selectedSong.chords.length,
+        songChords.length,
         Math.max(minimum, Math.round(input.valueAsNumber)),
       );
       index = Math.max(0, number - 1);
@@ -468,9 +521,8 @@ SPDX-License-Identifier: Apache-2.0
     input.value = String(separator ? 0 : index + 1);
   }
 
-  function updateBlankBoards(event: Event): void {
-    const input = event.currentTarget as HTMLInputElement;
-    insertBlankBoards = input.checked;
+  function toggleBlankBoards(): void {
+    insertBlankBoards = !insertBlankBoards;
     if (!insertBlankBoards) {
       separator = false;
       revealed = true;
@@ -478,48 +530,18 @@ SPDX-License-Identifier: Apache-2.0
   }
 </script>
 
-<svelte:window onkeydown={handleKey} onpopstate={handlePopState} />
+<svelte:window onbeforeprint={beforePrint} onafterprint={afterPrint} onkeydown={handleKey} onpopstate={handlePopState} />
 
 {#key viewRevision}
 <div class="practice-screen" data-chord-practice bind:this={screenElement}>
   <header class="appbar" class:minimal={cardScales.minimalAppBar && !listMode}>
     <div class="titles">
-      <h1>Chord Positions</h1>
-      <select
-        class="song-picker"
-        value={selectedSong.id}
-        aria-label="Song"
-        onchange={updateSong}
-      >
-        {#if !matchingSongs.some(song => song.id === selectedSong.id)}
-          <option value={selectedSong.id} disabled>{selectedSong.title} · current</option>
-        {/if}
-        {#each matchingSongs as song}
-          <option value={song.id}>{song.title} · {song.artist}</option>
-        {/each}
-      </select>
+      <h1 aria-label={selectedSong.title}><button class="song-trigger" title={selectedSong.title} aria-label="Choose song" aria-haspopup="dialog" aria-expanded={libraryOpen} aria-controls="song-library" disabled={!libraryReady || positioning} onclick={() => libraryOpen = !libraryOpen}><span class="song-title">{selectedSong.title}</span><span aria-hidden="true">⌄</span></button></h1>
+      <p class="song-meta">{[selectedSong.artist, songStyle].filter(Boolean).join(" · ")}</p>
     </div>
-    <div class="pickers">
-      <label class="picker">
-        <span>Key</span>
-        <select bind:value={targetKey} aria-label="Song key">
-          {#each PRACTICE_KEYS as key}
-            <option value={key}>{key}</option>
-          {/each}
-        </select>
-      </label>
-      <label class="picker fret-picker">
-        <span>Frets</span>
-        <input
-          type="number"
-          min="1"
-          max={MAX_FRET_COUNT}
-          value={fretCount}
-          aria-label="Number of frets"
-          onchange={updateFretCount}
-        />
-      </label>
-    </div>
+      <button class="favorite" aria-pressed={isFavorite} aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"} onclick={toggleFavorite} title={isFavorite ? "Remove from favorites" : "Add to favorites"}>
+        <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span>
+      </button>
     <button
       class="appbar-action"
       title="Settings"
@@ -531,29 +553,61 @@ SPDX-License-Identifier: Apache-2.0
   </header>
 
   {#if !positioning && libraryReady}
-    <ChordImport onimport={importSongs} />
+    <dialog class="library-toolbar" id="song-library" bind:this={libraryDialog} onclose={() => libraryOpen = false} aria-labelledby="library-title">
+    <div class="library-heading"><h2 id="library-title">Choose song</h2><button aria-label="Close song library" onclick={() => libraryOpen = false}>×</button></div>
     <div class="library-controls">
-      <button class="favorite" aria-pressed={isFavorite} aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"} onclick={toggleFavorite}>
-        <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span> Favorite
-      </button>
+      <input class="song-search" aria-label="Search songs" placeholder="Search songs" type="search" bind:value={songSearch} />
+      <SongPicker songs={matchingSongs} selected={selectedSong} onselect={(song) => { selectSong(song); libraryOpen = false; }} />
+
+
+    </div>
+    <div class="library-filters">
+      <label class="library-sort">Sort by
+      <select aria-label="Sort songs" bind:value={songSort}>
+        <option value="title">Title</option><option value="artist">Artist</option><option value="import">Import order</option>
+      </select>
+      </label>
+      <select aria-label="Playlist" bind:value={playlistFilter}>
+        <option value="">All playlists</option><option value="examples">Built-in examples</option>
+        {#each playlists as playlist}<option value={'playlist:' + playlist}>{playlist || 'Unlisted imports'}</option>{/each}
+      </select>
+      <select aria-label="Style" bind:value={styleFilter}>
+        <option value="">All styles</option>
+        {#each styles as style}<option value={style}>{style}</option>{/each}
+      </select>
+    </div>
+    <div class="library-secondary">
       <button aria-pressed={favoritesOnly} onclick={toggleFavoritesOnly}>Favorites only ({favoriteSongs.length})</button>
-      <label>Search songs <input type="search" bind:value={songSearch} /></label>
-      <span>{favoritesOnly ? favoriteSongs.length : songs.length} songs</span>
-      {#if importedSongs.some(song => song.id === songId)}
-        <button onclick={removeSong}>Delete selected imported chart</button>
-      {/if}
+      <span class="song-count">{matchingSongs.length} songs</span>
+      {#if songSearch || playlistFilter || styleFilter || favoritesOnly}<button onclick={() => { songSearch = ''; playlistFilter = ''; styleFilter = ''; favoritesOnly = false; }}>Clear filters</button>{/if}
+      {#if !matchingSongs.length && (!favoritesOnly || favoriteSongs.length)}<span role="status">No matching songs.</span>{/if}
+      <ChordImport onimport={importSongs} bind:open={importOpen} />
+      <ChordExport song={importedById.get(selectedSong.id)} songs={importedSongs} />
       {#if favoritesOnly && !favoriteSongs.length}<span role="status">No favorites yet.</span>{/if}
     </div>
+    </dialog>
   {/if}
   {#if libraryError}<p role="alert">{libraryError}</p>{/if}
   {#if !libraryReady}<p role="status">Loading saved charts…</p>{/if}
 
   {#if !positioning}
     <div class="mode-picker">
-      <div class="node">
-        <button aria-pressed={listMode} onclick={() => listMode = !listMode}>Chord list</button>
+    <div class="pickers">
+      <label class="picker">
+        <span>Key</span>
+        <select bind:value={targetKey} aria-label="Song key">
+          {#each PRACTICE_KEYS as key}
+            <option value={key}>{key}</option>
+          {/each}
+        </select>
+      </label>
+
+    </div>
+
+      <button class="instrument-trigger" aria-label="Instrument settings" title={instrumentLabel} onclick={() => instrumentOpen = true}>{instrumentLabel}</button>
+      <div class="view-switch" role="group" aria-label="View mode"><button aria-pressed={!listMode} onclick={() => listMode = false}>Practice</button><button aria-pressed={listMode} onclick={() => listMode = true}>List</button></div>
         {#if listMode}
-          <div class="node">
+          <div class="node list-options">
             <button class="sub" aria-pressed={uniqueChordsOnly} onclick={() => uniqueChordsOnly = !uniqueChordsOnly}>Unique chords</button>
             {#if uniqueChordsOnly}
               <div class="node">
@@ -562,8 +616,6 @@ SPDX-License-Identifier: Apache-2.0
             {/if}
           </div>
         {/if}
-      </div>
-      <button class="reset" onclick={resetProgress}>Reset settings and position</button>
     </div>
   {/if}
 
@@ -578,9 +630,10 @@ SPDX-License-Identifier: Apache-2.0
         {uniqueChordsOnly}
         {uniqueBySection}
         {fretCount}
+        {tuning}
         bind:bassStrings
         soundEnabled={cardSettings.sound}
-        shortcutsEnabled={!actionsOpen && !positioning}
+        shortcutsEnabled={!actionsOpen && !positioning && !libraryOpen && !importOpen && !instrumentOpen}
         onplay={(chord) => sound(chordSemitones(chord))}
         onplayfret={playFret}
       />
@@ -602,36 +655,23 @@ SPDX-License-Identifier: Apache-2.0
         class:positioning>
         <div class="practice-content" use:remember={viewKey("practice-scroll")}>
           <ChordMetadata annotation={{ comments: songComments(selectedSong.id) }} label="Song comments" />
-          <SongSource {songId} symbols={sourceSymbols} />
-          <div class="practice-options">
-            <label>
-              <input
-                type="checkbox"
-                checked={insertBlankBoards}
-                onchange={updateBlankBoards}
-              />
-              <span>Insert blank fretboards between chords</span>
-            </label>
-          </div>
-          <BassStringPicker bind:value={bassStrings} />
+          <SongSource {songId} symbols={sourceSymbols} bind:open={fullChartOpen} onselect={selectScore} selected={separator ? [] : [index]} />
           {#if !separator}<ChordMetadata annotation={current.annotation} />{/if}
-          {#if !separator}<ChordSource {songId} indices={[index]} symbols={sourceSymbols} />{/if}
+          {#if !separator && !fullChartOpen}<ChordSource {songId} onselect={selectScore} indices={[index]} symbols={sourceSymbols} />{/if}
           <div class="question-heading text-part" use:arrangePart={partOptions("text")} role="group" aria-label="Chord name placement">
+            <h2>{separator ? "No chord" : current.symbol}</h2>
             <label class="progress">
               <input
                 type="number"
                 min={insertBlankBoards ? 0 : 1}
-                max={selectedSong.chords.length}
+                max={songChords.length}
                 value={separator ? 0 : index + 1}
                 aria-label="Chord number"
                 onchange={updateChordNumber}
               />
-              <span>/ {selectedSong.chords.length}</span>
+              <span>/ {songChords.length}</span>
             </label>
-            <h2>{separator ? "No chord" : current.symbol}</h2>
-            <p class="side">
-              {separator ? "EMPTY" : revealed ? "ANSWER" : "QUESTION"}
-            </p>
+            {#if !separator && revealed && !current.noChord}<button class="play-chord" disabled={!cardSettings.sound || positioning} onclick={playChord}>Play chord</button>{/if}
           </div>
 
           <div class="board-part" use:arrangePart={partOptions("board")} role="group" aria-label="Fretboard placement">
@@ -639,8 +679,9 @@ SPDX-License-Identifier: Apache-2.0
             chord={current}
             {fretCount}
             {bassStrings}
+            {tuning}
             revealed={revealed && !separator}
-            scale={cardScales.board}
+            bind:scale={() => cardScales.board, value => setScale("board", value)}
             interactive={!positioning}
             onplay={playFret}
           />
@@ -662,7 +703,6 @@ SPDX-License-Identifier: Apache-2.0
               {#if current.noChord}
                 <p class="no-chord">No chord tones</p>
               {:else}
-                <button class="play-chord" disabled={!cardSettings.sound || positioning} onclick={playChord}>Play chord</button>
                 <ChordTones chord={current} />
               {/if}
               <p class="next-chord">
@@ -740,12 +780,18 @@ SPDX-License-Identifier: Apache-2.0
   {/if}
 </div>
 
+{#if instrumentOpen}
+  <InstrumentSettings bind:tuning bind:tuningPreset bind:bassStrings onclose={() => instrumentOpen = false} />
+{/if}
 {#if actionsOpen}
-  <DeckActionsSheet
-    deckLabel={`${selectedSong.title} · Chord Positions`}
+  <ChordSettings
+    deckLabel={selectedSong.title}
+    onreset={() => { closeActions(); resetProgress(); }}
+    ondelete={importedSongs.some(song => song.id === songId) ? () => { closeActions(); void removeSong(); } : undefined}
     arrange={listMode ? undefined : { onopen: openCardLayout }}
-    sizes={listMode ? [] : cardSizes}
+    sizes={[{ label: "Frets", value: String(fretCount), onstep: step => fretCount = clampFretCount(fretCount + step) }, ...(!listMode ? cardSizes : [])]}
     switches={[
+      { label: "Insert blank fretboards between chords", on: insertBlankBoards, ontoggle: toggleBlankBoards },
       { label: "Sound", on: cardSettings.sound, ontoggle: () => setCardSettings({ sound: !cardSettings.sound }) },
       ...(!listMode ? [{
         label: "Minimize app bar",
@@ -760,20 +806,38 @@ SPDX-License-Identifier: Apache-2.0
 
 
 <style>
-  .library-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 16px; font-size: 13px; }
-  .library-controls button { padding: 6px 9px; border: 1px solid var(--divider); border-radius: 6px; background: var(--surface); color: var(--on-surface); }
-  .library-controls button[aria-pressed="true"] { color: var(--text-accent); border-color: var(--text-accent); }
-  .favorite span { color: #d79513; font-size: 18px; vertical-align: middle; }
-  .mode-picker { flex: none; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; justify-content: flex-end; padding: 6px 12px; }
-  .appbar.minimal + .mode-picker { padding-inline: 42px; min-height: 42px; }
-  .mode-picker button { padding: 8px 12px; border: 1px solid var(--primary); border-radius: 6px; color: var(--on-surface); background: var(--surface); }
-  /* The dark theme's --primary is a background tone, so the accent shows what is on. */
-  .mode-picker button[aria-pressed="true"] { border-color: var(--text-accent); background: var(--text-accent); color: var(--surface); font-weight: 700; }
-  .node { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px;
-    border: 1px solid color-mix(in srgb, var(--on-surface) 24%, transparent); border-radius: 12px;
-    background: color-mix(in srgb, var(--on-surface) 6%, transparent); }
-  .mode-picker .sub { padding: 6px 11px; font-size: 14px; }
-  .mode-picker .reset { margin-left: 10px; padding: 7px 10px; border-color: var(--divider); color: var(--on-surface-muted); font-size: 13px; }
+  .song-trigger { display: flex; align-items: center; gap: 8px; max-width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .song-trigger .song-title { overflow-wrap: anywhere; white-space: normal; line-height: 1.25; font: inherit; color: inherit; }
+  .song-trigger span { font-size: 16px; color: var(--on-surface-muted); }
+  .instrument-trigger { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: auto; }
+  button:focus-visible { outline: 2px solid var(--text-accent); outline-offset: 2px; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  .mode-picker button:hover, .play-chord:hover { background: color-mix(in srgb, var(--on-surface) 6%, var(--surface)); }
+
+  .library-toolbar { width: min(600px, calc(100vw - 24px)); max-height: 85dvh; box-sizing: border-box; padding: 20px; border: 1px solid var(--divider); border-radius: 12px; background: var(--surface); color: var(--on-surface); }
+  .library-toolbar::backdrop { background: #0008; }
+  .library-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .library-heading h2 { margin: 0; font-size: 20px; }
+  .library-heading button { border: 0; background: transparent; color: inherit; font-size: 24px; cursor: pointer; }
+  .library-controls { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 8px; }
+  .library-controls input { box-sizing: border-box; width: 100%; min-width: 0; height: 40px; padding: 8px; border: 1px solid var(--divider); border-radius: 6px; background: var(--surface); color: var(--on-surface); font: inherit; font-size: 14px; }
+  .library-secondary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 6px; font-size: 12px; }
+  .library-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+  .library-sort { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--on-surface-muted); }
+  .library-filters select { max-width: 100%; min-width: 0; padding: 6px; border: 1px solid var(--divider); border-radius: 6px; background: var(--surface); color: var(--on-surface); font: inherit; }
+  .library-secondary button, .favorite { border: 0; background: transparent; color: var(--on-surface-muted); cursor: pointer; padding: 8px 0; }
+  .library-secondary button[aria-pressed="true"] { color: var(--text-accent); }
+  .song-count { color: var(--on-surface-muted); }
+  .favorite { min-height: 40px; font-size: 26px; }
+  .favorite[aria-pressed="true"] { color: #d79513; }
+  .song-meta { margin: 4px 0 0; font-size: 12px; color: var(--on-surface-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mode-picker { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 16px; }
+  .list-options { grid-column: 1 / -1; justify-content: flex-end; }
+  .mode-picker button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--divider); border-radius: 6px; color: var(--on-surface-muted); background: transparent; font: inherit; font-size: 14px; cursor: pointer; }
+  .mode-picker button[aria-pressed="true"] { border-color: transparent; color: var(--text-accent); background: color-mix(in srgb, var(--text-accent) 8%, transparent); }
+  .view-switch { display: flex; padding: 3px; border-radius: 8px; background: color-mix(in srgb, var(--on-surface) 6%, transparent); }
+  .view-switch button { border: 0; }
+  .node { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .board-part { translate: calc(var(--board-x) * 100cqw) calc(var(--board-y) * 100cqh); }
   .text-part {
     translate: calc(var(--text-x) * 100cqw) calc(var(--text-y) * 100cqh);
@@ -798,7 +862,7 @@ SPDX-License-Identifier: Apache-2.0
   }
   .laying-out.high { top: 12px; bottom: auto; }
   .laying-out p { flex: 1 1 100%; margin: 0; font-size: 12px; }
-  .laying-out button, .play-chord { padding: 8px 12px; color: var(--on-surface); background: var(--surface); border: 1px solid var(--primary); border-radius: 6px; }
+  .laying-out button, .play-chord { padding: 8px 12px; color: var(--on-surface); background: var(--surface); border: 1px solid var(--divider); border-radius: 6px; }
 
   .practice-screen {
     height: 100%;
@@ -815,10 +879,10 @@ SPDX-License-Identifier: Apache-2.0
     align-items: center;
     gap: 8px;
     min-height: 64px;
-    padding: 4px 10px 4px 4px;
-    background: var(--primary);
-    color: var(--on-primary);
-    box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
+    padding: 12px 16px;
+    background: var(--surface);
+    color: var(--on-surface);
+    border-bottom: 1px solid var(--divider);
     flex: none;
   }
 
@@ -837,7 +901,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .appbar.minimal .titles,
-  .appbar.minimal .pickers {
+  .appbar.minimal .favorite {
     visibility: hidden;
   }
 
@@ -874,8 +938,7 @@ SPDX-License-Identifier: Apache-2.0
     min-width: 0;
   }
 
-  .titles h1,
-  .song-picker {
+  .titles h1 {
     margin: 0;
     max-width: 100%;
     overflow: hidden;
@@ -884,26 +947,10 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .titles h1 {
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 24px;
+    font-weight: 650;
   }
 
-  .song-picker {
-    display: block;
-    margin-top: 2px;
-    padding: 0 18px 0 0;
-    border: 0;
-    background-color: transparent;
-    color: inherit;
-    font-family: inherit;
-    font-size: 12px;
-    opacity: 0.8;
-  }
-
-  .song-picker option {
-    background: var(--surface);
-    color: var(--on-surface);
-  }
 
   .pickers {
     display: flex;
@@ -918,24 +965,18 @@ SPDX-License-Identifier: Apache-2.0
     font-size: 10px;
   }
 
-  .picker select,
-  .picker input {
+  .picker select {
     height: 31px;
     min-width: 68px;
     padding: 5px 22px 5px 8px;
-    border: 1px solid rgb(255 255 255 / 0.45);
+    border: 1px solid var(--divider);
     border-radius: 4px;
-    background: var(--primary);
+    background: var(--surface);
     color: inherit;
     font: inherit;
     font-size: 15px;
   }
 
-  .picker input {
-    width: 58px;
-    min-width: 0;
-    padding-right: 4px;
-  }
 
   .picker option {
     background: var(--surface);
@@ -997,45 +1038,27 @@ SPDX-License-Identifier: Apache-2.0
     rotate: -90deg;
   }
 
-  .practice-options {
-    display: flex;
-    justify-content: flex-end;
-    min-height: 32px;
-  }
 
-  .practice-options label {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: var(--on-surface-muted);
-    font-size: 13px;
-    cursor: pointer;
-  }
 
-  .practice-options input {
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    accent-color: var(--count-new);
-  }
 
   .question-heading {
     position: relative;
-    display: grid;
-    place-items: center;
-    min-height: 92px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    min-height: 64px;
+    padding-bottom: 8px;
   }
 
   .question-heading h2 {
     margin: 0;
-    font-size: clamp(36px, 8vw, 64px);
+    font-size: clamp(28px, 6vw, 44px);
     font-weight: 500;
     letter-spacing: -0.025em;
   }
 
-  .progress,
-  .side {
-    position: absolute;
+  .progress {
     margin: 0;
     color: var(--on-surface-muted);
     font-size: 12px;
@@ -1043,8 +1066,6 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .progress {
-    top: 0;
-    left: 0;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -1064,10 +1085,7 @@ SPDX-License-Identifier: Apache-2.0
     text-align: right;
   }
 
-  .side {
-    top: 0;
-    right: 0;
-  }
+  .question-heading .play-chord { min-height: 40px; }
 
   .answer {
     min-height: calc(112px * var(--answer-scale));
@@ -1237,7 +1255,7 @@ SPDX-License-Identifier: Apache-2.0
     }
 
     .titles h1 {
-      font-size: 16px;
+      font-size: 20px;
     }
 
     .question-heading {

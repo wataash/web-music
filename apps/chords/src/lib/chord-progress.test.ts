@@ -44,3 +44,17 @@ it("sanitizes saved display settings and preserves an empty bass selection", () 
   expect(progress.keys).toEqual({});
   expect(progress.views).toEqual({ scroll: { y: 45 }, detail: {} });
 });
+
+it('migrates original chord positions and restores positions inside expanded repeats', async () => {
+  const { extractIreal, scramble } = await import('@web-music/ireal');
+  const { setImportedMetadata } = await import('./chord-metadata');
+  const source = extractIreal('irealb://' + encodeURIComponent('Repeat=Example==Swing=C==1r34LbKcu7' + scramble('[C7XyQ|xXyQ|D7XyQ|xXyQZ') + '==0=0'));
+  const song = { ...CHORD_SONGS[0], id: 'repeat', chords: source.chords };
+  setImportedMetadata([{ id: song.id, metadata: source }]);
+  try {
+    vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ positions: { repeat: 1 } }) });
+    expect(loadChordProgress([song]).positions.repeat).toBe(2);
+    vi.stubGlobal('localStorage', { getItem: () => JSON.stringify({ sequenceVersion: 1, positions: { repeat: 3 } }) });
+    expect(loadChordProgress([song]).positions.repeat).toBe(3);
+  } finally { setImportedMetadata([]); }
+});
