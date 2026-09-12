@@ -681,12 +681,12 @@ test("names a fretboard position's degree, in a window of frets", async ({
   // frets fill the same screen.
   await dialog.locator("#fret-reach-left").fill("0");
   await dialog.locator("#fret-reach-right").fill("1");
-  await expect(dialog).toContainText("11 positions asked");
+  await expect(dialog).toContainText("11 positions per root in window");
   await expect.poll(boardWidth).toBeGreaterThan(wide);
 
   // RESET goes back to the three frets each way the deck ships with.
   await dialog.getByRole("button", { name: /^RESET/ }).click();
-  await expect(dialog).toContainText("41 positions asked");
+  await expect(dialog).toContainText("41 positions per root in window");
   await expect(dialog.getByRole("button", { name: /^RESET/ })).toBeDisabled();
 
   // Cancelling puts the board back rather than leaving it on the dragged one.
@@ -1786,3 +1786,142 @@ test("positions the circle before the answer document loads", async ({ page }) =
   expect(layout.initial.textScale).toBe("1.3");
   expect(layout.initial.y).toBeCloseTo(layout.y, 1);
 });
+
+test("filters guitar intervals by difficulty with apply, cancel and persisted settings", async ({ page, shot }) => {
+  await openDeckList(page);
+  await settleDeckImports(page);
+  const row = deckRow(page, "Guitar Intervals");
+  const openSettings = () => row.getByRole("button", { name: "What Guitar Intervals asks" }).click();
+  const dialog = page.getByRole("dialog", { name: "What to ask" });
+  const slider = dialog.getByRole("slider", { name: "Difficulty" });
+  await openSettings();
+  await expect(slider).toHaveValue("10");
+  await expect(dialog).toContainText("246 / 462 cards selected");
+  await slider.fill("1");
+  await expect(dialog).toContainText("4 / 462 cards selected");
+  const map = dialog.getByRole("region", { name: "Question map" });
+  await expect(map.locator(".roots svg")).toHaveCount(6);
+  await expect(map.locator(".roots .mini-included")).toHaveCount(4);
+  await expect(map.locator('[data-included="true"]')).toHaveCount(2);
+  await map.getByRole("button", { name: "String 5, fret +2: P5, included", exact: true }).click();
+  await expect(map.locator(".detail")).toContainText("String 6 → string 5 · fret +2 · P5 · Excluded");
+  await expect(dialog).toContainText("3 / 462 cards selected");
+  await expect(map.locator(".roots .mini-included")).toHaveCount(3);
+  await expect(map.getByRole("button", { name: "String 5, fret +2: P5, excluded", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await slider.press("ArrowRight");
+  await expect(slider).toHaveValue("2");
+  await expect(dialog).toContainText("6 / 462 cards selected");
+  await expect(map.locator('[data-included="true"]')).toHaveCount(3);
+  await expect(map.getByRole("button", { name: "String 5, fret -1: M3, included", exact: true })).toBeVisible();
+  await map.getByRole("button", { name: "Root string 3, 0 included", exact: true }).click();
+  await expect(map.locator('[data-included="true"]')).toHaveCount(0);
+  await slider.press("ArrowRight");
+  await expect(dialog).toContainText("16 / 462 cards selected");
+  await expect(map.locator(".roots .mini-included")).toHaveCount(16);
+  await expect(map.getByRole("button", { name: "String 2, fret +3: P5, included", exact: true })).toBeVisible();
+  await shot("guitar-difficulty-desktop");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await map.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await dialog.locator(".content").evaluate((element) => { element.scrollTop = 0; });
+  await shot("guitar-difficulty-mobile");
+  await map.getByRole("button", { name: "Root string 6, 4 included", exact: true }).click();
+  const contentTop = (await dialog.locator(".content").boundingBox())!.y;
+  expect((await dialog.locator(".threshold").boundingBox())!.y).toBeCloseTo(contentTop, 0);
+  const sliderBox = (await slider.boundingBox())!;
+  expect(sliderBox.y).toBeGreaterThanOrEqual(contentTop);
+  expect(sliderBox.y).toBeLessThan(contentTop + 100);
+  await expect(map.getByRole("heading", { name: "Root on string 6" })).toBeInViewport();
+  await shot("guitar-difficulty-mobile-expanded");
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await dialog.getByRole("button", { name: "CANCEL" }).click();
+  await openSettings();
+  await expect(slider).toHaveValue("10");
+  await slider.fill("1");
+  await dialog.getByRole("button", { name: "APPLY" }).click();
+  await expect(row.locator(".count.new")).toHaveText("4");
+  await page.reload();
+  await settleDeckImports(page);
+  await openSettings();
+  await expect(slider).toHaveValue("1");
+  await expect(dialog).toContainText("4 / 462 cards selected");
+  await dialog.locator("#fret-reach-right").fill("0");
+  await expect(dialog).toContainText("0 / 462 cards selected");
+  await expect(map.locator('[data-included="true"]')).toHaveCount(0);
+  await expect(dialog).toContainText("No cards match");
+  await dialog.getByRole("button", { name: "CANCEL" }).click();
+  await row.locator(".deck-name").click();
+  await expect(page.locator(".count.new")).toHaveText("4");
+  await expect(page.frameLocator('iframe[title="card"]').locator(".fret-name.root")).toBeVisible();
+  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+  await expect(page.frameLocator('iframe[title="card"]').locator(".fret-name.answer")).toHaveText(/^(1|P5)$/);
+  // The reviewer exposes the same saved difficulty and applies changes too.
+  await openNoteSettings(page);
+  await expect(slider).toHaveValue("1");
+  await slider.fill("2");
+  await dialog.getByRole("button", { name: "APPLY" }).click();
+  await openNoteSettings(page);
+  await expect(slider).toHaveValue("2");
+  await expect(dialog).toContainText("6 / 462 cards selected");
+});
+
+test("saves individual guitar exclusions and asks only the remaining shape", async ({ page }) => {
+  await openDeckList(page);
+  await settleDeckImports(page);
+  const row = deckRow(page, "Guitar Intervals");
+  const open = () => row.getByRole("button", { name: "What Guitar Intervals asks" }).click();
+  await open();
+  const dialog = page.getByRole("dialog");
+  const map = dialog.getByRole("region", { name: "Question map" });
+  await dialog.getByRole("slider", { name: "Difficulty" }).fill("1");
+  await map.getByRole("button", { name: "String 5, fret +2: P5, included", exact: true }).click();
+  await map.getByRole("button", { name: "Root string 5, 2 included", exact: true }).click();
+  for (let i = 0; i < 2; i++) await map.locator('[data-included="true"]').first().click();
+  await expect(dialog).toContainText("1 / 462 cards selected");
+  await dialog.getByRole("button", { name: "APPLY", exact: true }).click();
+  await expect(row.locator(".count.new")).toHaveText("1");
+  await page.reload();
+  await settleDeckImports(page);
+  await open();
+  await expect(dialog).toContainText("1 / 462 cards selected");
+  // Reset is a draft until APPLY; cancelling must retain the exclusions.
+  await map.getByRole("button", { name: "RESET INDIVIDUAL CHANGES" }).click();
+  await expect(dialog).toContainText("4 / 462 cards selected");
+  await dialog.getByRole("button", { name: "CANCEL" }).click();
+  await expect(row.locator(".count.new")).toHaveText("1");
+  await row.locator(".deck-name").click();
+  const card = page.frameLocator('iframe[title="card"]');
+  await expect(card.locator(".fret-name.root")).toBeVisible();
+  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+  await expect(card.locator(".fret-name.answer")).toHaveText("1");
+});
+
+for (const [shape, answer, references] of [
+  ["r6-s5-b2", "m3 ♯9", ["9"]],
+  ["r6-s5-f1", "d5 A4 ♯11", ["P4 11", "P5"]],
+] as const) {
+  test(`places faint guitar references next to ${answer}`, async ({ page, shot }) => {
+    await page.addInitScript((shape) => {
+      localStorage.setItem("music-flashcards:guitar-difficulty", "1");
+      localStorage.setItem("music-flashcards:guitar-overrides", JSON.stringify({
+        "r6-s5-f2": false, "r5-s4-f2": false, "r6-s4-f2": false, "r5-s3-f2": false, [shape]: true,
+      }));
+    }, shape);
+    await openDeckList(page);
+    await study(page, "Guitar Intervals");
+    const card = page.frameLocator('iframe[title="card"]');
+    await expect(card.locator(".fret-name.cue")).toHaveText("?");
+    const hints = card.locator(".fret-name.reference");
+    await expect(hints).toHaveCount(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await shot(`guitar-reference-${shape}-front`);
+    await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+    await expect(card.locator(".fret-name.answer")).toHaveText(answer);
+    await expect(hints).toHaveText([...references]);
+    const target = (await card.locator(".fret-name.answer").boundingBox())!;
+    const left = (await hints.first().boundingBox())!;
+    expect(left.x + left.width / 2).toBeLessThan(target.x + target.width / 2);
+    expect(left.y + left.height / 2).toBeCloseTo(target.y + target.height / 2, 0);
+    expect(await hints.first().evaluate((element) => Number(getComputedStyle(element).opacity))).toBe(0.7);
+    await shot(`guitar-reference-${shape}-back`);
+  });
+}

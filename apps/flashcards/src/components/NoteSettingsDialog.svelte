@@ -33,6 +33,8 @@ SPDX-License-Identifier: Apache-2.0
     oncirclenoteselectionchange,
     onfretboardnoteselectionchange,
     onfretwindowchange,
+    onguitardifficultychange,
+    onguitaroverrideschange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
     onclose,
@@ -48,6 +50,8 @@ SPDX-License-Identifier: Apache-2.0
     ) => void;
     onfretboardnoteselectionchange: (selection: readonly string[]) => void;
     onfretwindowchange: (selection: FretWindow) => void;
+    onguitardifficultychange: (difficulty: number) => void;
+    onguitaroverrideschange: (overrides: Readonly<Record<string, boolean>>) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
     onclose: () => void;
@@ -63,6 +67,8 @@ SPDX-License-Identifier: Apache-2.0
   let intervalPairs = $state<readonly string[]>(
     untrack(() => [...noteSelections.intervalPairs]),
   );
+  let guitarOverrides = $state(untrack(() => ({ ...noteSelections.guitarOverrides })));
+  let guitarDifficulty = $state(untrack(() => noteSelections.guitarDifficulty));
   let fretWindow = $state<FretWindow>(
     untrack(() => ({ ...noteSelections.fretWindow })),
   );
@@ -103,7 +109,11 @@ SPDX-License-Identifier: Apache-2.0
     if (kinds.has("fretboard-note")) {
       onfretboardnoteselectionchange(fretboardNotes);
     }
-    if (kinds.has("guitar-interval")) onfretwindowchange(fretWindow);
+    if (kinds.has("guitar-interval")) {
+      onfretwindowchange(fretWindow);
+      onguitardifficultychange(guitarDifficulty);
+      onguitaroverrideschange(guitarOverrides);
+    }
     const scopes = new Set(
       targets.flatMap((target) =>
         target.kind === "circle" ? [target.setting.scope] : [],
@@ -160,6 +170,10 @@ SPDX-License-Identifier: Apache-2.0
         <GuitarIntervalSettings
           deckLabel={target.setting.deckLabel}
           selection={fretWindow}
+          difficulty={guitarDifficulty}
+          ondifficultychange={(value) => { guitarDifficulty = value; guitarOverrides = {}; }}
+          overrides={guitarOverrides}
+          onoverrideschange={(value) => (guitarOverrides = value)}
           onpreview={onpreviewfretwindow}
           onchange={(selection) => (fretWindow = selection)}
         />

@@ -45,6 +45,7 @@ import {
 } from "./undo";
 import { effectiveHiddenDeckNames } from "./deck-hiding";
 import { compareDeckNames } from "./deck-visibility";
+import { diverseIndex, introductionGroup, supportsDiversity } from "./queue-diversity";
 
 export const NEW_PER_DAY = DEFAULT_NEW_PER_DAY;
 
@@ -265,13 +266,30 @@ export async function nextCard(
   // Priority: intraday learning that is due, scheduled reviews, explicitly
   // requested extra reviews, new cards, then learning cards ahead of schedule
   // (unbounded learn-ahead so a session can be finished in one sitting).
-  const picked =
-    learningDueNow[0] ??
-    reviews[0] ??
-    extraReviews[0] ??
-    news[0] ??
-    learning[0];
+  const queue = [learningDueNow, reviews, extraReviews, news, learning].find((queue) => queue.length > 0);
+  let picked = queue?.[0];
   if (!picked) return null;
+  const firstNote = await db.notes.get(picked.card.nid);
+  if (firstNote && supportsDiversity(firstNote) && queue) {
+    // Bound reordering to the front of the queue. Never pull a future-due
+    // card ahead of a due one, or a new card from a later teaching group.
+    const candidates = queue.slice(0, 12).filter(({ state }) =>
+      !state || state.due <= nowMs || state.due === picked!.state?.due,
+    );
+    const notes = await db.notes.bulkGet(candidates.map(({ card }) => card.nid));
+    const eligible = candidates.flatMap((candidate, index) => {
+      const note = notes[index];
+      return note && note.fields[1] === firstNote.fields[1] &&
+        (queue !== news || introductionGroup(note) === introductionGroup(firstNote))
+        ? [{ candidate, note }] : [];
+    });
+    const byKey = new Map(cards.map(({ card }) => [card.key, card.nid]));
+    const logs = await db.revlog.orderBy("ts").reverse()
+      .filter((log) => log.ts <= nowMs && byKey.has(log.key)).limit(3).toArray();
+    const recent = (await db.notes.bulkGet(logs.map((log) => byKey.get(log.key)!)))
+      .filter((note): note is NoteRow => note !== undefined);
+    picked = eligible[diverseIndex(eligible.map(({ note }) => note), recent)]?.candidate ?? picked;
+  }
   return toQueueItem(picked, extraReviews.includes(picked));
 }
 

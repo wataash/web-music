@@ -11,13 +11,54 @@ import {
   guitarIntervalDeckSetting,
   includesGuitarIntervalCard,
   parseFretWindow,
+  parseGuitarDifficulty,
+  parseGuitarOverrides,
+  guitarIntervalLevel,
 } from "./guitar-interval-selection";
 
 const card = (fretOffset: number) => ({
   fields: ["id", "guitar-interval", "2", "1", String(fretOffset), "M3"],
 });
 
+it("persists valid individual choices and keeps the fret window as a boundary", () => {
+  const note = { fields: ["r6-s5-f2", "guitar-interval", "6", "5", "2", "P5"], tags: "learning-level::1" };
+  expect(includesGuitarIntervalCard(note, DEFAULT_FRET_WINDOW, 1, { "r6-s5-f2": false })).toBe(false);
+  expect(includesGuitarIntervalCard({ ...note, tags: "learning-level::10" }, DEFAULT_FRET_WINDOW, 1, { "r6-s5-f2": true })).toBe(true);
+  expect(includesGuitarIntervalCard(note, { left: 3, right: 0 }, 1, { "r6-s5-f2": true })).toBe(false);
+  expect(parseGuitarOverrides({ "r6-s5-f2": false, "r3-s2-0": true, invalid: true, "r6-s5-b1": "false" })).toEqual({ "r6-s5-f2": false, "r3-s2-0": true });
+  expect(parseGuitarOverrides(null)).toEqual({});
+});
+
 describe("guitar fret window", () => {
+  it("defaults to all levels and sanitizes stored difficulty", () => {
+    for (const value of [null, undefined, "1", NaN, Infinity]) {
+      expect(parseGuitarDifficulty(value)).toBe(10);
+    }
+    expect(parseGuitarDifficulty(-1)).toBe(1);
+    expect(parseGuitarDifficulty(30)).toBe(10);
+    expect(parseGuitarDifficulty(2.6)).toBe(3);
+  });
+
+  it("combines cumulative difficulty with the fret window", () => {
+    const note = { ...card(2), tags: "degree::P5 learning-level::1 root-string::6" };
+    expect(includesGuitarIntervalCard(note, DEFAULT_FRET_WINDOW, 1)).toBe(true);
+    expect(includesGuitarIntervalCard(note, { left: 3, right: 1 }, 1)).toBe(false);
+    const harder = { ...card(0), tags: "learning-level::3" };
+    expect(includesGuitarIntervalCard(harder, DEFAULT_FRET_WINDOW, 2)).toBe(false);
+    expect(includesGuitarIntervalCard(harder, DEFAULT_FRET_WINDOW, 3)).toBe(true);
+    expect(includesGuitarIntervalCard(harder, DEFAULT_FRET_WINDOW, 10)).toBe(true);
+    expect(includesGuitarIntervalCard({ fields: ["id", "interval"], tags: "learning-level::10" }, DEFAULT_FRET_WINDOW, 1)).toBe(true);
+  });
+
+  it("keeps old or unknown metadata available only at all levels", () => {
+    for (const tags of [undefined, "", "learning-level::0", "learning-level::11", "xlearning-level::1", "learning-level::1x"]) {
+      const note = { ...card(0), tags };
+      expect(guitarIntervalLevel(note)).toBe(10);
+      expect(includesGuitarIntervalCard(note, DEFAULT_FRET_WINDOW, 1)).toBe(false);
+      expect(includesGuitarIntervalCard(note, DEFAULT_FRET_WINDOW)).toBe(true);
+    }
+  });
+
   it("keeps a stored window inside the board the deck draws", () => {
     expect(parseFretWindow(null)).toEqual(DEFAULT_FRET_WINDOW);
     expect(parseFretWindow({ left: 0, right: 6 })).toEqual({

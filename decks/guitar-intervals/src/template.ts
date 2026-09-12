@@ -132,4 +132,11 @@ export const CARD_CSS = `
   background: #fcd34d;
   color: #111827;
 }
+
+.fret-name.reference {
+  color: #cbd5e1;
+  background: #111827;
+  opacity: 0.7;
+  font-weight: 400;
+}
 `.trim();

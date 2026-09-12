@@ -51,6 +51,9 @@ SPDX-License-Identifier: Apache-2.0
   } from "./lib/interval-pair-selection";
   import {
     DEFAULT_FRET_WINDOW,
+    DEFAULT_GUITAR_DIFFICULTY,
+    parseGuitarDifficulty,
+    parseGuitarOverrides,
     parseFretWindow,
     type FretWindow,
   } from "./lib/guitar-interval-selection";
@@ -109,6 +112,7 @@ SPDX-License-Identifier: Apache-2.0
     "music-flashcards:music-staff-note-selection";
   const INTERVAL_PAIR_SELECTION_KEY =
     "music-flashcards:interval-pair-selection";
+  const GUITAR_DIFFICULTY_KEY = "music-flashcards:guitar-difficulty";
   const FRET_WINDOW_KEY = "music-flashcards:guitar-fret-window";
   const FRETBOARD_NOTE_SELECTION_KEY =
     "music-flashcards:guitar-fretboard-note-selection";
@@ -127,6 +131,8 @@ SPDX-License-Identifier: Apache-2.0
   let intervalPairSelection = $state<readonly string[]>(
     DEFAULT_INTERVAL_PAIR_SELECTION,
   );
+  let guitarOverrides = $state<Readonly<Record<string, boolean>>>({});
+  let guitarDifficulty = $state<number>(DEFAULT_GUITAR_DIFFICULTY);
   let fretWindow = $state<FretWindow>(DEFAULT_FRET_WINDOW);
   let fretboardNoteSelection = $state<readonly string[]>(
     DEFAULT_FRETBOARD_NOTE_SELECTION,
@@ -139,6 +145,8 @@ SPDX-License-Identifier: Apache-2.0
     circle: circleNoteSelections,
     fretboardNotes: new Set(fretboardNoteSelection),
     fretWindow,
+    guitarDifficulty,
+    guitarOverrides,
     intervalPairs: new Set(intervalPairSelection),
     staff: staffNoteSelection,
   });
@@ -257,6 +265,22 @@ SPDX-License-Identifier: Apache-2.0
         STAFF_NOTE_SELECTION_KEY,
         JSON.stringify(selection),
       );
+    } catch {
+      // The preference is optional when storage is unavailable.
+    }
+    void refresh();
+  }
+
+  function setGuitarOverrides(value: Readonly<Record<string, boolean>>): void {
+    guitarOverrides = parseGuitarOverrides(value);
+    try { localStorage.setItem("music-flashcards:guitar-overrides", JSON.stringify(guitarOverrides)); } catch { /* Optional preference. */ }
+    void refresh();
+  }
+
+  function setGuitarDifficulty(value: number): void {
+    guitarDifficulty = parseGuitarDifficulty(value);
+    try {
+      localStorage.setItem(GUITAR_DIFFICULTY_KEY, JSON.stringify(guitarDifficulty));
     } catch {
       // The preference is optional when storage is unavailable.
     }
@@ -558,6 +582,15 @@ SPDX-License-Identifier: Apache-2.0
     } catch {
       fretboardNoteSelection = DEFAULT_FRETBOARD_NOTE_SELECTION;
     }
+    try {
+      guitarOverrides = parseGuitarOverrides(JSON.parse(localStorage.getItem("music-flashcards:guitar-overrides") ?? "{}"));
+    } catch { guitarOverrides = {}; }
+    try {
+      const saved = localStorage.getItem(GUITAR_DIFFICULTY_KEY);
+      if (saved !== null) guitarDifficulty = parseGuitarDifficulty(JSON.parse(saved));
+    } catch {
+      guitarDifficulty = DEFAULT_GUITAR_DIFFICULTY;
+    }
     const initialState = historyStateForDeckListScrollTop(
       historyStateForDeck(
         history.state,
@@ -611,6 +644,8 @@ SPDX-License-Identifier: Apache-2.0
     oncirclenoteselectionchange={setCircleNoteSelection}
     onfretboardnoteselectionchange={setFretboardNoteSelection}
     onfretwindowchange={setFretWindow}
+    onguitardifficultychange={setGuitarDifficulty}
+    onguitaroverrideschange={setGuitarOverrides}
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}
   />
@@ -643,6 +678,8 @@ SPDX-License-Identifier: Apache-2.0
     oncirclenoteselectionchange={setCircleNoteSelection}
     onfretboardnoteselectionchange={setFretboardNoteSelection}
     onfretwindowchange={setFretWindow}
+    onguitardifficultychange={setGuitarDifficulty}
+    onguitaroverrideschange={setGuitarOverrides}
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}
     ondismisserror={() => (error = null)}

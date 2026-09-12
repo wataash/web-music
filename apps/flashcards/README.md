@@ -45,7 +45,17 @@ bundled web decks and schedules them with FSRS.
   degree another position plays above it, answering with every name for that
   distance — `m3 ♯9`, say. There are no fret numbers: the board is drawn around
   the root, so the same shape is one card wherever it is played. Its settings
-  are how far the board reaches either side of the root, which both crops the
+  include a ten-level difficulty slider, from basic fifths and octaves to all
+  shapes. Each level includes the easier levels, and the selected card count
+  also reflects the fret window. Difficulty stays at the top while scrolling.
+  Six miniature fretboards show the included positions for all root strings;
+  choose one to jump to its expanded map, highlighted and labeled
+  with its interval. Tap a cell to toggle its inclusion and see its full answer.
+  Individual choices are saved with APPLY and discarded with CANCEL. Moving
+  the difficulty slider resets them to that level's selection. Positions
+  outside the fret window remain excluded until the window is widened.
+  APPLY saves the difficulty on this device.
+  The fret controls set how far the board reaches either side of the root, which both crops the
   board and decides which positions are asked. Dragging either of them redraws
   the card on screen straight away, so what the window does is visible on the
   board itself; RESET goes back to three each way, and CANCEL puts the card
@@ -165,3 +175,12 @@ is not affiliated with or endorsed by Ankitects.
 
 [abrsm-theory]: https://www.abrsm.org/sites/default/files/2024-01/music-theory-syllabus-outline-grades-1-5-from-2020.pdf
 [dorico-octave-line]: https://www.steinberg.help/r/dorico/doricofirststeps/6.1/en/dorico_first_steps/topics/first_steps_writing/first_steps_octave_line_adding_t.html
+
+Interval calculation, identification, and guitar-interval queues avoid
+similarity to the last three answered cards. Within the existing queue
+priority, up to twelve leading candidates are compared by answer, interval,
+root, and guitar shape; equally suitable candidates are chosen randomly.
+New cards stay in the earliest remaining teaching group. Due cards take
+precedence over future cards, and filters and daily limits still apply.
+History comes from the review log, so undoing an answer also removes its
+influence. Small candidate sets can still repeat a degree or shape.

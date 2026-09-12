@@ -36,6 +36,8 @@ export type NoteSelections = Readonly<{
   circle: CircleNoteSelections;
   fretboardNotes: ReadonlySet<string>;
   fretWindow: FretWindow;
+  guitarDifficulty: number;
+  guitarOverrides: Readonly<Record<string, boolean>>;
   intervalPairs: ReadonlySet<string>;
   staff: StaffNoteSelection;
 }>;
@@ -47,7 +49,7 @@ export function includesSelectedNote(
   return (
     includesCircleNoteCard(note, selections.circle) &&
     includesFretboardNoteCard(note, selections.fretboardNotes) &&
-    includesGuitarIntervalCard(note, selections.fretWindow) &&
+    includesGuitarIntervalCard(note, selections.fretWindow, selections.guitarDifficulty, selections.guitarOverrides) &&
     includesIntervalPairCard(note, selections.intervalPairs) &&
     includesStaffNoteCard(note, selections.staff)
   );

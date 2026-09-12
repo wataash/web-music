@@ -3,11 +3,18 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { liveQuery } from "dexie";
+  import { db, type NoteRow } from "../lib/db";
+  import GuitarIntervalMap from "./GuitarIntervalMap.svelte";
   import {
     DEFAULT_FRET_WINDOW,
     clampFretReach,
     fretWindowCellCount,
     MAX_FRET_REACH,
+    GUITAR_DIFFICULTY_LABELS,
+    DEFAULT_GUITAR_DIFFICULTY,
+    includesGuitarIntervalCard,
     type FretWindow,
     type FretWindowSide,
   } from "../lib/guitar-interval-selection";
@@ -15,11 +22,19 @@ SPDX-License-Identifier: Apache-2.0
   let {
     deckLabel,
     selection,
+    difficulty,
+    overrides,
+    onoverrideschange,
+    ondifficultychange,
     onpreview,
     onchange,
   }: {
     deckLabel: string;
     selection: FretWindow;
+    difficulty: number;
+    overrides: Readonly<Record<string, boolean>>;
+    onoverrideschange: (value: Readonly<Record<string, boolean>>) => void;
+    ondifficultychange: (difficulty: number) => void;
     // The card on screen behind this dialog, if there is one, is redrawn to a
     // window as it is dragged, so what the setting does is visible on the
     // board itself rather than on a copy of it.
@@ -28,6 +43,22 @@ SPDX-License-Identifier: Apache-2.0
   } = $props();
 
   const draft = $derived(selection);
+  let notes = $state<readonly NoteRow[]>([]);
+  let loaded = $state(false);
+  let controlsHeight = $state(0);
+  onMount(() => {
+    const subscription = liveQuery(() =>
+      db.notes.where("pkg").equals(deckLabel).toArray(),
+    ).subscribe((rows) => {
+      notes = rows;
+      loaded = true;
+    });
+    return () => subscription.unsubscribe();
+  });
+  const selectedNotes = $derived(notes.filter((note) =>
+    includesGuitarIntervalCard(note, draft, difficulty, overrides),
+  ));
+  const selectedCount = $derived(selectedNotes.length);
 
   function setSide(side: FretWindowSide, value: number): void {
     const next = { ...draft, [side]: clampFretReach(value) };
@@ -57,9 +88,37 @@ SPDX-License-Identifier: Apache-2.0
   ];
 </script>
 
+<section class="threshold" bind:clientHeight={controlsHeight}>
+  <label for="guitar-difficulty">
+    Difficulty: <strong>{difficulty} / {DEFAULT_GUITAR_DIFFICULTY}</strong>
+  </label>
+  <input
+    id="guitar-difficulty"
+    type="range"
+    min="1"
+    max={DEFAULT_GUITAR_DIFFICULTY}
+    step="1"
+    value={difficulty}
+    aria-valuetext={`${difficulty}: ${GUITAR_DIFFICULTY_LABELS[difficulty - 1]}`}
+    aria-describedby="guitar-difficulty-hint"
+    oninput={(event) => ondifficultychange(Number(event.currentTarget.value))}
+  />
+  <p id="guitar-difficulty-hint">
+    {GUITAR_DIFFICULTY_LABELS[difficulty - 1]}
+  </p>
+  <p class="selection-count" aria-live="polite">
+    {#if loaded}{selectedCount} / {notes.length} cards selected{:else}Loading positions…{/if}
+  </p>
+  {#if loaded && selectedCount === 0}
+    <p class="empty-selection">No cards match. Increase the difficulty or widen the fret window.</p>
+  {/if}
+</section>
+
+<GuitarIntervalMap {notes} {selectedNotes} window={draft} {overrides} {onoverrideschange} {controlsHeight} />
+
 <div class="table-summary">
   <span>{deckLabel}</span>
-  <span>{fretWindowCellCount(draft)} positions asked</span>
+  <span>{fretWindowCellCount(draft)} positions per root in window</span>
 </div>
 
 <div class="reaches">
@@ -89,12 +148,43 @@ SPDX-License-Identifier: Apache-2.0
 </div>
 
 <p class="hint">
-  <code>{deckLabel}</code> draws the neck around the root instead of at a
-  fret number, so this is how far the board reaches either way — and with it,
-  which positions the deck asks about.
+  Frets are relative to root 1. Widen the window to include more positions.
 </p>
 
 <style>
+  .threshold {
+    position: sticky;
+    top: -16px;
+    z-index: 2;
+    background: var(--surface);
+    padding: 12px 16px;
+    margin: -16px -16px 12px;
+    border-bottom: 1px solid var(--divider);
+    display: grid;
+    gap: 6px;
+  }
+
+  .threshold label,
+  .threshold p {
+    font-size: 13px;
+    color: var(--on-surface-muted);
+  }
+
+  .threshold p {
+    margin: 0;
+  }
+
+  .threshold strong,
+  .threshold .selection-count {
+    color: var(--on-surface);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .threshold input {
+    width: 100%;
+    accent-color: var(--count-new);
+  }
+
   .table-summary {
     display: flex;
     justify-content: space-between;
@@ -175,11 +265,4 @@ SPDX-License-Identifier: Apache-2.0
     font-size: 13px;
   }
 
-  .hint code {
-    padding: 2px 5px;
-    border-radius: 4px;
-    background: var(--divider);
-    color: var(--on-surface);
-    font-family: inherit;
-  }
 </style>

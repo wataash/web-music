@@ -21,6 +21,7 @@ import {
   type GuitarIntervalCard,
 } from "./cards";
 import { PACKAGE_SPEC, ROOT_DECK_ID } from "./package-spec";
+import { learningOrderGroup } from "./learning-order";
 
 const PACKAGE_DIRECTORY = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -76,11 +77,9 @@ function createNotes(): readonly PackageNote[] {
         `target-string::${card.targetString}`,
         `fret-offset::${formatOffset(card.fretOffset)}`,
         `degree::${card.names[0]}`,
+        `learning-level::${learningOrderGroup(card) + 1}`,
       ],
-      // No order group: introducing the nearest frets first meant the first
-      // thirty cards all sat in the root's own fret, one string away and
-      // straight above it, and a shape that never changes is a shape that
-      // gives the answer away. One stable shuffle over the lot instead.
+      orderGroup: learningOrderGroup(card),
     };
   });
 }
@@ -102,8 +101,31 @@ function renderBoard(
     `<img src="${BOARD_FILENAME}" alt="">`,
     label("root", "1", root),
     label(kind, text, target),
+    ...(kind === "answer" ? referenceLabels(card) : []),
     "</span></span>",
   ].join("");
+}
+
+const ALTERED_REFERENCES: Readonly<Record<string, readonly [string, number]>> = {
+  d5: ["P5", 1], d7: ["m7", 1], A4: ["P4", -1], A5: ["P5", -1],
+  "♭9": ["9", 1], "♯9": ["9", -1], "♯11": ["11", -1], "♭13": ["13", 1],
+};
+
+function referenceLabels(card: GuitarIntervalCard): string[] {
+  const byOffset = new Map<number, string[]>();
+  for (const name of card.names) {
+    const reference = ALTERED_REFERENCES[name];
+    if (!reference) continue;
+    const [text, delta] = reference;
+    const offset = card.fretOffset + delta;
+    // The reference belongs to a physical neighboring position; never wrap
+    // it onto the opposite end of the neck drawing.
+    if (Math.abs(offset) > MAX_FRET_REACH) continue;
+    byOffset.set(offset, [...(byOffset.get(offset) ?? []), text]);
+  }
+  return [...byOffset].sort(([a], [b]) => a - b).map(([offset, names]) =>
+    label("reference", names.join(" "), labelPosition(card.targetString, offset)),
+  );
 }
 
 function label(

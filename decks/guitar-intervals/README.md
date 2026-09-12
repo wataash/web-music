@@ -68,10 +68,39 @@ drawing rather than shapes inside it, so a position can carry three of them
 without the board having to make room, and so the app can size them on their
 own.
 
-New cards are introduced in one stable shuffle over the whole deck. Ordering
-them by how far they are from the root put the first thirty in the root's own
-fret, one string away and straight above it — and a shape that never changes
-is a shape the answer can be guessed from.
+## Learning order
+
+New cards are introduced by priority group, with a stable shuffle within each
+group. Learn reference shapes first, then recognize other degrees around them.
+Card IDs and GUIDs stay unchanged; re-importing the web deck updates the order
+of unlearned cards while preserving study history and review schedules.
+
+| Group | Shapes | Cards |
+|---|---|---:|
+| 1 | Fifths and octaves rooted on strings 6 and 5 (power-chord shapes) | 4 |
+| 2 | Adjacent-string major thirds rooted on strings 6 and 5 | 2 |
+| 3 | These anchors on other strings, including the B-string correction, and same-fret notes on strings 1 and 6 | 10 |
+| 4 | Remaining nearby roots, fifths, and major thirds | 21 |
+| 5 | Nearby minor thirds and fourths | 29 |
+| 6 | Nearby minor and major sevenths | 28 |
+| 7 | Other nearby degrees: seconds, sixths, and tritones | 70 |
+| 8 | Remaining same-string shapes within four frets | 12 |
+| 9 | Remaining shapes three or more strings away, within three frets | 82 |
+| 10 | Remaining shapes four to six frets away | 204 |
+
+“Nearby” means at most two strings and three frets away, in either direction.
+The reader's fret window still filters the queue: cards outside the selected
+window are not introduced. The table describes groups, not a fixed order
+within each group.
+
+Notes carry a `learning-level::1` through `learning-level::10` tag. Flashcards
+uses it for the cumulative difficulty slider in What to ask, combined with
+the fret window. The default includes all ten levels.
+
+Using major thirds, fifths, and octaves as reference shapes is described in
+[Jesse S. Hale's University of Miami DMA essay](https://scholarship.miami.edu/esploro/outputs/doctoral/Unlocking-the-Guitar-Fretboard-An-Intervallic/991031447464102976),
+pp. 94 and 104. The particular ten groups above are this deck's teaching
+choices, not an experimentally established ranking from that source.
 
 ## Generate
 
@@ -81,3 +110,9 @@ pnpm generate:anki
 ```
 
 The output is `dist/guitar-intervals.json` and `dist/guitar-intervals.apkg`.
+
+On answer fretboards only, altered degrees have muted reference
+labels on the same string one fret away: d5 → P5, d7 → m7, P4 → A4,
+P5 → A5, ♭9 → 9, 9 → ♯9, 11 → ♯11, and ♭13 → 13. References sharing a
+position are combined (for example P4 and 11). They are clipped by the fret
+window like other labels, and omitted beyond the drawing's six-fret reach.

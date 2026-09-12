@@ -20,6 +20,7 @@ const selections = {
   },
   fretboardNotes: new Set(DEFAULT_FRETBOARD_NOTE_SELECTION),
   fretWindow: DEFAULT_FRET_WINDOW,
+  guitarDifficulty: 10, guitarOverrides: {},
   intervalPairs: new Set(DEFAULT_INTERVAL_PAIR_SELECTION),
   staff: DEFAULT_STAFF_NOTE_SELECTION,
 };

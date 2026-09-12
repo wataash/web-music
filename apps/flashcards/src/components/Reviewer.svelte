@@ -134,6 +134,8 @@ SPDX-License-Identifier: Apache-2.0
     oncirclenoteselectionchange,
     onfretboardnoteselectionchange,
     onfretwindowchange,
+    onguitardifficultychange,
+    onguitaroverrideschange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
   }: {
@@ -157,6 +159,8 @@ SPDX-License-Identifier: Apache-2.0
     ) => void;
     onfretboardnoteselectionchange: (selection: readonly string[]) => void;
     onfretwindowchange: (selection: FretWindow) => void;
+    onguitardifficultychange: (difficulty: number) => void;
+    onguitaroverrideschange: (overrides: Readonly<Record<string, boolean>>) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
   } = $props();
@@ -1154,6 +1158,8 @@ SPDX-License-Identifier: Apache-2.0
     {oncirclenoteselectionchange}
     {onfretboardnoteselectionchange}
     {onfretwindowchange}
+    {onguitardifficultychange}
+    {onguitaroverrideschange}
     {onintervalpairselectionchange}
     {onstaffnoteselectionchange}
     onclose={closeNoteSettings}

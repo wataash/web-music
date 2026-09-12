@@ -22,6 +22,27 @@ import { PACKAGE_SPEC } from "./package-spec";
 import { CARD_CSS, ROOT_DECK_NAME } from "./template";
 
 describe("guitar interval deck generation", () => {
+  it("places all eight altered references one fret away on the target string", () => {
+    const notes = createDeckNotes();
+    for (const [degree, reference, delta] of [
+      ["d5", "P5", 1], ["d7", "m7", 1], ["A4", "P4", -1], ["A5", "P5", -1],
+      ["♭9", "9", 1], ["♯9", "9", -1], ["♯11", "11", -1], ["♭13", "13", 1],
+    ] as const) {
+      const shape = GUITAR_INTERVAL_CARDS.find((card) => card.names.includes(degree) && Math.abs(card.fretOffset) < 3)!;
+      const note = notes.find((note) => note.id === shape.id)!;
+      const position = labelPosition(shape.targetString, shape.fretOffset + delta);
+      expect(note.fields[6]).not.toContain('class="fret-name reference"');
+      for (const board of [note.fields[7]]) {
+        const hints = [...board.matchAll(/class="fret-name reference" style="--fret-x:([^;]+);--fret-y:([^"]+)">([^<]+)</g)];
+        const hint = hints.find((match) => match[3].split(" ").includes(reference))!;
+        expect(hint).toBeDefined();
+        expect(parseFloat(hint[1])).toBeCloseTo(position.x * 100, 2);
+        expect(parseFloat(hint[2])).toBeCloseTo(position.y * 100, 2);
+      }
+    }
+    expect(notes.find((note) => note.id === "r6-s5-f2")!.fields[6]).not.toContain('class="fret-name reference"');
+  });
+
   it("writes one note per card into one flat deck", () => {
     const notes = createDeckNotes();
     expect(notes).toHaveLength(GUITAR_INTERVAL_CARDS.length);
@@ -60,6 +81,18 @@ describe("guitar interval deck generation", () => {
     ).toBe(true);
   });
 
+  it("exports each learning level for the app's difficulty filter", () => {
+    const notes = createDeckNotes();
+    for (const note of notes) {
+      expect(note.tags.filter((tag) => tag.startsWith("learning-level::")))
+        .toEqual([`learning-level::${note.orderGroup! + 1}`]);
+    }
+    expect(notes.find((note) => note.id === "r6-s5-f2")!.tags)
+      .toContain("learning-level::1");
+    expect(notes.find((note) => note.id === "r3-s2-f3")!.tags)
+      .toContain("learning-level::3");
+  });
+
   it("places a name in the middle of its own cell", () => {
     expect(labelPosition(1, 0)).toEqual({ x: 0.5, y: 1 / 12 });
     expect(labelPosition(6, 0).y).toBeCloseTo(11 / 12);
@@ -77,25 +110,31 @@ describe("guitar interval deck generation", () => {
     expect(CARD_CSS).toMatch(/\.fret-window \{[^}]*overflow: hidden/);
   });
 
-  it("introduces cards in a shape the answer cannot be guessed from", () => {
-    const deck = createWebPackage(PACKAGE_SPEC, createDeckNotes());
-    const orderByNoteId = new Map(
-      deck.cards.map(({ nid, newOrder }) => [nid, newOrder]),
-    );
-    const first = deck.notes
-      .map((note) => ({ note, order: orderByNoteId.get(note.id)! }))
-      .sort((left, right) => left.order - right.order)
-      .slice(0, 12)
-      .map(({ note }) => note);
+  it("changes only new-card order, preserving identities and the shuffle within each group", () => {
+    const notes = createDeckNotes();
+    const deck = createWebPackage(PACKAGE_SPEC, notes);
+    const legacy = createWebPackage(PACKAGE_SPEC, notes.map(({ orderGroup, ...note }) => note));
+    expect(deck.notes).toEqual(legacy.notes);
+    expect(deck.cards.map(({ newOrder, ...card }) => card))
+      .toEqual(legacy.cards.map(({ newOrder, ...card }) => card));
 
-    // A run of cards that all sit in the root's own fret is a run whose
-    // answer is one of the few a straight line up the neck can be.
-    expect(new Set(first.map(({ fields }) => fields[4])).size).toBeGreaterThan(
-      6,
-    );
-    expect(new Set(first.map(({ fields }) => fields[5])).size).toBeGreaterThan(
-      6,
-    );
+    const groupById = new Map(notes.map((note) => [note.id, note.orderGroup!]));
+    const orderedIds = (data: typeof deck) => {
+      const idByNid = new Map(data.notes.map((note) => [note.id, note.fields[0]]));
+      return [...data.cards].sort((a, b) => a.newOrder - b.newOrder)
+        .map((card) => idByNid.get(card.nid)!);
+    };
+    const ids = orderedIds(deck);
+    const groups = ids.map((id) => groupById.get(id)!);
+    expect(groups).toEqual([...groups].sort((a, b) => a - b));
+    expect(new Set(ids.slice(0, 4))).toEqual(new Set([
+      "r6-s5-f2", "r5-s4-f2", "r6-s4-f2", "r5-s3-f2",
+    ]));
+    expect(ids).not.toEqual(orderedIds(legacy));
+    for (let group = 0; group < 10; group++) {
+      const inGroup = (id: string) => groupById.get(id) === group;
+      expect(ids.filter(inGroup)).toEqual(orderedIds(legacy).filter(inGroup));
+    }
   });
 
   it("writes a modern Anki package", async () => {
