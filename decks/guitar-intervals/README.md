@@ -70,37 +70,49 @@ own.
 
 ## Learning order
 
-New cards are introduced by priority group, with a stable shuffle within each
-group. Learn reference shapes first, then recognize other degrees around them.
-Card IDs and GUIDs stay unchanged; re-importing the web deck updates the order
-of unlearned cards while preserving study history and review schedules.
+New cards follow the same ten stages as the app's Learning range slider, with
+stable shuffling within each stage. IDs and GUIDs stay unchanged; updating the
+package preserves study history and schedules.
 
-| Group | Shapes | Cards |
-|---|---|---:|
-| 1 | Fifths and octaves rooted on strings 6 and 5 (power-chord shapes) | 4 |
-| 2 | Adjacent-string major thirds rooted on strings 6 and 5 | 2 |
-| 3 | These anchors on other strings, including the B-string correction, and same-fret notes on strings 1 and 6 | 10 |
-| 4 | Remaining nearby roots, fifths, and major thirds | 21 |
-| 5 | Nearby minor thirds and fourths | 29 |
-| 6 | Nearby minor and major sevenths | 28 |
-| 7 | Other nearby degrees: seconds, sixths, and tritones | 70 |
-| 8 | Remaining same-string shapes within four frets | 12 |
-| 9 | Remaining shapes three or more strings away, within three frets | 82 |
-| 10 | Remaining shapes four to six frets away | 204 |
+[learning-order.ts](src/learning-order.ts) lists 30 movable teaching voicings,
+using strings 6 → 1 and frets relative to the root (null means mute). These
+are curated examples, not a measured frequency ranking. The Cm9 form
+8–10–8–8–8–10 is a user-supplied example; the other forms are explicit teaching
+choices. Tests verify each form's actual pitch classes and complete coverage.
 
-“Nearby” means at most two strings and three frets away, in either direction.
-The reader's fret window still filters the queue: cards outside the selected
-window are not introduced. The table describes groups, not a fixed order
-within each group.
+- Stage 1: major/minor/7/maj7/m7 forms rooted on strings 6 and 5, plus reference octaves, fifths and thirds.
+- Stage 2: representative 9/m9/maj9, sus, 6/13 and add9 forms. The string-6 to string-1 +2 ninth is included here.
+- Stages 3–4: string-4 forms and upper-string inversions.
+- Remaining positions are added by musical role (chord tones, natural extensions, altered intervals), with bass-root context before distance. A wide string crossing alone never decides the stage.
 
-Notes carry a `learning-level::1` through `learning-level::10` tag. Flashcards
-uses it for the cumulative difficulty slider in What to ask, combined with
-the fret window. The default includes all ten levels.
+Each named form sets a latest introduction stage for all of its root-to-tone
+relationships. Remaining cards fill gradual increments without splitting those
+forms. Positions beyond ±3 frets are distributed from stage 3, except where an
+earlier named form needs them (for example Eadd9). The fret window still limits
+selection, even when a form's stage has been reached.
 
-Using major thirds, fifths, and octaves as reference shapes is described in
+| Stage | Within ±3 frets | Within ±6 frets |
+|---|---:|---:|
+| 1 | 47 | 47 |
+| 2 | 70 | 71 |
+| 3 | 92 | 119 |
+| 4 | 114 | 168 |
+| 5 | 136 | 217 |
+| 6 | 158 | 266 |
+| 7 | 180 | 315 |
+| 8 | 202 | 364 |
+| 9 | 224 | 413 |
+| 10 | 246 | 462 |
+
+Notes carry a learning-level::1 through learning-level::10 tag; orderGroup is
+that level minus one. The app's saved numeric setting and individual overrides
+remain compatible. The maximum includes every shape inside the fret window.
+
+[Berklee Guitar Chords 101](https://online.berklee.edu/courses/guitar-chords-101)
+emphasizes chord construction and note relationships across the fretboard.
 [Jesse S. Hale's University of Miami DMA essay](https://scholarship.miami.edu/esploro/outputs/doctoral/Unlocking-the-Guitar-Fretboard-An-Intervallic/991031447464102976),
-pp. 94 and 104. The particular ten groups above are this deck's teaching
-choices, not an experimentally established ranking from that source.
+pp. 94 and 104, describes reference thirds, fifths and octaves. These support
+the teaching approach; this particular ten-stage assignment is our design.
 
 ## Generate
 

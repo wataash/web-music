@@ -1793,67 +1793,78 @@ test("filters guitar intervals by difficulty with apply, cancel and persisted se
   const row = deckRow(page, "Guitar Intervals");
   const openSettings = () => row.getByRole("button", { name: "What Guitar Intervals asks" }).click();
   const dialog = page.getByRole("dialog", { name: "What to ask" });
-  const slider = dialog.getByRole("slider", { name: "Difficulty" });
+  const slider = dialog.getByRole("slider", { name: "Learning range" });
   await openSettings();
   await expect(slider).toHaveValue("10");
   await expect(dialog).toContainText("246 / 462 cards selected");
   await slider.fill("1");
-  await expect(dialog).toContainText("4 / 462 cards selected");
+  await expect(dialog).toContainText("47 / 462 cards selected");
   const map = dialog.getByRole("region", { name: "Question map" });
-  await expect(map.locator(".roots svg")).toHaveCount(6);
-  await expect(map.locator(".roots .mini-included")).toHaveCount(4);
-  await expect(map.locator('[data-included="true"]')).toHaveCount(2);
-  await map.getByRole("button", { name: "String 5, fret +2: P5, included", exact: true }).click();
+  await expect(map.getByRole("table")).toHaveCount(6);
+  await expect(map.locator(".roots .cell")).toHaveCount(462);
+  await expect(map.locator(".roots .root-marker")).toHaveCount(6);
+  await expect(map.locator(".roots .cell").filter({ hasText: /^m2$/ }).first()).toBeVisible();
+  await expect(map.locator(".roots .cell").filter({ hasText: /^M2$/ }).first()).toBeVisible();
+  await expect(map.locator(".roots .cell.included")).toHaveCount(47);
+  await expect(map.locator('[data-included="true"]')).toHaveCount(47);
+  await map.getByRole("region", { name: "Root string 6", exact: true }).getByRole("button", { name: "String 5, fret +2: P5, included", exact: true }).click();
   await expect(map.locator(".detail")).toContainText("String 6 → string 5 · fret +2 · P5 · Excluded");
-  await expect(dialog).toContainText("3 / 462 cards selected");
-  await expect(map.locator(".roots .mini-included")).toHaveCount(3);
-  await expect(map.getByRole("button", { name: "String 5, fret +2: P5, excluded", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(dialog).toContainText("46 / 462 cards selected");
+  await expect(map.locator(".roots .cell.included")).toHaveCount(46);
+  await expect(map.getByRole("region", { name: "Root string 6", exact: true }).getByRole("button", { name: "String 5, fret +2: P5, excluded", exact: true })).toHaveAttribute("aria-pressed", "false");
   await slider.press("ArrowRight");
   await expect(slider).toHaveValue("2");
-  await expect(dialog).toContainText("6 / 462 cards selected");
-  await expect(map.locator('[data-included="true"]')).toHaveCount(3);
-  await expect(map.getByRole("button", { name: "String 5, fret -1: M3, included", exact: true })).toBeVisible();
-  await map.getByRole("button", { name: "Root string 3, 0 included", exact: true }).click();
-  await expect(map.locator('[data-included="true"]')).toHaveCount(0);
+  await expect(dialog).toContainText("70 / 462 cards selected");
+  const root6 = map.getByRole("region", { name: "Root string 6", exact: true });
+  for (const name of ["String 5, fret +2: P5, included", "String 4, fret 0: m7, included", "String 3, fret 0: m3 ♯9, included", "String 2, fret 0: P5, included", "String 1, fret +2: M2 9, included"]) {
+    await expect(root6.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
+  }
+  await shot("guitar-cm9-learning-range-2");
+  await expect(map.locator('[data-included="true"]')).toHaveCount(70);
+  await expect(map.getByRole("region", { name: "Root string 6", exact: true }).getByRole("button", { name: "String 5, fret -1: M3, included", exact: true })).toBeVisible();
+  const root3 = map.getByRole("region", { name: "Root string 3", exact: true });
   await slider.press("ArrowRight");
-  await expect(dialog).toContainText("16 / 462 cards selected");
-  await expect(map.locator(".roots .mini-included")).toHaveCount(16);
-  await expect(map.getByRole("button", { name: "String 2, fret +3: P5, included", exact: true })).toBeVisible();
+  await expect(dialog).toContainText("92 / 462 cards selected");
+  await expect(map.locator(".roots .cell.included")).toHaveCount(92);
+  await expect(root3.getByRole("button", { name: "String 2, fret +3: P5, included", exact: true })).toBeVisible();
   await shot("guitar-difficulty-desktop");
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await map.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await dialog.locator(".content").evaluate((element) => { element.scrollTop = 0; });
   await shot("guitar-difficulty-mobile");
-  await map.getByRole("button", { name: "Root string 6, 4 included", exact: true }).click();
+  const mobileCell = root3.getByRole("button", { name: "String 2, fret +3: P5, included", exact: true });
+  await mobileCell.click();
+  await expect(dialog).toContainText("91 / 462 cards selected");
+  await root3.getByRole("button", { name: "String 2, fret +3: P5, excluded", exact: true }).press("Space");
+  await expect(dialog).toContainText("92 / 462 cards selected");
   const contentTop = (await dialog.locator(".content").boundingBox())!.y;
   expect((await dialog.locator(".threshold").boundingBox())!.y).toBeCloseTo(contentTop, 0);
   const sliderBox = (await slider.boundingBox())!;
   expect(sliderBox.y).toBeGreaterThanOrEqual(contentTop);
   expect(sliderBox.y).toBeLessThan(contentTop + 100);
-  await expect(map.getByRole("heading", { name: "Root on string 6" })).toBeInViewport();
-  await shot("guitar-difficulty-mobile-expanded");
+  await expect(root3.getByRole("table")).toBeInViewport();
+  await shot("guitar-difficulty-mobile-toggle");
   expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await dialog.getByRole("button", { name: "CANCEL" }).click();
   await openSettings();
   await expect(slider).toHaveValue("10");
   await slider.fill("1");
   await dialog.getByRole("button", { name: "APPLY" }).click();
-  await expect(row.locator(".count.new")).toHaveText("4");
+  await expect(row.locator(".count.new")).toHaveText("20");
   await page.reload();
   await settleDeckImports(page);
   await openSettings();
   await expect(slider).toHaveValue("1");
-  await expect(dialog).toContainText("4 / 462 cards selected");
+  await expect(dialog).toContainText("47 / 462 cards selected");
   await dialog.locator("#fret-reach-right").fill("0");
-  await expect(dialog).toContainText("0 / 462 cards selected");
-  await expect(map.locator('[data-included="true"]')).toHaveCount(0);
-  await expect(dialog).toContainText("No cards match");
+  await expect(map.getByRole("region", { name: "Root string 6", exact: true }).getByRole("button", { name: "String 5, fret +2: P5, excluded", exact: true })).toBeDisabled();
+  expect(await map.locator('[data-included="true"]').count()).toBeLessThan(47);
   await dialog.getByRole("button", { name: "CANCEL" }).click();
   await row.locator(".deck-name").click();
-  await expect(page.locator(".count.new")).toHaveText("4");
+  await expect(page.locator(".count.new")).toHaveText("20");
   await expect(page.frameLocator('iframe[title="card"]').locator(".fret-name.root")).toBeVisible();
   await page.getByRole("button", { name: "SHOW ANSWER" }).click();
-  await expect(page.frameLocator('iframe[title="card"]').locator(".fret-name.answer")).toHaveText(/^(1|P5)$/);
+  await expect(page.frameLocator('iframe[title="card"]').locator(".fret-name.answer")).toHaveText(/^(1|P5|M3|m3 ♯9|m7|M7)$/);
   // The reviewer exposes the same saved difficulty and applies changes too.
   await openNoteSettings(page);
   await expect(slider).toHaveValue("1");
@@ -1861,7 +1872,7 @@ test("filters guitar intervals by difficulty with apply, cancel and persisted se
   await dialog.getByRole("button", { name: "APPLY" }).click();
   await openNoteSettings(page);
   await expect(slider).toHaveValue("2");
-  await expect(dialog).toContainText("6 / 462 cards selected");
+  await expect(dialog).toContainText("70 / 462 cards selected");
 });
 
 test("saves individual guitar exclusions and asks only the remaining shape", async ({ page }) => {
@@ -1872,10 +1883,11 @@ test("saves individual guitar exclusions and asks only the remaining shape", asy
   await open();
   const dialog = page.getByRole("dialog");
   const map = dialog.getByRole("region", { name: "Question map" });
-  await dialog.getByRole("slider", { name: "Difficulty" }).fill("1");
-  await map.getByRole("button", { name: "String 5, fret +2: P5, included", exact: true }).click();
-  await map.getByRole("button", { name: "Root string 5, 2 included", exact: true }).click();
-  for (let i = 0; i < 2; i++) await map.locator('[data-included="true"]').first().click();
+  await dialog.getByRole("slider", { name: "Learning range" }).fill("1");
+  const keep = map.getByRole("region", { name: "Root string 6", exact: true }).getByRole("button", { name: "String 4, fret +2: 1, included", exact: true });
+  await keep.evaluate(element => element.setAttribute("data-keep", "true"));
+  const excluded = map.locator('[data-included="true"]:not([data-keep])');
+  while (await excluded.count()) await excluded.first().click();
   await expect(dialog).toContainText("1 / 462 cards selected");
   await dialog.getByRole("button", { name: "APPLY", exact: true }).click();
   await expect(row.locator(".count.new")).toHaveText("1");
@@ -1885,7 +1897,7 @@ test("saves individual guitar exclusions and asks only the remaining shape", asy
   await expect(dialog).toContainText("1 / 462 cards selected");
   // Reset is a draft until APPLY; cancelling must retain the exclusions.
   await map.getByRole("button", { name: "RESET INDIVIDUAL CHANGES" }).click();
-  await expect(dialog).toContainText("4 / 462 cards selected");
+  await expect(dialog).toContainText("47 / 462 cards selected");
   await dialog.getByRole("button", { name: "CANCEL" }).click();
   await expect(row.locator(".count.new")).toHaveText("1");
   await row.locator(".deck-name").click();
@@ -1893,6 +1905,26 @@ test("saves individual guitar exclusions and asks only the remaining shape", asy
   await expect(card.locator(".fret-name.root")).toBeVisible();
   await page.getByRole("button", { name: "SHOW ANSWER" }).click();
   await expect(card.locator(".fret-name.answer")).toHaveText("1");
+  await page.getByRole("button", { name: "GOOD" }).click();
+  // Replacing deck metadata must not touch the schedule, review log or choices.
+  const preserved = await page.evaluate(async () => {
+    const modulePath = "/src/lib/db.ts";
+    const { db, importDeckData } = await import(modulePath);
+    const snapshot = async () => ({
+      states: await db.states.toArray(), logs: await db.revlog.toArray(),
+      overrides: localStorage.getItem("music-flashcards:guitar-overrides"),
+    });
+    const before = await snapshot();
+    const { deck } = await (await fetch("/decks/guitar-intervals.json")).json();
+    const previous = structuredClone(deck);
+    for (const note of previous.notes) note.tags = note.tags.replace(/learning-level::\d+/, "learning-level::10");
+    await importDeckData(previous);
+    await importDeckData(deck);
+    return { before, after: await snapshot() };
+  });
+  expect(preserved.before.logs).toHaveLength(1);
+  expect(preserved.before.states).toHaveLength(1);
+  expect(preserved.after).toEqual(preserved.before);
 });
 
 for (const [shape, answer, references] of [
@@ -1902,9 +1934,13 @@ for (const [shape, answer, references] of [
   test(`places faint guitar references next to ${answer}`, async ({ page, shot }) => {
     await page.addInitScript((shape) => {
       localStorage.setItem("music-flashcards:guitar-difficulty", "1");
-      localStorage.setItem("music-flashcards:guitar-overrides", JSON.stringify({
-        "r6-s5-f2": false, "r5-s4-f2": false, "r6-s4-f2": false, "r5-s3-f2": false, [shape]: true,
-      }));
+      const overrides: Record<string, boolean> = {};
+      for (let root = 1; root <= 6; root++) for (let target = 1; target <= 6; target++) for (let fret = -6; fret <= 6; fret++) {
+        const offset = fret === 0 ? "0" : `${fret < 0 ? "b" : "f"}${Math.abs(fret)}`;
+        overrides[`r${root}-s${target}-${offset}`] = false;
+      }
+      overrides[shape] = true;
+      localStorage.setItem("music-flashcards:guitar-overrides", JSON.stringify(overrides));
     }, shape);
     await openDeckList(page);
     await study(page, "Guitar Intervals");

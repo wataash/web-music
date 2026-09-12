@@ -26,19 +26,22 @@ export function parseGuitarOverrides(value: unknown): GuitarOverrides {
 
 export const DEFAULT_FRET_WINDOW: FretWindow = { left: 3, right: 3 };
 
-export const GUITAR_DIFFICULTY_LABELS = [
-  "Power-chord fifths and octaves",
-  "Major-third anchors",
-  "Anchors across the strings",
-  "Nearby roots, fifths and major thirds",
-  "Nearby minor thirds and fourths",
-  "Nearby sevenths",
-  "Other nearby intervals",
-  "Same-string stretches",
-  "Wider string crossings",
-  "All shapes",
-] as const;
-export const DEFAULT_GUITAR_DIFFICULTY = GUITAR_DIFFICULTY_LABELS.length;
+export const DEFAULT_GUITAR_DIFFICULTY = 10;
+
+export function guitarDifficultyLabel(difficulty: number): string {
+  return [
+    "Basic chord forms and reference notes",
+    "9ths, suspensions and chord extensions",
+    "More root positions and voicings",
+    "Inversions and chord-tone connections",
+    "Chord tones across the fretboard",
+    "Melodic connections and extensions",
+    "More extensions and altered intervals",
+    "Altered intervals across positions",
+    "Less familiar positions",
+    "All shapes",
+  ][parseGuitarDifficulty(difficulty) - 1];
+}
 
 export function parseGuitarDifficulty(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_GUITAR_DIFFICULTY;

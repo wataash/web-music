@@ -90,7 +90,7 @@ describe("guitar interval deck generation", () => {
     expect(notes.find((note) => note.id === "r6-s5-f2")!.tags)
       .toContain("learning-level::1");
     expect(notes.find((note) => note.id === "r3-s2-f3")!.tags)
-      .toContain("learning-level::3");
+      .toContain("learning-level::1");
   });
 
   it("places a name in the middle of its own cell", () => {
@@ -127,9 +127,8 @@ describe("guitar interval deck generation", () => {
     const ids = orderedIds(deck);
     const groups = ids.map((id) => groupById.get(id)!);
     expect(groups).toEqual([...groups].sort((a, b) => a - b));
-    expect(new Set(ids.slice(0, 4))).toEqual(new Set([
-      "r6-s5-f2", "r5-s4-f2", "r6-s4-f2", "r5-s3-f2",
-    ]));
+    const core = notes.filter(note => note.orderGroup === 0);
+    expect(new Set(ids.slice(0, core.length))).toEqual(new Set(core.map(note => note.id)));
     expect(ids).not.toEqual(orderedIds(legacy));
     for (let group = 0; group < 10; group++) {
       const inGroup = (id: string) => groupById.get(id) === group;

@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
     clampFretReach,
     fretWindowCellCount,
     MAX_FRET_REACH,
-    GUITAR_DIFFICULTY_LABELS,
+    guitarDifficultyLabel,
     DEFAULT_GUITAR_DIFFICULTY,
     includesGuitarIntervalCard,
     type FretWindow,
@@ -45,7 +45,6 @@ SPDX-License-Identifier: Apache-2.0
   const draft = $derived(selection);
   let notes = $state<readonly NoteRow[]>([]);
   let loaded = $state(false);
-  let controlsHeight = $state(0);
   onMount(() => {
     const subscription = liveQuery(() =>
       db.notes.where("pkg").equals(deckLabel).toArray(),
@@ -88,9 +87,9 @@ SPDX-License-Identifier: Apache-2.0
   ];
 </script>
 
-<section class="threshold" bind:clientHeight={controlsHeight}>
+<section class="threshold">
   <label for="guitar-difficulty">
-    Difficulty: <strong>{difficulty} / {DEFAULT_GUITAR_DIFFICULTY}</strong>
+    Learning range: <strong>{difficulty} / {DEFAULT_GUITAR_DIFFICULTY}</strong>
   </label>
   <input
     id="guitar-difficulty"
@@ -99,22 +98,22 @@ SPDX-License-Identifier: Apache-2.0
     max={DEFAULT_GUITAR_DIFFICULTY}
     step="1"
     value={difficulty}
-    aria-valuetext={`${difficulty}: ${GUITAR_DIFFICULTY_LABELS[difficulty - 1]}`}
+    aria-valuetext={`${difficulty}: ${guitarDifficultyLabel(difficulty)}`}
     aria-describedby="guitar-difficulty-hint"
     oninput={(event) => ondifficultychange(Number(event.currentTarget.value))}
   />
   <p id="guitar-difficulty-hint">
-    {GUITAR_DIFFICULTY_LABELS[difficulty - 1]}
+    {guitarDifficultyLabel(difficulty)}
   </p>
   <p class="selection-count" aria-live="polite">
     {#if loaded}{selectedCount} / {notes.length} cards selected{:else}Loading positions…{/if}
   </p>
   {#if loaded && selectedCount === 0}
-    <p class="empty-selection">No cards match. Increase the difficulty or widen the fret window.</p>
+    <p class="empty-selection">No cards match. Increase the learning range or widen the fret window.</p>
   {/if}
 </section>
 
-<GuitarIntervalMap {notes} {selectedNotes} window={draft} {overrides} {onoverrideschange} {controlsHeight} />
+<GuitarIntervalMap {notes} {selectedNotes} window={draft} {overrides} {onoverrideschange} />
 
 <div class="table-summary">
   <span>{deckLabel}</span>

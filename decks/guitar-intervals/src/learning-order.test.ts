@@ -3,45 +3,46 @@
 
 import { describe, expect, it } from "vitest";
 import { GUITAR_INTERVAL_CARDS } from "./cards";
-import { learningOrderGroup } from "./learning-order";
+import { CHORD_FORMS, difficultyLevels, formIncludes } from "./learning-order";
 
-const group = (id: string) => {
-  const card = GUITAR_INTERVAL_CARDS.find((card) => card.id === id);
-  if (!card) throw new Error(`Missing card ${id}`);
-  return learningOrderGroup(card);
-};
+const levels = difficultyLevels(GUITAR_INTERVAL_CARDS);
 
 describe("guitar interval learning priorities", () => {
-  it("starts with power-chord fifths and octaves, then major thirds", () => {
-    expect(GUITAR_INTERVAL_CARDS.filter((card) => learningOrderGroup(card) === 0)
-      .map((card) => card.id).sort()).toEqual([
-      "r5-s3-f2", "r5-s4-f2", "r6-s4-f2", "r6-s5-f2",
-    ]);
-    expect(group("r6-s5-b1")).toBe(1);
-    expect(group("r5-s4-b1")).toBe(1);
+  it("includes the complete Cm9 form by level 2, including the high-string ninth", () => {
+    for (const id of ["r6-s5-f2", "r6-s4-0", "r6-s3-0", "r6-s2-0", "r6-s1-f2"]) {
+      expect(levels.get(id), id).toBeLessThanOrEqual(2);
+    }
+    expect(levels.get("r6-s1-f2")).toBe(2);
   });
 
-  it("introduces the B-string correction with the other anchor extensions", () => {
-    for (const id of ["r3-s2-f3", "r4-s2-f3", "r3-s1-f3", "r3-s2-0",
-      "r6-s1-0", "r1-s6-0"]) expect(group(id)).toBe(2);
-    // The uncorrected octave shape is a major seventh, taught later.
-    expect(group("r4-s2-f2")).toBe(5);
+  it("keeps each complete teaching voicing within its promised level", () => {
+    // Independently verify the pitches and completeness of the fixture forms.
+    const open = [40, 45, 50, 55, 59, 64];
+    for (const form of CHORD_FORMS) {
+      expect(form.frets).toHaveLength(6);
+      expect(form.frets[6 - form.root]).toBe(0);
+      const pitches = form.frets.flatMap((fret, i) => fret === null ? [] :
+        [((open[i] + fret - open[6 - form.root]) % 12 + 12) % 12]);
+      expect([...new Set(pitches)].sort((a,b) => a-b), form.name).toEqual(form.tones);
+      const cards = GUITAR_INTERVAL_CARDS.filter(card => formIncludes(form, card));
+      expect(cards.length, form.name).toBe(pitches.length - 1);
+      for (const card of cards) expect(levels.get(card.id), `${form.name}: ${card.id}`).toBeLessThanOrEqual(form.level);
+    }
   });
 
-  it("expands from nearby anchors to other degrees and distant positions", () => {
-    expect(group("r4-s6-b2")).toBe(3); // octave below
-    expect(group("r6-s5-b2")).toBe(4); // minor third
-    expect(group("r6-s5-0")).toBe(4); // fourth
-    expect(group("r6-s4-0")).toBe(5); // minor seventh
-    expect(group("r6-s6-f2")).toBe(6); // major second
-    expect(group("r6-s6-f4")).toBe(7); // same string, outside default window
-    expect(group("r6-s3-f2")).toBe(8); // three strings away
-    expect(group("r6-s5-f4")).toBe(9); // wider fret offset
-  });
-
-  it("assigns all 462 shapes to the ten planned groups", () => {
-    const counts = Array<number>(10).fill(0);
-    for (const card of GUITAR_INTERVAL_CARDS) counts[learningOrderGroup(card)]++;
-    expect(counts).toEqual([4, 2, 10, 21, 29, 28, 70, 12, 82, 204]);
+  it("covers all shapes deterministically without sudden late jumps", () => {
+    expect(levels.size).toBe(462);
+    expect(difficultyLevels([...GUITAR_INTERVAL_CARDS].reverse())).toEqual(levels);
+    for (const window of [{left:3,right:3}, {left:6,right:6}, {left:1,right:3}]) {
+      const counts = Array.from({length:10}, (_, i) => GUITAR_INTERVAL_CARDS.filter(card =>
+        card.fretOffset >= -window.left && card.fretOffset <= window.right && levels.get(card.id)! <= i+1).length);
+      expect(counts[0]).toBeGreaterThanOrEqual(25);
+      expect(counts[0]).toBeLessThanOrEqual(55);
+      expect(counts[9]).toBe(GUITAR_INTERVAL_CARDS.filter(card => card.fretOffset >= -window.left && card.fretOffset <= window.right).length);
+      for (let i=1;i<10;i++) {
+        expect(counts[i]).toBeGreaterThan(counts[i-1]);
+        expect(counts[i]-counts[i-1]).toBeLessThanOrEqual(55);
+      }
+    }
   });
 });

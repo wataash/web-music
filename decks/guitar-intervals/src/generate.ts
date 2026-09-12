@@ -21,7 +21,7 @@ import {
   type GuitarIntervalCard,
 } from "./cards";
 import { PACKAGE_SPEC, ROOT_DECK_ID } from "./package-spec";
-import { learningOrderGroup } from "./learning-order";
+import { difficultyLevels } from "./learning-order";
 
 const PACKAGE_DIRECTORY = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -55,6 +55,7 @@ export function createDeckNotes(): readonly PackageNote[] {
 }
 
 function createNotes(): readonly PackageNote[] {
+  const levels = difficultyLevels(GUITAR_INTERVAL_CARDS);
   return GUITAR_INTERVAL_CARDS.map((card) => {
     const answer = card.names.join(" ");
     return {
@@ -77,9 +78,9 @@ function createNotes(): readonly PackageNote[] {
         `target-string::${card.targetString}`,
         `fret-offset::${formatOffset(card.fretOffset)}`,
         `degree::${card.names[0]}`,
-        `learning-level::${learningOrderGroup(card) + 1}`,
+        `learning-level::${levels.get(card.id)}`,
       ],
-      orderGroup: learningOrderGroup(card),
+      orderGroup: levels.get(card.id)! - 1,
     };
   });
 }

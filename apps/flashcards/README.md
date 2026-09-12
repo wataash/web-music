@@ -45,16 +45,17 @@ bundled web decks and schedules them with FSRS.
   degree another position plays above it, answering with every name for that
   distance — `m3 ♯9`, say. There are no fret numbers: the board is drawn around
   the root, so the same shape is one card wherever it is played. Its settings
-  include a ten-level difficulty slider, from basic fifths and octaves to all
-  shapes. Each level includes the easier levels, and the selected card count
-  also reflects the fret window. Difficulty stays at the top while scrolling.
-  Six miniature fretboards show the included positions for all root strings;
-  choose one to jump to its expanded map, highlighted and labeled
-  with its interval. Tap a cell to toggle its inclusion and see its full answer.
+  include a ten-level learning-range slider, from basic chord forms to all
+  shapes. The first level has 47 basic chord and reference shapes; level 2 includes
+  ninths across distant strings, including the high-string 9 in the six-string
+  minor-ninth form. Representative voicings remain complete within their level.
+  Subsequent levels add 22–23 cards within the default fret window. Each level includes the easier levels, and the selected card count
+  also reflects the fret window. The learning range stays at the top while scrolling.
+  Six fretboards show labeled intervals and included positions for all root strings. Tap a cell to toggle its inclusion and see its full answer.
   Individual choices are saved with APPLY and discarded with CANCEL. Moving
-  the difficulty slider resets them to that level's selection. Positions
+  the learning-range slider resets them to that level's selection. Positions
   outside the fret window remain excluded until the window is widened.
-  APPLY saves the difficulty on this device.
+  APPLY saves the learning range on this device.
   The fret controls set how far the board reaches either side of the root, which both crops the
   board and decides which positions are asked. Dragging either of them redraws
   the card on screen straight away, so what the window does is visible on the
