@@ -1867,7 +1867,7 @@ test("saves individual guitar exclusions and asks only the remaining shape", asy
       overrides: localStorage.getItem("music-flashcards:guitar-overrides"),
     });
     const before = await snapshot();
-    const { deck } = await (await fetch("/decks/guitar-intervals.json")).json();
+    const { deck } = await (await fetch("/__dev_deck/guitar-intervals")).json();
     const previous = structuredClone(deck);
     for (const note of previous.notes) note.tags = note.tags.replace(/learning-level::\d+/, "learning-level::10");
     await importDeckData(previous);
