@@ -20,7 +20,7 @@ function answer(interval: string, root: string): string | undefined {
 }
 
 describe("interval cards", () => {
-  it("lists the simple intervals and tensions by learning priority, without P8", () => {
+  it("preserves the storage order used by numeric card IDs, without P8", () => {
     expect(INTERVALS.map(({ id }) => id)).toEqual([
       "P5", "M3", "m3", "P4", "M2", "m2", "m7", "M7", "M6",
       "m6", "d7", "d5", "A4", "A5", "9", "13", "11", "b9",

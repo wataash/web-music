@@ -79,6 +79,12 @@ export function createWebDeckArtifacts(): DeckArtifacts {
   };
 }
 
+// Only aliases with the same letter spelling belong in identification answers.
+const IDENTIFICATION_LABELS: Readonly<Record<string, string>> = {
+  m2: "♭9 m2", M2: "9 M2", P4: "11 P4", A4: "♯11 A4",
+  m6: "♭13 m6", M6: "13 M6",
+};
+
 function createNotes(keyboardFields: KeyboardFields): readonly PackageNote[] {
   const calculationNotes = INTERVAL_CARDS.map((card) => {
     const id = `interval-${card.id}`;
@@ -122,7 +128,7 @@ function createNotes(keyboardFields: KeyboardFields): readonly PackageNote[] {
         root,
         card.interval.label,
         `${root} → ${formatNote(card.answer)}`,
-        card.interval.label,
+        IDENTIFICATION_LABELS[card.interval.id] ?? card.interval.label,
         card.difficulty,
         keyboard,
         answerKeyboard,

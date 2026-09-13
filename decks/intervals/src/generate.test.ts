@@ -56,6 +56,9 @@ describe("interval deck generation", () => {
       "M3",
       "basic",
     ]);
+    for (const [degree, answer] of [["m2", "♭9 m2"], ["M2", "9 M2"], ["P4", "11 P4"], ["A4", "♯11 A4"], ["m6", "♭13 m6"], ["M6", "13 M6"], ["d5", "d5"], ["A5", "A5"], ["m3", "m3"]]) {
+      expect(notes.find(({ id }) => id === `identification-${degree}-c`)?.fields[5]).toBe(answer);
+    }
     expect(notes.some(({ id }) => id === "identification-b9-c")).toBe(false);
     expect(notes[INTERVAL_CARDS.length]?.id).toMatch(/^identification-/);
   });
@@ -82,6 +85,9 @@ describe("interval deck generation", () => {
     expect(Math.max(...ordersOf("P5"))).toBeLessThan(
       Math.min(...ordersOf("♭13")),
     );
+    for (const [tension, simple] of [["♭9", "m2"], ["9", "M2"], ["11", "P4"], ["♯11", "A4"], ["♯11", "d5"], ["♭13", "m6"], ["13", "M6"]]) {
+      expect(Math.max(...ordersOf(tension))).toBeLessThan(Math.min(...ordersOf(simple)));
+    }
     // Within one degree the roots stay shuffled rather than in fifths order.
     const p5 = ordersOf("P5");
     expect(p5).not.toEqual([...p5].sort((left, right) => left - right));

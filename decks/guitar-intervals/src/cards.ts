@@ -26,15 +26,15 @@ export const OPEN_STRING_SEMITONES = [64, 59, 55, 50, 45, 40] as const;
 // m3's fret. Written the way the intervals deck writes them.
 export const DEGREE_NAMES: readonly (readonly string[])[] = [
   ["1"],
-  ["m2", "♭9"],
-  ["M2", "9"],
+  ["♭9", "m2"],
+  ["9", "M2"],
   ["m3", "♯9"],
   ["M3"],
-  ["P4", "11"],
-  ["d5", "A4", "♯11"],
+  ["11", "P4"],
+  ["♯11", "d5", "A4"],
   ["P5"],
-  ["m6", "A5", "♭13"],
-  ["M6", "13", "d7"],
+  ["♭13", "m6", "A5"],
+  ["13", "M6", "d7"],
   ["m7"],
   ["M7"],
 ];

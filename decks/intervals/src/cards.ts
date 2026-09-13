@@ -20,10 +20,8 @@ export type IntervalCard = Readonly<{
   difficulty: IntervalDifficulty;
 }>;
 
-// Ordered by learning priority, not by size: the array position is the order
-// new cards are introduced in (see `orderGroup` in @web-music/anki-apkg) and
-// the order the decks are listed in. The ranking and its sources are written
-// up in ../README.md ("Learning order").
+// Keep this storage order stable: generated numeric note/card IDs depend on it.
+// Learning priority is specified separately below.
 export const INTERVALS = [
   // Triads, then the rest of the diatonic set.
   { id: "P5", label: "P5", number: 5, semitones: 7 },
@@ -54,8 +52,16 @@ export const INTERVALS = [
   { id: "b13", label: "♭13", number: 13, semitones: 20 },
 ] as const satisfies readonly IntervalDefinition[];
 
+// Chord tones, natural tensions, altered tensions, then their simple names.
+export const INTERVAL_LEARNING_ORDER = [
+  "P5", "M3", "m3", "m7", "M7",
+  "9", "13", "11", "P4",
+  "b9", "#9", "#11", "b13",
+  "M2", "m2", "M6", "m6", "d7", "d5", "A4", "A5",
+] as const;
+
 export const INTERVAL_ORDER_GROUPS: ReadonlyMap<string, number> = new Map(
-  INTERVALS.map(({ id }, index) => [id, index]),
+  INTERVAL_LEARNING_ORDER.map((id, index) => [id, index]),
 );
 
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"] as const;

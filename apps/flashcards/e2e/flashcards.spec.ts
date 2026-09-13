@@ -1754,8 +1754,8 @@ test("filters guitar intervals by difficulty with apply, cancel and persisted se
   await expect(map.getByRole("table")).toHaveCount(6);
   await expect(map.locator(".roots .cell")).toHaveCount(462);
   await expect(map.locator(".roots .root-marker")).toHaveCount(6);
-  await expect(map.locator(".roots .cell").filter({ hasText: /^m2$/ }).first()).toBeVisible();
-  await expect(map.locator(".roots .cell").filter({ hasText: /^M2$/ }).first()).toBeVisible();
+  await expect(map.locator(".roots .cell").filter({ hasText: /^♭9$/ }).first()).toBeVisible();
+  await expect(map.locator(".roots .cell").filter({ hasText: /^9$/ }).first()).toBeVisible();
   await expect(map.locator(".roots .cell.included")).toHaveCount(49);
   await expect(map.locator('[data-included="true"]')).toHaveCount(49);
   await map.getByRole("region", { name: "Root string 6", exact: true }).getByRole("button", { name: "String 5, fret +2: P5, included", exact: true }).click();
@@ -1767,7 +1767,7 @@ test("filters guitar intervals by difficulty with apply, cancel and persisted se
   await expect(slider).toHaveValue("2");
   await expect(dialog).toContainText("41 / 220 shapes selected");
   const root6 = map.getByRole("region", { name: "Root string 6", exact: true });
-  for (const name of ["String 5, fret +2: P5, included", "String 4, fret 0: m7, included", "String 3, fret 0: m3 ♯9, included", "String 2, fret 0: P5, included", "String 1, fret +2: M2 9, included"]) {
+  for (const name of ["String 5, fret +2: P5, included", "String 4, fret 0: m7, included", "String 3, fret 0: m3 ♯9, included", "String 2, fret 0: P5, included", "String 1, fret +2: 9 M2, included"]) {
     await expect(root6.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
   }
   await shot("guitar-cm9-learning-range-2");
@@ -1881,7 +1881,7 @@ test("saves individual guitar exclusions and asks only the remaining shape", asy
 
 for (const [shape, answer, references] of [
   ["r6-s5-b2", "m3 ♯9", ["9"]],
-  ["r6-s5-f1", "d5 A4 ♯11", ["P4 11", "P5"]],
+  ["r6-s5-f1", "♯11 d5 A4", ["11 P4", "P5"]],
 ] as const) {
   test(`places faint guitar references next to ${answer}`, async ({ page, shot }) => {
     await page.addInitScript((shape) => {

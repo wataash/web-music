@@ -21,7 +21,10 @@ answer would need a triple accidental are not generated.
 `Interval Identification` asks `C → E` and answers `M3`. Without octave
 numbers, `C → D♭` cannot be told apart as `m2` or `♭9`, so this deck holds only
 the simple intervals, `m2` through `M7` — `d7` and `A5` among them, since their
-spelling is what tells them from `M6` and `m6`.
+spelling is what tells them from `M6` and `m6`. Answers put matching tension
+names first: `♭9 m2`, `9 M2`, `11 P4`, `♯11 A4`, `♭13 m6`, and `13 M6`.
+Enharmonic spellings stay distinct: `C → F♯` answers `♯11 A4`, while
+`C → G♭` answers `d5`.
 
 ## The keyboard
 
@@ -79,47 +82,21 @@ The output is `dist/intervals.json` and `dist/intervals.apkg`.
 
 ## Learning order
 
-The degrees are ordered by **learning priority**, not by size. That order is
-the array order of `INTERVALS` in `src/cards.ts`, and it is the order new cards
-are introduced in: the array index is passed to `@web-music/anki-apkg` as
-`orderGroup`, and within one degree the roots keep the usual stable shuffle.
+New cards follow `INTERVAL_LEARNING_ORDER` in `src/cards.ts`. Chord tones
+come first, followed by tensions before their simple-interval equivalents.
+11 and P4 have adjacent positions because both names are useful.
 
 ```text
-P5  M3  m3  P4          enough to build triads
-M2  m2                  the steps of a scale
-m7  M7  M6  m6  d7      seventh chords complete
-d5  A4  A5              the altered fifths, the tritone's two spellings first
-9   13  11              a simple interval plus an octave
-♭9  ♯9  ♯11 ♭13         the four alterations of a dominant chord
+P5  M3  m3  m7  M7     chord tones
+9   13  11  P4         natural tensions and the perfect fourth
+♭9  ♯9  ♯11 ♭13        altered tensions
+M2  m2  M6  m6  d7     simple intervals and the diminished seventh
+d5  A4  A5             altered fourths and fifths
 ```
 
-Rationale:
-
-- [Lesson 2 - The Intervals From Order to Chaos](http://philromo.com/blog/2020/4/10/the-correct-order-of-intervals)
-  orders intervals by the simplicity of their frequency ratio (consonance):
-  P5 → P4 → M3 → m3 → M2 → m2 → tritone → ♭9. The order above matches it
-  except for where P4 sits.
-- Per the
-  [Humdrum Toolkit Guide, Ch.11: Melodic Intervals](https://www.humdrum.org/guide/ch11/)
-  and [Chiu & Temperley (2024)](https://journals.sagepub.com/doi/full/10.1177/20592043231225731),
-  M2 and m3 are the most frequent melodic intervals, so a deck aimed at playing
-  melodies by ear would put M2/m2 first. This deck asks for spellings above a
-  root, which is harmonic rather than melodic, so it follows the harmonic
-  priority.
-- The beginner curricula in
-  [The Ultimate Guide to Interval Ear Training](https://www.musical-u.com/learn/ultimate-guide-to-interval-ear-training/)
-  and [Playing By Ear: The Intervals That Make Ear Training Possible](https://lessonsinyourhome.net/blog/playing-ear-intervals-make-ear-training-possible/)
-  start from 2nds, 3rds, 4ths and 5ths, which matches the break after the first
-  ten degrees, the point where triads and seventh chords can be built.
-- The perfect consonance / imperfect consonance / dissonance grouping follows
-  [Puget Sound: How to Identify Intervals](https://musictheory.pugetsound.edu/mt21c/HowToIdentifyIntervals.html)
-  (P1, P8, P5, P4 → M3/m3, M6/m6 → 2nds, 7ths, tritone).
-- For tensions,
-  [PianoGroove: Chord Extensions 9ths, 11ths & 13ths](https://www.pianogroove.com/jazz-piano-lessons/chord-extensions-9ths-11ths-13ths/)
-  and [The Jazz Piano Site: Extensions & Alterations](https://www.thejazzpianosite.com/jazz-piano-lessons/jazz-chords/extensions-alterations/)
-  put 9 and 13 first. 11 comes last of the three because it is avoided over a
-  dominant chord, where it clashes with the major 3rd a semitone away — it
-  could reasonably move ahead of 13 for someone who cares most about the sound
-  of minor 7th chords. That the alterations are exactly ♭9, ♯9, ♯11 and
-  ♭13 (= ♯5) is the same set listed in
-  [LearnJazzPiano: Altered Dominant Voicings](https://www.learnjazzpiano.com/post/2004/10/18/altered-dominant-voicings-which-to-learn-first/).
+The priority is passed to `@web-music/anki-apkg` as `orderGroup`; roots
+within each degree keep their stable shuffle. The `INTERVALS` storage order
+is fixed independently so numeric card IDs and existing study history remain
+stable. Identification uses the same priority for its simple-interval cards.
+The web selection grid keeps Jazz 1460 frequency as its primary sort and
+uses this learning order to break ties.

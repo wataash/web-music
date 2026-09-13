@@ -50,12 +50,15 @@ a shape is the same wherever it is played and a guitarist fingers a chord's
 
 | Semitones | Names | Semitones | Names |
 |---:|---|---:|---|
-| 0 | `1` | 6 | `d5` `A4` `♯11` |
-| 1 | `m2` `♭9` | 7 | `P5` |
-| 2 | `M2` `9` | 8 | `m6` `A5` `♭13` |
-| 3 | `m3` `♯9` | 9 | `M6` `13` `d7` |
+| 0 | `1` | 6 | `♯11` `d5` `A4` |
+| 1 | `♭9` `m2` | 7 | `P5` |
+| 2 | `9` `M2` | 8 | `♭13` `m6` `A5` |
+| 3 | `m3` `♯9` | 9 | `13` `M6` `d7` |
 | 4 | `M3` | 10 | `m7` |
-| 5 | `P4` `11` | 11 | `M7` |
+| 5 | `11` `P4` | 11 | `M7` |
+
+Tension names come first, except that m3 remains before ♯9. The first name
+is also used by the web question map and the degree tag.
 
 The names are spelled as the intervals deck spells them
 (`decks/intervals/README.md`, "Notation references").

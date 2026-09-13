@@ -43,29 +43,29 @@ export type IntervalPairCell = Readonly<{
 
 export type IntervalDeckSetting = Readonly<{ deckLabel: string }>;
 
-// Learning-priority order, matching `INTERVALS` in decks/intervals.
+// Learning-priority order, matching `INTERVAL_LEARNING_ORDER` in decks/intervals.
 const DEGREES: readonly IntervalDegreeRow[] = [
   { id: "P5", label: "P5", fifths: 1 },
   { id: "M3", label: "M3", fifths: 4 },
   { id: "m3", label: "m3", fifths: -3 },
-  { id: "P4", label: "P4", fifths: -1 },
-  { id: "M2", label: "M2", fifths: 2 },
-  { id: "m2", label: "m2", fifths: -5 },
   { id: "m7", label: "m7", fifths: -2 },
   { id: "M7", label: "M7", fifths: 5 },
+  { id: "9", label: "9", fifths: 2 },
+  { id: "13", label: "13", fifths: 3 },
+  { id: "11", label: "11", fifths: -1 },
+  { id: "P4", label: "P4", fifths: -1 },
+  { id: "b9", label: "♭9", fifths: -5 },
+  { id: "#9", label: "♯9", fifths: 9 },
+  { id: "#11", label: "♯11", fifths: 6 },
+  { id: "b13", label: "♭13", fifths: -4 },
+  { id: "M2", label: "M2", fifths: 2 },
+  { id: "m2", label: "m2", fifths: -5 },
   { id: "M6", label: "M6", fifths: 3 },
   { id: "m6", label: "m6", fifths: -4 },
   { id: "d7", label: "d7", fifths: -9 },
   { id: "d5", label: "d5", fifths: -6 },
   { id: "A4", label: "A4", fifths: 6 },
   { id: "A5", label: "A5", fifths: 8 },
-  { id: "9", label: "9", fifths: 2 },
-  { id: "13", label: "13", fifths: 3 },
-  { id: "11", label: "11", fifths: -1 },
-  { id: "b9", label: "♭9", fifths: -5 },
-  { id: "#9", label: "♯9", fifths: 9 },
-  { id: "#11", label: "♯11", fifths: 6 },
-  { id: "b13", label: "♭13", fifths: -4 },
 ];
 
 const ROOTS: readonly string[] = ACCIDENTALS.flatMap((accidental) =>
