@@ -1,13 +1,14 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test } from '@playwright/test';
+import { closeLibrary, importLink, openLibrary } from './helpers';
 import { scramble } from '@web-music/ireal';
 
 for (const width of [320, 1000]) test(`library controls and import dialog at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/');
   await expect(page.getByLabel('Search songs')).not.toBeVisible();
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   const trigger = page.getByRole('button', { name: 'Import iReal Pro charts', exact: true });
   await trigger.click();
   const dialog = page.getByRole('dialog', { name: 'Import iReal Pro charts' });
@@ -30,7 +31,7 @@ for (const width of [320, 1000]) test(`library controls and import dialog at ${w
   expect(keyBox.y).toBeGreaterThan(titleBox.y + titleBox.height);
   await expect(page.getByRole('dialog', { name: 'Choose song', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath(`song-library-${width}.png`) });
-  await page.getByRole('button', { name: 'Close song library' }).click();
+  await closeLibrary(page);
   expect(await page.locator('[data-chord-practice]').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(2);
   if (width !== 320) return;
   await page.getByText('Full chart', { exact: true }).click();
@@ -38,7 +39,7 @@ for (const width of [320, 1000]) test(`library controls and import dialog at ${w
   await expect(page.getByRole('group', { name: 'Strings for bass notes' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Reset settings and position' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Delete selected imported chart' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Choose song', exact: true })).toBeFocused();
   await expect(page.getByLabel('Search songs')).not.toBeVisible();
@@ -69,12 +70,10 @@ test("combines playlist, style, search and favorites", async ({ page }, info) =>
   const width = 320;
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   const song = (title: string, style: string) => `${title}=Example==${style}=C==1r34LbKcu7${scramble('[C7XyQZ')}==0=0`;
   for (const [name, charts] of [['Set A', [song('Blue Example', 'Swing'), song('Quiet Example', 'Bossa')]], ['Set B', [song('Red Example', 'Swing')]]] as const) {
-    await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
-    await page.getByLabel('Shared link / HTML').fill('irealb://' + encodeURIComponent([...charts, name].join('===')));
-    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await importLink(page, 'irealb://' + encodeURIComponent([...charts, name].join('===')));
     await expect(page.locator('.song-title')).toHaveText(name === 'Set A' ? 'Blue Example' : 'Red Example');
   }
   const picker = page.getByLabel('Song', { exact: true });
@@ -87,7 +86,7 @@ test("combines playlist, style, search and favorites", async ({ page }, info) =>
   await picker.getByRole('button', { name: 'Blue Example · Example', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Choose song', exact: true })).not.toBeVisible();
   await page.getByRole('button', { name: 'Add to favorites', exact: true }).click();
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByRole('button', { name: /^Favorites only/ }).click();
   await expect(results).toHaveCount(1);
   await page.getByLabel('Search songs').fill('missing');
@@ -106,12 +105,10 @@ test('sorts imported songs without changing selection and copies an importable l
   test.skip(browserName !== 'chromium', 'Playwright clipboard-read/write permissions are supported only in Chromium.');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('/');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   const song = (title: string, artist: string) => `${title}=${artist}==Swing=C==1r34LbKcu7${scramble('[C7XyQZ')}==0=0`;
   const link = 'irealb://' + encodeURIComponent([song('Zulu test', 'Alpha'), song('Alpha test', 'Zulu'), 'Sort test'].join('==='));
-  await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
-  await page.getByLabel('Shared link / HTML').fill(link);
-  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await importLink(page, link);
   await page.getByLabel('Playlist', { exact: true }).selectOption('playlist:Sort test');
   const picker = page.getByLabel('Song', { exact: true });
   const selected = await picker.getAttribute('data-selected');
@@ -122,7 +119,7 @@ test('sorts imported songs without changing selection and copies an importable l
   await expect.poll(() => picker.locator('button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(['Zulu test · Alpha', 'Alpha test · Zulu']);
   await expect(picker).toHaveAttribute('data-selected', selected);
   await page.reload();
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByLabel('Playlist', { exact: true }).selectOption('playlist:Sort test');
   await page.getByLabel('Sort songs').selectOption('import');
   await expect.poll(() => picker.locator('button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(['Zulu test · Alpha', 'Alpha test · Zulu']);
@@ -132,9 +129,7 @@ test('sorts imported songs without changing selection and copies an importable l
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toMatch(/^irealb:\/\//);
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
-  await page.getByLabel('Shared link / HTML').fill(copied);
-  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await importLink(page, copied);
   await expect(page.locator('.song-title')).toHaveText('Zulu test');
   await page.getByLabel('Playlist', { exact: true }).selectOption('playlist:Sort test');
   await expect(picker.locator('button')).toHaveCount(2);
@@ -160,7 +155,7 @@ for (const width of [320, 1000]) test(`keeps the view switch fixed at ${width}px
 
  test('browses song candidates with the keyboard before selecting', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   const picker = page.getByLabel('Song', { exact: true });
   const selected = await picker.getAttribute('data-selected');
   await page.keyboard.press('Tab');

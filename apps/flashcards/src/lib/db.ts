@@ -182,13 +182,16 @@ export const db = new FlashcardsDatabase();
 
 // Used on upgrade, deck import and backup restore, including old backups
 // restored before their deck is available. Original note GUIDs remain intact.
-export async function normalizeGuitarStudy(transaction: Transaction): Promise<void> {
-  const notes = await transaction.table<NoteRow>("notes").toArray();
+// A package narrows the work to the rows just imported.
+export async function normalizeGuitarStudy(transaction: Transaction, pkg?: string): Promise<void> {
+  const inPackage = <T>(table: Table<T>) => pkg === undefined ? table.toArray() : table.where("pkg").equals(pkg).toArray();
+  const notes = await inPackage(transaction.table<NoteRow>("notes"));
+  if (!notes.some((note) => note.fields[1] === "guitar-interval")) return;
   const normalized = normalizeGuitarLevels(notes);
   const changedNotes = normalized.filter((note, i) => note.tags !== notes[i].tags);
   if (changedNotes.length) await transaction.table("notes").bulkPut(changedNotes);
   const byId = new Map(notes.map((note) => [note.id, note]));
-  const cards = await transaction.table<CardRow>("cards").toArray();
+  const cards = await inPackage(transaction.table<CardRow>("cards"));
   const aliases = new Map<string, string>();
   const changedCards: CardRow[] = [];
   for (const card of cards) {
@@ -202,7 +205,8 @@ export async function normalizeGuitarStudy(transaction: Transaction): Promise<vo
     }
   }
   if (changedCards.length) await transaction.table("cards").bulkPut(changedCards);
-  const states = await transaction.table<StateRow>("states").toArray();
+  const aliasedKeys = [...new Set([...aliases.keys(), ...aliases.values()])];
+  const states = await transaction.table<StateRow>("states").where("key").anyOf(aliasedKeys).toArray();
   const legacy = states.filter((state) => aliases.has(state.key) && aliases.get(state.key) !== state.key);
   if (legacy.length) {
     const keys = new Set(legacy.map((state) => aliases.get(state.key)!));
@@ -210,8 +214,8 @@ export async function normalizeGuitarStudy(transaction: Transaction): Promise<vo
     await transaction.table("states").bulkDelete(legacy.map((state) => state.key));
     await transaction.table("states").bulkPut(mergeGuitarStates(affected, aliases));
   }
-  const logs = await transaction.table<RevlogRow>("revlog").toArray();
-  const changedLogs = logs.filter((log) => aliases.has(log.key) && aliases.get(log.key) !== log.key)
+  const legacyKeys = [...aliases].filter(([from, to]) => from !== to).map(([from]) => from);
+  const changedLogs = (await transaction.table<RevlogRow>("revlog").where("key").anyOf(legacyKeys).toArray())
     .map((log) => ({ ...log, key: aliases.get(log.key)! }));
   if (changedLogs.length) await transaction.table("revlog").bulkPut(changedLogs);
 }
@@ -258,7 +262,7 @@ export async function importDeckData(parsed: DeckData): Promise<string> {
       await db.notes.bulkPut(noteRows);
       await db.cards.bulkPut(cardRows);
       await db.media.bulkPut(mediaRows);
-      await normalizeGuitarStudy(transaction);
+      await normalizeGuitarStudy(transaction, pkg);
     },
   );
   // The rows behind them are gone, so the cached object URLs are stale.

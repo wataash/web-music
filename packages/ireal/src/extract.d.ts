@@ -9,6 +9,9 @@ export type IrealSong = {
     blocks: { kind: string; raw: string; text?: string; chordIndex?: number; label?: string; name?: string; position?: number; italic?: boolean; narrow?: boolean }[][] };
   unmappedSymbols: string[];
 };
+export const IREAL_HEADER_LABELS: readonly string[];
+export const IREAL_PLAYBACK_LABELS: readonly string[];
+export const IREAL_MUSIC_PREFIX: string;
 export function scramble(encoded: string): string;
 export function extractIreal(text: string): IrealSong;
 export function extractIrealPlaylist(text: string): { name: string; songs: IrealSong[]; errors: { title: string; message: string }[] };

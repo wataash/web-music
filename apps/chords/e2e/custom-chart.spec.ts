@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test } from '@playwright/test';
+import { openLibrary } from './helpers';
 
 for (const width of [360, 1000]) test(`create, preview, transpose and edit a custom chart at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByRole('button', { name: 'New chart', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'New chart', exact: true });
   await editor.getByLabel('Title (optional)').fill('My blues');
@@ -30,7 +31,7 @@ for (const width of [360, 1000]) test(`create, preview, transpose and edit a cus
   await page.getByRole('button', { name: 'Add to favorites', exact: true }).click();
   await page.reload();
   await expect(page.locator('.song-title')).toHaveText('My blues');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByRole('button', { name: 'Edit chart', exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'Edit chart', exact: true });
   await expect(edit.getByLabel('Chord progression')).toHaveValue(text);
@@ -42,7 +43,7 @@ for (const width of [360, 1000]) test(`create, preview, transpose and edit a cus
   await expect(page.locator('.full-score .chord')).toHaveCount(3);
   await expect(page.getByRole('button', { name: 'Remove from favorites', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'List', exact: true }).click();
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByLabel('Search songs').fill('My blues');
   await expect(page.locator('.song-count')).toHaveText('1 songs');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
@@ -53,7 +54,7 @@ for (const width of [360, 1000]) test(`create, preview, transpose and edit a cus
 
 test('accepts extended qualities and aliases through preview, save and reload', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByRole('button', { name: 'New chart', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'New chart', exact: true });
   const text = 'A^7 Amaj13#11 Amin13 Amaj7b5\nAmaj7#9 Amin7b6 Amin9b6 A△7\nAø7 Adim Aaug A7sus4';
@@ -68,7 +69,7 @@ test('accepts extended qualities and aliases through preview, save and reload', 
   await expect(page.locator('.full-score .chord').first()).toHaveAttribute('aria-label', 'B^7');
   await page.reload();
   await expect(page.locator('.full-score .chord')).toHaveCount(12);
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByRole('button', { name: 'Edit chart', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Edit chart', exact: true }).getByLabel('Chord progression')).toHaveValue(text);
 });
@@ -76,7 +77,7 @@ test('accepts extended qualities and aliases through preview, save and reload', 
 for (const width of [360, 1000]) test(`notation help is readable and reachable from errors at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByRole('button', { name: 'New chart', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'New chart', exact: true });
   const help = editor.locator('.notation-help');
@@ -97,7 +98,7 @@ for (const width of [360, 1000]) test(`notation help is readable and reachable f
   await help.locator(':scope > summary').click();
   await editor.getByLabel('Chord progression').fill('A△7 Aø7 Adim Aaug');
   await editor.getByRole('button', { name: 'Save and display' }).click();
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByRole('button', { name: 'Edit chart', exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'Edit chart', exact: true });
   await edit.getByText('Chord notation help', { exact: true }).click();
@@ -107,7 +108,7 @@ for (const width of [360, 1000]) test(`notation help is readable and reachable f
 
 test('uses iReal rewrites in previews and reloads legacy custom charts without losing favorites', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByRole('button', { name: 'New chart', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'New chart', exact: true });
   const input = 'A^ Ah A11 A7b5 A7b13 n';
@@ -146,7 +147,7 @@ test('uses iReal rewrites in previews and reloads legacy custom charts without l
   for (const [index, symbol] of expected.entries()) await expect(page.locator('.full-score .chord').nth(index)).toHaveAttribute('aria-label', symbol);
   await page.getByLabel('Song key', { exact: true }).selectOption('B');
   await expect(page.locator('.full-score .chord').first()).toHaveAttribute('aria-label', 'B^7');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByRole('button', { name: 'Edit chart', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Edit chart', exact: true }).getByLabel('Chord progression')).toHaveValue(input);
 });

@@ -1,15 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
-import { scramble } from '@web-music/ireal';
+import { IREAL_HEADER_LABELS as headers, IREAL_MUSIC_PREFIX, IREAL_PLAYBACK_LABELS as playback, scramble } from '@web-music/ireal';
 import { irealLabel } from './ireal-labels';
 import type { ImportedSong } from './chord-import';
 
-const headers = ['Title', 'Composer / artist', 'Additional information', 'Style', 'Original key', 'Transpose setting'];
-const playback = ['Accompaniment style', 'Tempo (BPM)', 'Choruses'];
-
 function songPayload(song: ImportedSong): string {
   if (song.customText !== undefined) throw new Error('Use text export for custom charts.');
-  const before: string[] = Array(6).fill('');
+  const before: string[] = Array(headers.length).fill('');
   const after: string[] = [];
   for (const field of song.metadata.score.fields) {
     const label = irealLabel(field.label);
@@ -26,7 +23,7 @@ function songPayload(song: ImportedSong): string {
   // Source spelling includes compressed spacing, alternatives and annotations.
   // Never serialize the expanded practice sequence or the transposed display.
   const raw = song.metadata.score.blocks.flat().map(token => token.raw).join('');
-  return [...before, '1r34LbKcu7' + scramble(raw), ...after].join('=');
+  return [...before, IREAL_MUSIC_PREFIX + scramble(raw), ...after].join('=');
 }
 
 export function exportIrealLink(songs: readonly ImportedSong[], playlist = ''): string {

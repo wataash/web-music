@@ -1,18 +1,16 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test, type Page } from '@playwright/test';
+import { closeLibrary, importLink, openLibrary } from './helpers';
 import { scramble } from '@web-music/ireal';
 
 // Synthetic charts isolate notation seen in the iReal app without bundling songs.
 async function openScore(page: Page, raw: string) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
-  await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
-  await page.getByLabel('Shared link / HTML').fill('irealb://' + encodeURIComponent(
-    'Notation Example=Example==Swing=C==1r34LbKcu7' + scramble(raw) + '==0=0'));
-  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await openLibrary(page);
+  await importLink(page, 'irealb://' + encodeURIComponent('Notation Example=Example==Swing=C==1r34LbKcu7' + scramble(raw) + '==0=0'));
   await expect(page.getByRole('status').filter({ hasText: 'Imported 1 song' })).toBeVisible();
-  await page.getByRole('button', { name: 'Close song library' }).click();
+  await closeLibrary(page);
   await page.getByText('Full chart', { exact: true }).click();
   return page.locator('.full-score .ireal-sheet');
 }

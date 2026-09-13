@@ -38,11 +38,13 @@ const symbols = {
   " ": ["space", "   ", "Empty cell"],
 };
 
+// Field labels before and after the music in a song entry.
+export const IREAL_HEADER_LABELS = ["Title", "Composer / artist", "Additional information", "Style", "Original key", "Transpose setting"];
+export const IREAL_PLAYBACK_LABELS = ["Accompaniment style", "Tempo (BPM)", "Choruses"];
+
 export function irealScore(raw, positions, fields, musicIndex) {
-  const labels = ["Title", "Composer / artist", "Additional information", "Style", "Original key", "Transpose setting"];
-  const settings = fields.slice(0, musicIndex).map((value, index) => ({ label: labels[index] ?? `Additional information ${index + 1}`, value }));
-  const playbackLabels = ["Accompaniment style", "Tempo (BPM)", "Choruses"];
-  settings.push(...fields.slice(musicIndex + 1).map((value, index) => ({ label: playbackLabels[index] ?? `Playback setting ${index + 1}`, value })));
+  const settings = fields.slice(0, musicIndex).map((value, index) => ({ label: IREAL_HEADER_LABELS[index] ?? `Additional information ${index + 1}`, value }));
+  settings.push(...fields.slice(musicIndex + 1).map((value, index) => ({ label: IREAL_PLAYBACK_LABELS[index] ?? `Playback setting ${index + 1}`, value })));
   function describe(text) {
     // These abbreviations occupy the same cells as their expanded spellings.
     const compressed = { XyQ: [" ", " ", " "], LZ: [" ", "|"], Kcl: ["|", "x", " "] };

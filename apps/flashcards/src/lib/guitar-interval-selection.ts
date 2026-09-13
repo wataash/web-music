@@ -6,7 +6,7 @@
 // both how wide the card is drawn and which cells the deck may ask about.
 
 import type { NoteRow } from "./db";
-import { guitarShapeId, guitarShapeIds } from "./guitar-shapes";
+import { guitarShapeIds, guitarShapeIdsFor, LEARNING_LEVEL_TAG } from "./guitar-shapes";
 
 const GUITAR_INTERVALS_DECK = "Guitar Intervals";
 
@@ -25,7 +25,7 @@ export function parseGuitarOverrides(value: unknown): GuitarOverrides {
     const match = id.match(/^r([1-6])-s([1-6])-(0|[fb][1-6])$/);
     if (!match || typeof enabled !== "boolean") continue;
     const offset = match[3] === "0" ? 0 : Number(match[3].slice(1)) * (match[3][0] === "b" ? -1 : 1);
-    const key = guitarShapeId({ fields: [id, "guitar-interval", match[1], match[2], String(offset)] });
+    const key = guitarShapeIdsFor(Number(match[1]), Number(match[2]), offset)[0] ?? id;
     // Conflicting old per-position choices prefer exclusion.
     result[key] = (result[key] ?? true) && enabled;
   }
@@ -59,7 +59,7 @@ export function parseGuitarDifficulty(value: unknown): number {
 // The deck generator owns the classification. Older imports without the
 // metadata remain available at All shapes until their bundled update arrives.
 export function guitarIntervalLevel(note: { tags?: string }): number {
-  const match = note.tags?.match(/(?:^|\s)learning-level::([1-9]|10)(?=\s|$)/);
+  const match = note.tags?.match(LEARNING_LEVEL_TAG);
   return match ? parseGuitarDifficulty(Number(match[1])) : DEFAULT_GUITAR_DIFFICULTY;
 }
 

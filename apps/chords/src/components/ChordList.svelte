@@ -113,7 +113,7 @@ SPDX-License-Identifier: Apache-2.0
               <button disabled={!soundEnabled} aria-label={`${index + 1}: Play ${chord.symbol}`} onclick={() => selectChord(index)}>Play chord</button>
             {/if}
           </div>
-          <div data-list-board={index} class="list-board" class:loaded={loaded.has(index)} style:aspect-ratio={`${CHORD_BOARD_NUT_X + fretCount * CHORD_BOARD_FRET_WIDTH} / ${chordBoardHeight(tuning.length)}`}>
+          <div data-list-board={index} class="list-board" class:loaded={loaded.has(index)} style:aspect-ratio={loaded.has(index) ? undefined : `${CHORD_BOARD_NUT_X + fretCount * CHORD_BOARD_FRET_WIDTH} / ${chordBoardHeight(tuning.length)}`}>
             {#if loaded.has(index)}
               <ChordFretboard {tuning} {chord} {fretCount} {bassStrings} revealed={true} bind:scale={boardScale} onplay={onplayfret} />
             {/if}
@@ -144,7 +144,7 @@ SPDX-License-Identifier: Apache-2.0
   .count, .number { color: var(--on-surface-muted); font-size: 12px; }
   ol { list-style: none; margin: 0; padding: 0; }
   li { padding: 16px 0; border-top: 1px solid var(--divider); }
-  .list-board.loaded { aspect-ratio: auto !important; background: transparent; }
+  .list-board.loaded { background: transparent; }
   .list-board { background: #111827; border-radius: 8px; }
   li[aria-current="true"] { box-shadow: inset 3px 0 var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--bg)); }
   .heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }

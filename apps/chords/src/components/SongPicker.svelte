@@ -5,7 +5,8 @@ SPDX-License-Identifier: Apache-2.0
 <script lang="ts">
   import type { ChordSong } from '../lib/chord-songs';
   let { songs, selected, onselect }: { songs: readonly ChordSong[]; selected: ChordSong; onselect: (song: ChordSong) => void } = $props();
-  const tabId = $derived(songs.some(song => song.id === selected.id) ? selected.id : songs[0]?.id);
+  const listed = $derived(songs.some(song => song.id === selected.id));
+  const tabId = $derived(listed ? selected.id : songs[0]?.id);
   function navigate(event: KeyboardEvent) {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     const rows = [...(event.currentTarget as HTMLElement).closest('.song-picker')!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
@@ -18,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
 </script>
 
 <div class="song-picker" role="group" aria-label="Song" data-selected={selected.id}>
-  {#if !songs.some(song => song.id === selected.id)}
+  {#if !listed}
     <button class="song-row" value={selected.id} disabled aria-pressed="true"><span class="row-text"><span class="row-title">{selected.title}</span><span class="row-artist">Current song · outside filters</span></span></button>
   {/if}
   {#each songs as song (song.id)}

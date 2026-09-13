@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { expect, test } from "@playwright/test";
+import { closeLibrary, importLink, openLibrary } from "./helpers";
 import { extractIrealPlaylist, scramble } from "@web-music/ireal";
 import { readFileSync } from "node:fs";
 
@@ -10,18 +11,15 @@ const url = "irealb://" + encodeURIComponent(song("Import One", "*AC-69|G7#11", 
 
 test("imports, searches, transposes, persists and deletes iReal songs", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
-  await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
-  const input = page.getByLabel("Shared link / HTML");
-  await input.fill(url);
-  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await openLibrary(page);
+  await importLink(page, url);
   await expect(page.getByRole("status").filter({ hasText: "Imported 2 songs" })).toBeVisible();
   await expect(page.getByLabel("Song", { exact: true })).toContainText("Import One");
   const firstId = await page.getByLabel("Song", { exact: true }).getAttribute('data-selected');
-  await page.getByRole('button', { name: 'Close song library' }).click();
+  await closeLibrary(page);
   await page.getByLabel("Song key", { exact: true }).selectOption("D");
   await expect(page.locator(".card-area h2")).toContainText("D-69");
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await page.getByLabel("Search songs", { exact: true }).fill("Import Two");
   await page.getByLabel("Song", { exact: true }).getByRole('button', { name: "Import Two · Example", exact: true }).click();
   const secondId = await page.getByLabel("Song", { exact: true }).getAttribute('data-selected');
@@ -33,16 +31,16 @@ test("imports, searches, transposes, persists and deletes iReal songs", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator("[data-chord-practice]")).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await expect(page.getByLabel("Song", { exact: true })).toHaveAttribute('data-selected', secondId);
   await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
   await page.getByLabel("HTML file", { exact: true }).setInputFiles({ name: "test.html", mimeType: "text/html", buffer: Buffer.from(`<a href="${url}">Test</a>`) });
   await expect(page.getByLabel("Song", { exact: true })).toHaveAttribute('data-selected', firstId);
   await expect(page.getByLabel("Song", { exact: true }).locator('button').filter({ hasText: "Import One" })).toHaveCount(1);
-  await page.getByRole('button', { name: 'Close song library' }).click();
+  await closeLibrary(page);
   await page.getByRole('button', { name: 'Chord practice settings' }).click();
   await page.getByRole("button", { name: "Delete selected imported chart" }).click();
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await expect(page.getByLabel("Song", { exact: true }).locator(`button[value="${firstId}"]`)).toHaveCount(0);
   await expect(page.getByLabel("Song", { exact: true }).locator(`button[value="${secondId}"]`)).toHaveCount(1);
 });
@@ -52,7 +50,7 @@ test("imports and searches the complete local Jazz playlist", async ({ page }) =
   const path = process.env.IREAL_PLAYLIST_PATH!;
   const source = extractIrealPlaylist(readFileSync(path, "utf8")).songs.at(-1)!;
   await page.goto("/");
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   const initial = await page.getByLabel("Song", { exact: true }).locator("button").count();
   await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
   await page.getByLabel("HTML file", { exact: true }).setInputFiles(path);

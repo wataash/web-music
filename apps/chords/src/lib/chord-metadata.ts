@@ -35,11 +35,9 @@ export function uniqueAnnotatedChords(chords: AnnotatedChord[], sections: readon
   return [...unique.values()];
 }
 
-// Section boundaries come from the imported chart markers.
-export function sectionStarts(id: string): readonly number[] {
-  const song = bySong[id];
-  const marked = [...new Set(song?.annotations.filter(annotation => annotation.section).map(annotation => annotation.chordIndex) ?? [])];
-  return marked.sort((a, b) => a - b);
+// Positions where the section marker changes, for uniqueAnnotatedChords.
+export function sectionStarts(chords: AnnotatedChord[]): number[] {
+  return chords.flatMap((chord, i) => chord.annotation?.section !== chords[i - 1]?.annotation?.section ? [i] : []);
 }
 
 export function songComments(id: string): readonly string[] {

@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 import { afterEach, expect, it, vi } from 'vitest';
-import { DEFAULT_TUNING, TUNING_PRESETS, defaultBassStrings, matchingPreset, fretPitch, normalizeTuning } from './tuning';
+import { fretPitch } from '@web-music/practice-ui/guitar';
+import { DEFAULT_TUNING, TUNING_PRESETS, defaultBassStrings, matchingPreset, normalizeTuning } from './tuning';
 import { fretboardMarkers } from './chord-fretboard';
 import { describeChord } from './chords';
 import { defaultChordProgress, loadChordProgress, saveChordProgress } from './chord-progress';

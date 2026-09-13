@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import { DEFAULT_TUNING, NOTE_NAMES } from "../lib/tuning";
+  import { DEFAULT_TUNING, PITCH_CLASSES } from "../lib/tuning";
   import { chordViewPersistence } from "../lib/chord-view";
   const { remember, viewKey } = chordViewPersistence();
   import {
@@ -113,7 +113,7 @@ SPDX-License-Identifier: Apache-2.0
 </div>
 <div class="board-frame">
   <div class="open-strings" aria-label="Open string pitches" style:height={renderedHeight + 'px'}>
-    {#each tuning as midi, i}<span title={'String ' + (i + 1)} style:top={stringY(i + 1) / CANVAS_HEIGHT * 100 + '%'} style:font-size={Math.min(12, renderedHeight * STRING_GAP / CANVAS_HEIGHT * 0.8) + 'px'}>{NOTE_NAMES[midi % 12].split(' / ')[0]}{Math.floor(midi / 12) - 1}</span>{/each}
+    {#each tuning as midi, i}<span title={'String ' + (i + 1)} style:top={stringY(i + 1) / CANVAS_HEIGHT * 100 + '%'} style:font-size={Math.min(12, renderedHeight * STRING_GAP / CANVAS_HEIGHT * 0.8) + 'px'}>{PITCH_CLASSES[midi % 12]}{Math.floor(midi / 12) - 1}</span>{/each}
   </div>
 <div
   class="board-scroll"

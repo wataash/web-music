@@ -6,10 +6,16 @@ import type { CardRow, NoteRow, StateRow } from "./db";
 
 type Note = Pick<NoteRow, "fields">;
 
-// Keep direction and physical distance: equal answers alone are not a shape.
+export const LEARNING_LEVEL_TAG = /(?:^|\s)learning-level::([1-9]|10)(?=\s|$)/;
+
 export function guitarShapeIds(note: Note): readonly string[] {
   if (note.fields[1] !== "guitar-interval") return [];
   const [root, target, offset] = note.fields.slice(2, 5).map(Number);
+  return guitarShapeIdsFor(root, target, offset);
+}
+
+// Keep direction and physical distance: equal answers alone are not a shape.
+export function guitarShapeIdsFor(root: number, target: number, offset: number): readonly string[] {
   if (![root, target, offset].every(Number.isInteger) || root < 1 || root > 6 || target < 1 || target > 6) return [];
   const delta = target - root;
   const distance = GUITAR_OPEN_STRINGS[target - 1] - GUITAR_OPEN_STRINGS[root - 1];
@@ -36,7 +42,7 @@ export function normalizeGuitarLevels(notes: readonly NoteRow[]): NoteRow[] {
   const key = (note: NoteRow) => JSON.stringify([note.pkg, note.mid, guitarShapeId(note)]);
   for (const note of notes) {
     if (guitarShapeIds(note).length === 0) continue;
-    const level = Number(note.tags.match(/(?:^|\s)learning-level::([1-9]|10)(?=\s|$)/)?.[1] ?? 10);
+    const level = Number(note.tags.match(LEARNING_LEVEL_TAG)?.[1] ?? 10);
     levels.set(key(note), Math.min(levels.get(key(note)) ?? 10, level));
   }
   return notes.map((note) => guitarShapeIds(note).length === 0 ? note : {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { expect, test } from "@playwright/test";
+import { openLibrary } from "./helpers";
 
 test("opens chords directly without loading flashcard decks", async ({ page }) => {
   const deckRequests: string[] = [];
@@ -9,7 +10,7 @@ test("opens chords directly without loading flashcard decks", async ({ page }) =
     if (/\/decks\/|\/__dev_deck\//.test(request.url())) deckRequests.push(request.url());
   });
   await page.goto("/");
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
+  await openLibrary(page);
   await expect(page).toHaveTitle("Chord Positions");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("[data-chord-practice]")).toBeVisible();

@@ -33,18 +33,15 @@ export const TUNING_PRESETS: TuningPreset[] = [
   { id: 'tenor-banjo', instrument: 'Tenor banjo', label: 'Tenor banjo — CGDA', pitches: [69, 62, 55, 48] },
   { id: 'irish-banjo', instrument: 'Tenor banjo', label: 'Irish tenor banjo — GDAE', pitches: [64, 57, 50, 43] },
 ];
-export const NOTE_NAMES = ['C', 'C♯ / D♭', 'D', 'D♯ / E♭', 'E', 'F', 'F♯ / G♭', 'G', 'G♯ / A♭', 'A', 'A♯ / B♭', 'B'];
+export const PITCH_CLASSES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+const FLAT_NAMES: Record<string, string> = { 'C♯': 'D♭', 'D♯': 'E♭', 'F♯': 'G♭', 'G♯': 'A♭', 'A♯': 'B♭' };
+// Both spellings for choosing a string's pitch.
+export const NOTE_NAMES = PITCH_CLASSES.map(name => FLAT_NAMES[name] ? `${name} / ${FLAT_NAMES[name]}` : name);
 export function normalizeTuning(value: unknown): number[] {
   return Array.isArray(value) && value.length >= MIN_STRINGS && value.length <= MAX_STRINGS &&
     value.every(pitch => Number.isInteger(pitch) && pitch >= 0 && pitch <= 127)
     ? [...value] : [...DEFAULT_TUNING];
 }
-export function fretPitch(tuning: readonly number[], string: number, fret: number): number | null {
-  if (!Number.isInteger(string) || !Number.isInteger(fret) || fret < 0) return null;
-  const open = tuning[string - 1];
-  return open === undefined ? null : open + fret;
-}
-
 export function matchingPreset(tuning: readonly number[], preferred?: string): TuningPreset | undefined {
   const matches = (p: TuningPreset) => p.pitches.length === tuning.length && p.pitches.every((pitch, i) => pitch === tuning[i]);
   return TUNING_PRESETS.find(p => p.id === preferred && matches(p)) ?? TUNING_PRESETS.find(matches);

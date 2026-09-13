@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test } from '@playwright/test';
+import { closeLibrary, importLink, openLibrary } from './helpers';
 import { extractIrealPlaylist, scramble } from '@web-music/ireal';
 
 import { readFileSync } from 'node:fs';
@@ -12,12 +13,10 @@ const link = 'irealb://' + encodeURIComponent('Layout Example=Original Example==
 
 test('preserves four-bar rows at desktop and phone widths', async ({ page }, testInfo) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Choose song', exact: true }).click();
-  await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
-  await page.getByLabel('Shared link / HTML').fill(link);
-  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await openLibrary(page);
+  await importLink(page, link);
   await expect(page.getByRole('status').filter({ hasText: 'Imported 1 song' })).toBeVisible();
-  await page.getByRole('button', { name: 'Close song library' }).click();
+  await closeLibrary(page);
   await page.getByText('Full chart', { exact: true }).click();
   if (!localSong) {
     await expect(page.locator('.song-title')).toHaveText('Layout Example');

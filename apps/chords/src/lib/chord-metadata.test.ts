@@ -25,16 +25,15 @@ it('preserves section context, anchored comments and trailing directions', () =>
   expect(chordAnnotation('example', 1)).toEqual({ section: 'A', comments: [] });
   expect(chordAnnotation('example', 2)).toEqual({ section: 'B', comments: ['Soft'] });
   expect(chordAnnotation('example', 3)).toEqual({ section: 'B', comments: [] });
-  expect(sectionStarts('example')).toEqual([0, 2]);
-  expect(sectionStarts('blank')).toEqual([]);
   expect(songScore('example')!.blocks.flat().at(-1)!.raw).toBe('Fine');
   expect(songScore('missing')).toBeUndefined();
-  expect(sectionStarts('missing')).toEqual([]);
 });
 it('merges repeated chords globally or within each section, retaining source positions', () => {
   const chords = ['C', 'G7', 'C'].map((symbol, i) => ({ ...describeChord(symbol, 'C', 'C'), sourceIndices: [i] }));
   expect(uniqueAnnotatedChords(chords).map(chord => chord.sourceIndices)).toEqual([[0, 2], [1]]);
   expect(uniqueAnnotatedChords(chords, [0, 2]).map(chord => chord.sourceIndices)).toEqual([[0], [1], [2]]);
+  expect(sectionStarts(chords)).toEqual([]);
+  expect(sectionStarts(chords.map((chord, i) => ({ ...chord, annotation: { section: i < 2 ? 'A' : 'B', comments: [] } })))).toEqual([0, 2]);
   expect(chords.map(chord => chord.sourceIndices)).toEqual([[0], [1], [2]]);
 });
 

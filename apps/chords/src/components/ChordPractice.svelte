@@ -7,14 +7,16 @@ SPDX-License-Identifier: Apache-2.0
   import { CHORD_VIEW_CONTEXT, chordViewPersistence, type ChordViewStore } from "../lib/chord-view";
 
   import { arrangePart } from "../lib/arrange-part";
-  import { fretPitch, matchingPreset } from "../lib/tuning";
+  import { matchingPreset } from "../lib/tuning";
+  import { fretPitch } from "@web-music/practice-ui/guitar";
   import { chordSemitones } from "../lib/chord-audio";
   import { playSemitones } from "@web-music/practice-ui/tones";
   import ChordFretboard from "./ChordFretboard.svelte";
   import ChordList from "./ChordList.svelte";
   import ChordTones from "./ChordTones.svelte";
   import ChordMetadata from "./ChordMetadata.svelte";
-  import { practiceAnnotation, practiceEntries, songComments, uniqueAnnotatedChords, setImportedMetadata, songScore } from "../lib/chord-metadata";
+  import { practiceAnnotation, practiceEntries, sectionStarts, songComments, uniqueAnnotatedChords, setImportedMetadata, songScore } from "../lib/chord-metadata";
+  import { irealLabel } from "../lib/ireal-labels";
   import { prepareChartPrint } from "../lib/chart-print";
   import SongPicker from "./SongPicker.svelte";
   import SongSource from "./SongSource.svelte";
@@ -74,24 +76,28 @@ SPDX-License-Identifier: Apache-2.0
   let styleFilter = $state("");
   const importedById = $derived(new Map(importedSongs.map(song => [song.id, song])));
   const playlists = $derived([...new Set(importedSongs.map(song => song.playlist))].sort());
-  const songStyles = $derived(new Map(importedSongs.map(song => [song.id, song.metadata.score.fields.find(field => ['Style', 'スタイル'].includes(field.label))?.value ?? ""])));
+  const songStyles = $derived(new Map(importedSongs.map(song => [song.id, song.metadata.score.fields.find(field => irealLabel(field.label) === 'Style')?.value ?? ""])));
   const styles = $derived([...new Set(songStyles.values())].filter(Boolean).sort());
+  const searchText = $derived(songSearch.toLocaleLowerCase());
   function matchesLibrary(song: ChordSong): boolean {
     const imported = importedById.get(song.id);
     return (!playlistFilter || (playlistFilter === 'examples' ? !imported : !!imported && 'playlist:' + imported.playlist === playlistFilter)) &&
       (!styleFilter || songStyles.get(song.id) === styleFilter) &&
-      (song.title + " " + song.artist).toLocaleLowerCase().includes(songSearch.toLocaleLowerCase());
+      (song.title + " " + song.artist).toLocaleLowerCase().includes(searchText);
   }
   let favoriteIds = $state(loadChordFavorites());
   let favoritesOnly = $state(false);
   const favoriteSongs = $derived(songs.filter(song => favoriteIds.includes(song.id)));
-  const matchingSongs = $derived(songs.filter(song => (!favoritesOnly || favoriteIds.includes(song.id)) &&
-    matchesLibrary(song)).sort((a, b) => {
-      const titleOrder = a.title.localeCompare(b.title, 'en', { numeric: true, sensitivity: 'base' }) || a.id.localeCompare(b.id);
-      if (songSort === 'artist') return a.artist.localeCompare(b.artist, 'en', { sensitivity: 'base' }) || titleOrder;
-      if (songSort === 'import') return (importedById.get(a.id)?.importedAt ?? 0) - (importedById.get(b.id)?.importedAt ?? 0) || titleOrder;
-      return titleOrder;
-    }));
+  const titleCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+  const artistCollator = new Intl.Collator('en', { sensitivity: 'base' });
+  // Sorted once per sort key; the filters below keep that order.
+  const sortedSongs = $derived([...songs].sort((a, b) => {
+    const titleOrder = titleCollator.compare(a.title, b.title) || a.id.localeCompare(b.id);
+    if (songSort === 'artist') return artistCollator.compare(a.artist, b.artist) || titleOrder;
+    if (songSort === 'import') return (importedById.get(a.id)?.importedAt ?? 0) - (importedById.get(b.id)?.importedAt ?? 0) || titleOrder;
+    return titleOrder;
+  }));
+  const matchingSongs = $derived(sortedSongs.filter(song => (!favoritesOnly || favoriteIds.includes(song.id)) && matchesLibrary(song)));
 
   function toggleFavorite() {
     const next = isFavorite ? favoriteIds.filter(id => id !== selectedSong.id) : [...favoriteIds, selectedSong.id];
@@ -181,7 +187,7 @@ SPDX-License-Identifier: Apache-2.0
   function beforePrint() {
     afterPrint();
     const score = songScore(songId);
-    if (score) clearPrint = prepareChartPrint(score, sourceSymbols, selectedSong.title, [selectedSong.artist, songStyle].filter(Boolean).join(" · "), printContext);
+    if (score) clearPrint = prepareChartPrint(score, sourceSymbols, selectedSong.title, songMeta, printContext);
   }
   function afterPrint() { clearPrint(); clearPrint = () => {}; }
   onDestroy(afterPrint);
@@ -199,7 +205,7 @@ SPDX-License-Identifier: Apache-2.0
   const selectedSong = $derived(
     songs.find(({ id }) => id === songId) ?? CHORD_SONGS[0],
   );
-  const songStyle = $derived(songScore(selectedSong.id)?.fields.find(field => ['Style', 'スタイル'].includes(field.label))?.value);
+  const songMeta = $derived([selectedSong.artist, songStyles.get(selectedSong.id)].filter(Boolean).join(" · "));
   let importOpen = $state(false);
   let libraryOpen = $state(false);
   let libraryDialog = $state<HTMLDialogElement>();
@@ -264,7 +270,7 @@ SPDX-License-Identifier: Apache-2.0
   );
   const sourceSymbols = $derived(sourceChords.map(chord => chord.symbol));
   const listChords = $derived(uniqueChordsOnly
-    ? uniqueAnnotatedChords(songChords, uniqueBySection ? songChords.flatMap((chord, i) => chord.annotation.section !== songChords[i - 1]?.annotation.section ? [i] : []) : [])
+    ? uniqueAnnotatedChords(songChords, uniqueBySection ? sectionStarts(songChords) : [])
     : songChords);
   let fretCount = $state(savedProgress.fretCount);
   let tuningPreset = $state(savedProgress.tuningPreset);
@@ -539,7 +545,7 @@ SPDX-License-Identifier: Apache-2.0
   <header class="appbar" class:minimal={cardScales.minimalAppBar && !listMode}>
     <div class="titles">
       <h1 aria-label={selectedSong.title}><button class="song-trigger" title={selectedSong.title} aria-label="Choose song" aria-haspopup="dialog" aria-expanded={libraryOpen} aria-controls="song-library" disabled={!libraryReady || positioning} onclick={() => libraryOpen = !libraryOpen}><span class="song-title">{selectedSong.title}</span><span aria-hidden="true">⌄</span></button></h1>
-      <p class="song-meta">{[selectedSong.artist, songStyle].filter(Boolean).join(" · ")}</p>
+      <p class="song-meta">{songMeta}</p>
     </div>
       <button class="favorite" aria-pressed={isFavorite} aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"} onclick={toggleFavorite} title={isFavorite ? "Remove from favorites" : "Add to favorites"}>
         <span aria-hidden="true">{isFavorite ? "★" : "☆"}</span>

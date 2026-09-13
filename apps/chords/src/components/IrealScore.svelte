@@ -146,9 +146,8 @@ SPDX-License-Identifier: Apache-2.0
   .bass { display: block; font-size: 0.65em; margin-left: 0.5em; line-height: 0.95; }
   .narrow { font-stretch: condensed; letter-spacing: -0.055em; }
   .alternate { top: 23%; }
-  .alternate .chord { display: inline-flex; align-items: baseline; }
+  .alternate .chord { display: inline-flex; align-items: baseline; font-size: clamp(12px, 2.5cqw, 18px); }
   .alternate .bass { margin-left: 0.1em; }
-  .alternate .chord { font-size: clamp(12px, 2.5cqw, 18px); }
   .selected { color: var(--text-accent); background: color-mix(in srgb, var(--text-accent) 15%, transparent); border-radius: 3px; }
   .bar { position: absolute; top: 0; height: 95%; border-left: 1.5px solid currentColor; }
   .bar.double { border-left: 4px double currentColor; }

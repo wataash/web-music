@@ -32,8 +32,7 @@ export function resolveIreal(blocks: ScoreToken[][]): { rows: IrealRow[]; events
     const closingBar = token.kind === 'bar' && !['[', '{'].includes(token.raw);
     if (column >= 16 && !closingBar && !alternate && token.kind !== 'comment') nextRow();
     if (token.kind === 'space') { column++; continue; }
-    // Expanded repeat tokens can have an empty raw spelling (for example Kcl).
-    const cell = token.kind === 'chord' || (token.kind === 'symbol' && ['％', '𝄎', '/'].includes(token.text ?? ''));
+    const cell = token.kind === 'chord' || isRepeatToken(token);
     if (token.kind === 'section') section = token.text;
     const position = alternate || token.kind === 'comment' ? lastChord : column;
     rows.at(-1)!.items.push({ token, column: Math.min(16, position), alternate, indices: [], section });
@@ -115,8 +114,13 @@ export function irealChordParts(symbol: string, minor: '-' | 'm' = '-') {
     bass: (match[4] ?? '').replaceAll('b', '♭').replaceAll('#', '♯') };
 }
 
+// Expanded repeat tokens can have an empty raw spelling (for example Kcl).
+function isRepeatToken(token: ScoreToken): boolean {
+  return token.kind === 'symbol' && ['％', '𝄎', '/'].includes(token.text ?? '');
+}
+
 function isRepeat(item: IrealItem): boolean {
-  return item.token.kind === 'symbol' && ['％', '𝄎', '/'].includes(item.token.text ?? '');
+  return isRepeatToken(item.token);
 }
 
 export function commentText(text: string): string {

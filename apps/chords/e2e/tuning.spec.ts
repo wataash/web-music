@@ -1,19 +1,20 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+const settings = (page: Page) => page.getByRole('button', { name: 'Instrument settings' }).click();
+const close = (page: Page) => page.getByRole('button', { name: 'Close instrument settings' }).click();
 
 test('changes instrument, custom tuning and bass strings across practice and list views', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto('/');
-  const settings = () => page.getByRole('button', { name: 'Instrument settings' }).click();
-  const close = () => page.getByRole('button', { name: 'Close instrument settings' }).click();
-  await settings();
+  await settings(page);
   const preset = page.getByLabel('Instrument preset');
   for (const id of ['guitar-7', 'guitar-8', 'guitar-9', 'bass-4', 'bass-5', 'bass-6', 'bass-7', 'bass-8']) {
     const count = Number(id.at(-1));
     await preset.selectOption(id);
     await expect(page.getByRole('group', { name: 'Strings for bass notes' }).getByRole('checkbox')).toHaveCount(count);
-    await close();
+    await close(page);
     await expect(page.locator('.fretboard .string')).toHaveCount(count);
     await expect(page.locator('.fretboard [data-fret-cell]')).toHaveCount(count * 25);
     const geometry = await page.locator('.fretboard').evaluate(el => {
@@ -22,26 +23,26 @@ test('changes instrument, custom tuning and bass strings across practice and lis
       return { bottom: Number(lines.at(-1)?.getAttribute('y1')), height: svg.viewBox.baseVal.height };
     });
     expect(geometry.bottom + 19).toBeLessThan(geometry.height);
-    await settings();
+    await settings(page);
   }
   await preset.selectOption('bass-4');
   await page.getByLabel('String 4 note', { exact: true }).selectOption('0');
   await page.getByLabel('String 4 octave', { exact: true }).selectOption('1');
   await expect(preset).toHaveValue('custom');
   await page.screenshot({ path: info.outputPath('custom-tuning.png') });
-  await close();
+  await close(page);
   await expect(page.locator('.fretboard [data-marker][data-string="4"][data-fret="0"]')).toHaveAttribute('data-interval', 'R');
   await page.reload();
   await expect(page.locator('.fretboard .string')).toHaveCount(4);
-  await settings();
+  await settings(page);
   await expect(page.getByLabel('String 4 note', { exact: true })).toHaveValue('0');
   await expect(page.getByLabel('String 4 octave', { exact: true })).toHaveValue('1');
-  await close();
+  await close(page);
   await page.getByRole('button', { name: 'List', exact: true }).click();
   await expect(page.locator('.fretboard').first().locator('.string')).toHaveCount(4);
-  await settings();
+  await settings(page);
   await preset.selectOption('guitar-9');
-  await close();
+  await close(page);
   await expect(page.locator('.fretboard').first().locator('.string')).toHaveCount(9);
   await page.screenshot({ path: info.outputPath('nine-string-list.png') });
 });
@@ -49,34 +50,32 @@ test('changes instrument, custom tuning and bass strings across practice and lis
 test('persists new instruments and custom string counts', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto('/');
-  const open = () => page.getByRole('button', { name: 'Instrument settings' }).click();
-  const close = () => page.getByRole('button', { name: 'Close instrument settings' }).click();
-  await open();
+  await settings(page);
   for (const [id, count] of [['stick-10', 10], ['stick-12', 12], ['violin', 4], ['violin-5', 5], ['viola', 4], ['cello', 4], ['double-bass', 4], ['ukulele-high-g', 4], ['ukulele-low-g', 4], ['ukulele-baritone', 4], ['mandolin', 8], ['mandola', 8], ['octave-mandolin', 8], ['tenor-banjo', 4], ['irish-banjo', 4]] as const) {
     await page.getByLabel('Instrument preset').selectOption(id);
     await expect(page.getByLabel('Instrument preset')).toHaveValue(id);
-    await close();
+    await close(page);
     await expect(page.locator('.fretboard .string')).toHaveCount(count);
     await page.reload();
-    await open();
+    await settings(page);
     await expect(page.getByLabel('Instrument preset')).toHaveValue(id);
   }
   await page.getByLabel('Instrument preset').selectOption('stick-12');
   await expect(page.getByRole('group', { name: 'Strings for bass notes' }).getByRole('checkbox', { checked: true })).toHaveCount(6);
-  await close();
+  await close(page);
   await page.screenshot({ path: info.outputPath('grand-stick.png') });
-  await open();
+  await settings(page);
   await page.getByLabel('String count', { exact: true }).selectOption('2');
-  await close();
+  await close(page);
   await expect(page.locator('.fretboard .string')).toHaveCount(2);
   await page.reload();
-  await open();
+  await settings(page);
   await expect(page.getByLabel('String count', { exact: true })).toHaveValue('2');
   await expect(page.getByRole('group', { name: 'Strings for bass notes' }).getByRole('checkbox', { checked: true })).toHaveCount(2);
   await page.getByLabel('String count', { exact: true }).selectOption('12');
   await page.getByLabel('String 12 note', { exact: true }).selectOption('0');
   await page.getByLabel('String 12 octave', { exact: true }).selectOption('2');
-  await close();
+  await close(page);
   await expect(page.locator('.fretboard [data-marker][data-string="12"][data-fret="0"]')).toHaveAttribute('data-interval', 'R');
 });
 

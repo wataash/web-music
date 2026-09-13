@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { irealScore } from "./score.js";
+export { IREAL_HEADER_LABELS, IREAL_PLAYBACK_LABELS } from "./score.js";
 
-const PREFIX = "1r34LbKcu7";
+// Marks the music field of a song entry.
+export const IREAL_MUSIC_PREFIX = "1r34LbKcu7";
+const PREFIX = IREAL_MUSIC_PREFIX;
 const QUALITIES = new Map(Object.entries({
   "": "", "-": "m", "-6": "m6", "-7": "m7", "-9": "m9", "-11": "m11",
   "-^7": "mM7", "-7b5": "m7b5", h7: "m7b5", "^7": "M7", "^9": "M9",
