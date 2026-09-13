@@ -6,6 +6,7 @@
 // both how wide the card is drawn and which cells the deck may ask about.
 
 import type { NoteRow } from "./db";
+import { guitarShapeId, guitarShapeIds } from "./guitar-shapes";
 
 const GUITAR_INTERVALS_DECK = "Guitar Intervals";
 
@@ -19,9 +20,16 @@ export type GuitarOverrides = Readonly<Record<string, boolean>>;
 
 export function parseGuitarOverrides(value: unknown): GuitarOverrides {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return Object.fromEntries(Object.entries(value).filter(([key, enabled]) =>
-    /^r[1-6]-s[1-6]-(?:0|[fb][1-6])$/.test(key) && typeof enabled === "boolean",
-  ));
+  const result: Record<string, boolean> = {};
+  for (const [id, enabled] of Object.entries(value)) {
+    const match = id.match(/^r([1-6])-s([1-6])-(0|[fb][1-6])$/);
+    if (!match || typeof enabled !== "boolean") continue;
+    const offset = match[3] === "0" ? 0 : Number(match[3].slice(1)) * (match[3][0] === "b" ? -1 : 1);
+    const key = guitarShapeId({ fields: [id, "guitar-interval", match[1], match[2], String(offset)] });
+    // Conflicting old per-position choices prefer exclusion.
+    result[key] = (result[key] ?? true) && enabled;
+  }
+  return result;
 }
 
 export const DEFAULT_FRET_WINDOW: FretWindow = { left: 3, right: 3 };
@@ -86,7 +94,9 @@ export function includesGuitarIntervalCard(
   overrides: GuitarOverrides = {},
 ): boolean {
   if (!isGuitarIntervalCard(note)) return true;
-  if (!(overrides[note.fields[0]] ?? (guitarIntervalLevel(note) <= parseGuitarDifficulty(difficulty)))) return false;
+  const choices = guitarShapeIds(note).flatMap((id) => typeof overrides[id] === "boolean" ? [overrides[id]] : []);
+  const enabled = choices.length > 0 ? choices.every(Boolean) : guitarIntervalLevel(note) <= parseGuitarDifficulty(difficulty);
+  if (!enabled) return false;
   const offset = Number(note.fields[4]);
   if (!Number.isInteger(offset)) return true;
   return offset >= -window.left && offset <= window.right;

@@ -25,7 +25,7 @@ it("persists valid individual choices and keeps the fret window as a boundary", 
   expect(includesGuitarIntervalCard(note, DEFAULT_FRET_WINDOW, 1, { "r6-s5-f2": false })).toBe(false);
   expect(includesGuitarIntervalCard({ ...note, tags: "learning-level::10" }, DEFAULT_FRET_WINDOW, 1, { "r6-s5-f2": true })).toBe(true);
   expect(includesGuitarIntervalCard(note, { left: 3, right: 0 }, 1, { "r6-s5-f2": true })).toBe(false);
-  expect(parseGuitarOverrides({ "r6-s5-f2": false, "r3-s2-0": true, invalid: true, "r6-s5-b1": "false" })).toEqual({ "r6-s5-f2": false, "r3-s2-0": true });
+  expect(parseGuitarOverrides({ "r6-s5-f2": false, "r3-s2-0": true, invalid: true, "r6-s5-b1": "false" })).toEqual({ "r2-s1-f2": false, "r3-s2-0": true });
   expect(parseGuitarOverrides(null)).toEqual({});
 });
 

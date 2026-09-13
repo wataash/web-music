@@ -97,7 +97,21 @@ function inScope(deckName: string, scopeName: string): boolean {
   return deckName === scopeName || deckName.startsWith(`${scopeName}::`);
 }
 
-type ScopedCard = Readonly<{ card: CardRow; state: StateRow | undefined }>;
+type ScopedCard = Readonly<{ card: CardRow; state: StateRow | undefined; variants: readonly CardRow[] }>;
+
+async function studyCards(cards: readonly CardRow[], options: StudyScopeOptions): Promise<ScopedCard[]> {
+  const notes = options.includeNote ? await db.notes.bulkGet(cards.map((card) => card.nid)) : [];
+  const groups = new Map<string, CardRow[]>();
+  cards.forEach((card, index) => {
+    if (options.includeNote && (!notes[index] || !options.includeNote(notes[index]!))) return;
+    const variants = groups.get(card.key) ?? [];
+    variants.push(card);
+    groups.set(card.key, variants);
+  });
+  const entries = [...groups.values()].map((variants) => variants.sort((a, b) => a.newOrder - b.newOrder || a.id - b.id));
+  const states = await db.states.bulkGet(entries.map(([card]) => card.key));
+  return entries.map((variants, index) => ({ card: variants[0], variants, state: states[index] }));
+}
 
 async function scopedCards(
   scopeName: string,
@@ -110,16 +124,8 @@ async function scopedCards(
       .filter((d) => inScope(d.name, scopeName) && !hidden.has(d.name))
       .map((d) => d.did),
   );
-  let cards = (await db.cards.toArray()).filter((c) => dids.has(c.did));
-  if (options.includeNote) {
-    const notes = await db.notes.bulkGet(cards.map((card) => card.nid));
-    cards = cards.filter((_, index) => {
-      const note = notes[index];
-      return note !== undefined && options.includeNote!(note);
-    });
-  }
-  const states = await db.states.bulkGet(cards.map((c) => c.key));
-  return cards.map((card, i) => ({ card, state: states[i] }));
+  const cards = (await db.cards.toArray()).filter((c) => dids.has(c.did));
+  return studyCards(cards, options);
 }
 
 function countsOf(
@@ -179,19 +185,7 @@ export async function listDecksWithCounts(
 ): Promise<readonly DeckInfo[]> {
   const decks = await db.decks.toArray();
   const hidden = hiddenDeckNamesFor(decks, options);
-  let cards = await db.cards.toArray();
-  if (options.includeNote) {
-    const notes = await db.notes.bulkGet(cards.map((card) => card.nid));
-    cards = cards.filter((_, index) => {
-      const note = notes[index];
-      return note !== undefined && options.includeNote!(note);
-    });
-  }
-  const states = await db.states.bulkGet(cards.map((c) => c.key));
-  const scoped: ScopedCard[] = cards.map((card, i) => ({
-    card,
-    state: states[i],
-  }));
+  const scoped = await studyCards(await db.cards.toArray(), options);
   const didName = new Map(decks.map((d) => [d.did, d.name]));
   const counted = scoped.filter(
     ({ card }) => !hidden.has(didName.get(card.did) ?? ""),
@@ -294,9 +288,12 @@ export async function nextCard(
 }
 
 async function toQueueItem(
-  { card, state }: ScopedCard,
+  { variants, state }: ScopedCard,
   extraReview = false,
 ): Promise<QueueItem> {
+  // Cycle through strings with each answer. Reloads and undo keep the same
+  // presentation; a later review exercises another equivalent position.
+  const card = variants[Number(state?.fsrs.reps ?? 0) % variants.length];
   const note = await db.notes.get(card.nid);
   if (!note) throw new Error(`note ${card.nid} missing for card ${card.id}`);
   const model = await db.models.get(note.mid);

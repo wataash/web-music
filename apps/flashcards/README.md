@@ -46,16 +46,25 @@ bundled web decks and schedules them with FSRS.
   distance — `m3 ♯9`, say. There are no fret numbers: the board is drawn around
   the root, so the same shape is one card wherever it is played. Its settings
   include a ten-level learning-range slider, from basic chord forms to all
-  shapes. The first level has 47 basic chord and reference shapes; level 2 includes
+  shapes. The first level has 24 basic chord and reference shapes (49 positions); level 2 includes
   ninths across distant strings, including the high-string 9 in the six-string
   minor-ninth form. Representative voicings remain complete within their level.
-  Subsequent levels add 22–23 cards within the default fret window. Each level includes the easier levels, and the selected card count
+  Each level includes the easier levels, and the selected shape count
   also reflects the fret window. The learning range stays at the top while scrolling.
-  Six fretboards show labeled intervals and included positions for all root strings. Tap a cell to toggle its inclusion and see its full answer.
+  Six fretboards show labeled intervals and included positions for all root strings. Tap a cell to toggle every equivalent position and see its full answer.
   Individual choices are saved with APPLY and discarded with CANCEL. Moving
   the learning-range slider resets them to that level's selection. Positions
   outside the fret window remain excluded until the window is widened.
   APPLY saves the learning range on this device.
+  Positions with the same string direction/distance, fret offset and tuning gap
+  share one schedule: 118 shapes within the default ±3 frets, or 220 within ±6.
+  Reviews cycle through their string positions after each answer. A shape uses
+  its earliest member's learning level. Upgrading or restoring an old backup
+  merges schedules using the latest review, preserves the earliest introduction
+  day, and keeps every review event. Conflicting old inclusion settings prefer
+  exclusion; tapping any member sets the whole group's choice. Reset, undo and
+  extra study operate on the shared shape. The deck file retains all 462
+  positions for rendering and Anki export; grouping happens in the web app.
   The fret controls set how far the board reaches either side of the root, which both crops the
   board and decides which positions are asked. Dragging either of them redraws
   the card on screen straight away, so what the window does is visible on the

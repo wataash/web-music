@@ -5,6 +5,8 @@ SPDX-License-Identifier: Apache-2.0
 <script lang="ts">
   import type { NoteRow } from "../lib/db";
   import { MAX_FRET_REACH, type FretWindow } from "../lib/guitar-interval-selection";
+  import { parseGuitarOverrides } from "../lib/guitar-interval-selection";
+  import { guitarShapeId, guitarShapeIds } from "../lib/guitar-shapes";
 
   let { notes, selectedNotes, window, overrides, onoverrideschange }: {
     notes: readonly NoteRow[]; selectedNotes: readonly NoteRow[]; window: FretWindow;
@@ -27,11 +29,11 @@ SPDX-License-Identifier: Apache-2.0
 
 <section class="map" aria-label="Question map">
   <strong>Question map</strong>
-  <p>Tap intervals to include or exclude them.</p>
+  <p>Tap intervals to include or exclude all equivalent shapes together.</p>
   <div class="roots">
     {#each roots as root, index}
       <section class="board" aria-label="Root string {root}">
-        <div class="overview-heading"><strong>String {root}</strong><small>{counts[index]} cards</small></div>
+        <div class="overview-heading"><strong>String {root}</strong><small>{counts[index]} positions</small></div>
         <table aria-label="Intervals from root string {root}">
           <thead><tr><th aria-label="Target string">Str.</th>{#each offsets as offset}<th scope="col">{offsetLabel(offset)}</th>{/each}</tr></thead>
           <tbody>
@@ -47,7 +49,7 @@ SPDX-License-Identifier: Apache-2.0
                         aria-pressed={included(note)}
                         disabled={offset < -window.left || offset > window.right}
                         aria-label="String {string}, fret {offsetLabel(offset)}: {note.fields[5]}, {included(note) ? 'included' : 'excluded'}"
-                        onclick={() => { inspected = `${root}:${string}:${offset}`; onoverrideschange({ ...overrides, [note.fields[0]]: !included(note) }); }}>{note.fields[5].split(' ')[0]}</button>
+                        onclick={() => { inspected = `${root}:${string}:${offset}`; onoverrideschange({ ...parseGuitarOverrides(overrides), [guitarShapeId(note)]: !included(note) }); }}>{note.fields[5].split(' ')[0]}</button>
                     {:else}<span>—</span>{/if}
                   </td>
                 {/each}
@@ -65,6 +67,7 @@ SPDX-License-Identifier: Apache-2.0
   {/if}
   <p class="detail" aria-live="polite">
     {#if detail}String {detail.fields[2]} → string {detail.fields[3]} · fret {offsetLabel(Number(detail.fields[4]))} · <strong>{detail.fields[5]}</strong> · {included(detail) ? 'Included' : 'Excluded'}
+      · {guitarShapeIds(detail).length} equivalent positions share this setting and progress
     {/if}
   </p>
 </section>

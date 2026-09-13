@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   import { liveQuery } from "dexie";
   import { db, type NoteRow } from "../lib/db";
   import GuitarIntervalMap from "./GuitarIntervalMap.svelte";
+  import { guitarShapeId } from "../lib/guitar-shapes";
   import {
     DEFAULT_FRET_WINDOW,
     clampFretReach,
@@ -57,7 +58,8 @@ SPDX-License-Identifier: Apache-2.0
   const selectedNotes = $derived(notes.filter((note) =>
     includesGuitarIntervalCard(note, draft, difficulty, overrides),
   ));
-  const selectedCount = $derived(selectedNotes.length);
+  const selectedCount = $derived(new Set(selectedNotes.map(guitarShapeId)).size);
+  const totalCount = $derived(new Set(notes.map(guitarShapeId)).size);
 
   function setSide(side: FretWindowSide, value: number): void {
     const next = { ...draft, [side]: clampFretReach(value) };
@@ -106,7 +108,7 @@ SPDX-License-Identifier: Apache-2.0
     {guitarDifficultyLabel(difficulty)}
   </p>
   <p class="selection-count" aria-live="polite">
-    {#if loaded}{selectedCount} / {notes.length} cards selected{:else}Loading positions…{/if}
+    {#if loaded}{selectedCount} / {totalCount} shapes selected{:else}Loading positions…{/if}
   </p>
   {#if loaded && selectedCount === 0}
     <p class="empty-selection">No cards match. Increase the learning range or widen the fret window.</p>
@@ -148,6 +150,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <p class="hint">
   Frets are relative to root 1. Widen the window to include more positions.
+  Equivalent shapes share progress and selection. Reviews rotate through their strings.
 </p>
 
 <style>

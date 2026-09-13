@@ -6,10 +6,10 @@
 // localStorage. Another browser — or the same app served from another domain —
 // starts empty. A backup carries that across. Deck content stays out of it:
 // the app downloads the decks again on its own, and study state is keyed by
-// note guid, so it lands back on the same cards.
+// note guid or shared guitar shape, so it lands back on the same cards.
 
 import { clearUndoQueue } from "./undo";
-import { db, type RevlogRow, type StateRow } from "./db";
+import { db, normalizeGuitarStudy, type RevlogRow, type StateRow } from "./db";
 
 export const BACKUP_FORMAT = "music-flashcards-backup";
 export const BACKUP_VERSION = 1;
@@ -181,7 +181,7 @@ export async function restoreBackup(
   clearUndoQueue();
   let statesWritten = 0;
   let reviewsAdded = 0;
-  await db.transaction("rw", [db.states, db.revlog], async () => {
+  await db.transaction("rw", [db.states, db.revlog, db.notes, db.cards], async (transaction) => {
     const writable = statesToWrite(await db.states.toArray(), backup.states);
     await db.states.bulkPut([...writable]);
     statesWritten = writable.length;
@@ -192,6 +192,7 @@ export async function restoreBackup(
     const added = reviewsToAdd(known, backup.revlog);
     await db.revlog.bulkAdd([...added]);
     reviewsAdded = added.length;
+    await normalizeGuitarStudy(transaction);
   });
   return {
     statesWritten,
