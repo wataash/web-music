@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { GuitarIntervalCard } from "./cards";
+import { STANDARD_TUNING, type GuitarIntervalCard, type Tuning } from "./cards";
 
 // Movable voicings, strings 6 → 1, relative to the chord root's fret.
 // These are teaching examples, not measured popularity rankings. null = mute.
@@ -42,49 +42,62 @@ export const CHORD_FORMS: readonly {
   { name: "G major inversion", level: 4, root: 3, frets: [null, null, 0, 0, 0, -2], tones: [0, 4, 7] },
 ];
 
+// The forms are fingered on standard guitar strings, so they teach an
+// instrument whose first six strings are those: a seven-string guitar keeps
+// them, a bass or a ukulele has none.
+export function formsApply(tuning: Tuning): boolean {
+  return STANDARD_TUNING.every((pitch, i) => tuning[i] === pitch);
+}
+
 export function formIncludes(form: typeof CHORD_FORMS[number], card: GuitarIntervalCard): boolean {
   return card.rootString === form.root && form.frets[6 - card.targetString] === card.fretOffset;
 }
 
-function isReference(card: GuitarIntervalCard): boolean {
+function isReference(card: GuitarIntervalCard, stringCount: number): boolean {
+  const outermost = [1, stringCount];
   return (Math.abs(card.rootString - card.targetString) <= 2 && Math.abs(card.fretOffset) <= 3
     && [0, 4, 7].includes(card.semitones))
-    || ([1, 6].includes(card.rootString) && [1, 6].includes(card.targetString) && card.fretOffset === 0);
+    || (outermost.includes(card.rootString) && outermost.includes(card.targetString) && card.fretOffset === 0);
 }
 
 // Reasons are also used by the local review report. Each source card retains
 // its original position (numeric IDs depend on it).
-export function learningReason(card: GuitarIntervalCard): string {
-  const forms = CHORD_FORMS.filter(form => formIncludes(form, card));
+export function learningReason(card: GuitarIntervalCard, tuning: Tuning = STANDARD_TUNING): string {
+  const forms = formsApply(tuning) ? CHORD_FORMS.filter(form => formIncludes(form, card)) : [];
   if (forms.length) return forms.map(form => form.name).join(", ");
-  if (isReference(card)) return "Octave, fifth or major-third reference";
+  if (isReference(card, tuning.length)) return "Octave, fifth or major-third reference";
   if ([0, 3, 4, 7, 10, 11].includes(card.semitones)) return "Chord tones across roots and voicings";
   if ([2, 5, 9].includes(card.semitones)) return "9/11/13 and melodic connections";
   return "Altered intervals and remaining positions";
 }
 
-function priority(card: GuitarIntervalCard): number {
+function priority(card: GuitarIntervalCard, stringCount: number): number {
   const chordTone = [0, 3, 4, 7, 10, 11].includes(card.semitones);
   const natural = [2, 5, 9].includes(card.semitones);
   // Musical role before distance: a high-string tone over a bass root need
-  // not wait behind every adjacent-string interval.
+  // not wait behind every adjacent-string interval. The two lowest strings
+  // are the bass roots, whatever the instrument.
   return (chordTone ? 0 : natural ? 100 : 200)
-    + (card.rootString >= 5 ? 0 : card.rootString === 4 ? 20 : 40)
+    + (card.rootString >= stringCount - 1 ? 0 : card.rootString === stringCount - 2 ? 20 : 40)
     + Math.abs(card.fretOffset) * 2 + Math.abs(card.rootString - card.targetString);
 }
 
-export function difficultyLevels(cards: readonly GuitarIntervalCard[]): ReadonlyMap<string, number> {
+export function difficultyLevels(
+  cards: readonly GuitarIntervalCard[],
+  tuning: Tuning = STANDARD_TUNING,
+): ReadonlyMap<string, number> {
   const levels = new Map<string, number>();
+  const forms = formsApply(tuning) ? CHORD_FORMS : [];
   for (const card of cards) {
-    const deadlines = CHORD_FORMS.filter(form => formIncludes(form, card)).map(form => form.level);
-    if (isReference(card)) deadlines.push(1);
+    const deadlines = forms.filter(form => formIncludes(form, card)).map(form => form.level);
+    if (isReference(card, tuning.length)) deadlines.push(1);
     if (deadlines.length) levels.set(card.id, Math.min(...deadlines));
   }
   for (const nearby of [true, false]) {
     const band = cards.filter(card => (Math.abs(card.fretOffset) <= 3) === nearby);
     const core = band.filter(card => levels.get(card.id) === 1).length;
     const remaining = band.filter(card => !levels.has(card.id))
-      .sort((a, b) => priority(a) - priority(b) || a.id.localeCompare(b.id));
+      .sort((a, b) => priority(a, tuning.length) - priority(b, tuning.length) || a.id.localeCompare(b.id));
     let next = 0;
     // Wide stretches start later unless a named form explicitly needs them.
     const start = nearby ? 2 : 3;

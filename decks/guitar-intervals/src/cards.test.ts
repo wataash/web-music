@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEGREE_NAMES,
+  guitarIntervalCards,
   GUITAR_INTERVAL_CARDS,
   semitonesBetween,
 } from "./cards";
@@ -37,6 +38,18 @@ describe("guitar interval cards", () => {
     // Two octaves down the neck on one string is still measured in one.
     expect(card(1, 1, -1)?.names).toEqual(["M7"]);
     expect(card(1, 1, 5)?.names).toEqual(["11", "P4"]);
+  });
+
+  it("asks about another instrument's strings", () => {
+    // A four-string bass in fourths: every neighbouring pair is a 4th across.
+    const bass = [43, 38, 33, 28];
+    const cards = guitarIntervalCards(bass);
+    expect(cards).toHaveLength(4 * (4 * 13 - 1));
+    expect(cards.every(({ rootString, targetString }) => rootString <= 4 && targetString <= 4)).toBe(true);
+    expect(cards.find(({ id }) => id === "r2-s1-0")?.names).toEqual(["11", "P4"]);
+    // A reentrant ukulele: the G string sits above the C string.
+    expect(semitonesBetween(4, 3, 0, [69, 64, 60, 67])).toBe(5);
+    expect(semitonesBetween(3, 4, 0, [69, 64, 60, 67])).toBe(7);
   });
 
   it("folds a distance into the octave and names every spelling of it", () => {

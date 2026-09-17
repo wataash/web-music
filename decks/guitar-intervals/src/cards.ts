@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { GUITAR_OPEN_STRINGS } from "@web-music/practice-ui/guitar";
+
 export type GuitarIntervalCard = Readonly<{
   id: string;
   rootString: number;
@@ -10,16 +12,15 @@ export type GuitarIntervalCard = Readonly<{
   names: readonly string[];
 }>;
 
-export const STRING_COUNT = 6;
+// The open strings, as MIDI note numbers with string 1 first. Standard
+// guitar is E4 B3 G3 D3 A2 E2; the app asks for other instruments.
+export type Tuning = readonly number[];
+export const STANDARD_TUNING: Tuning = GUITAR_OPEN_STRINGS;
 
 // How far either side of the root the widest board reaches. A tritone each
 // way is as far as a hand goes without moving position, and it makes the
 // board an octave wide on one string.
 export const MAX_FRET_REACH = 6;
-
-// String 1 (high E) is drawn at the top, as the fretboard deck draws it.
-// Standard tuning, as MIDI note numbers: E4 B3 G3 D3 A2 E2.
-export const OPEN_STRING_SEMITONES = [64, 59, 55, 50, 45, 40] as const;
 
 // Every name the deck gives a distance, folded into one octave: a shape is
 // the same wherever it is played, and a guitarist fingers a chord's ♯9 at the
@@ -48,18 +49,19 @@ export const FRET_OFFSETS: readonly number[] = Array.from(
 // the same number of frets apart are the same question at every position on
 // the neck, so the board is drawn around the root rather than at a fret
 // number. That leaves one card per root string and reachable cell.
-export const GUITAR_INTERVAL_CARDS: readonly GuitarIntervalCard[] = Array.from(
-  { length: STRING_COUNT },
-  (_, index) => index + 1,
-).flatMap((rootString) =>
-  Array.from({ length: STRING_COUNT }, (_, index) => index + 1).flatMap(
-    (targetString) =>
+export function guitarIntervalCards(
+  tuning: Tuning = STANDARD_TUNING,
+): readonly GuitarIntervalCard[] {
+  const strings = tuning.map((_, index) => index + 1);
+  return strings.flatMap((rootString) =>
+    strings.flatMap((targetString) =>
       FRET_OFFSETS.flatMap((fretOffset) => {
         if (targetString === rootString && fretOffset === 0) return [];
         const semitones = semitonesBetween(
           rootString,
           targetString,
           fretOffset,
+          tuning,
         );
         return [
           {
@@ -72,8 +74,12 @@ export const GUITAR_INTERVAL_CARDS: readonly GuitarIntervalCard[] = Array.from(
           },
         ];
       }),
-  ),
-);
+    ),
+  );
+}
+
+export const GUITAR_INTERVAL_CARDS: readonly GuitarIntervalCard[] =
+  guitarIntervalCards();
 
 // Folded into one octave: which octave the cell lands in depends on where the
 // shape is played, and the deck asks for the name of the distance.
@@ -81,11 +87,10 @@ export function semitonesBetween(
   rootString: number,
   targetString: number,
   fretOffset: number,
+  tuning: Tuning = STANDARD_TUNING,
 ): number {
   const distance =
-    OPEN_STRING_SEMITONES[targetString - 1] +
-    fretOffset -
-    OPEN_STRING_SEMITONES[rootString - 1];
+    tuning[targetString - 1] + fretOffset - tuning[rootString - 1];
   return ((distance % 12) + 12) % 12;
 }
 

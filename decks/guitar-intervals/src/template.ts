@@ -14,6 +14,10 @@ export const FIELD_NAMES = [
   "Answer",
   "Board",
   "AnswerBoard",
+  // The open strings the card was drawn for, as MIDI numbers with string 1
+  // first: what the app sounds a cell with, and how it tells one
+  // instrument's deck from another's.
+  "Tuning",
 ] as const;
 
 export const FRONT_TEMPLATE = `

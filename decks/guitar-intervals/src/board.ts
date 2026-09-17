@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { MAX_FRET_REACH, STRING_COUNT } from "./cards";
+import { MAX_FRET_REACH, STANDARD_TUNING } from "./cards";
 
 export const BOARD = {
   cellWidth: 120,
@@ -14,7 +14,11 @@ export const BOARD = {
 
 export const BOARD_COLUMNS = MAX_FRET_REACH * 2 + 1;
 export const BOARD_WIDTH = BOARD_COLUMNS * BOARD.cellWidth;
-export const BOARD_HEIGHT = STRING_COUNT * BOARD.stringGap;
+
+// A string per row, so a bass is a shallower board than a guitar.
+export function boardHeight(stringCount: number): number {
+  return stringCount * BOARD.stringGap;
+}
 
 export type BoardLabelPosition = Readonly<{ x: number; y: number }>;
 
@@ -24,13 +28,14 @@ export type BoardLabelPosition = Readonly<{ x: number; y: number }>;
 export function labelPosition(
   guitarString: number,
   fretOffset: number,
+  stringCount: number = STANDARD_TUNING.length,
 ): BoardLabelPosition {
   if (
     !Number.isInteger(guitarString) ||
     guitarString < 1 ||
-    guitarString > STRING_COUNT
+    guitarString > stringCount
   ) {
-    throw new RangeError(`string must be from 1 to ${STRING_COUNT}`);
+    throw new RangeError(`string must be from 1 to ${stringCount}`);
   }
   if (
     !Number.isInteger(fretOffset) ||
@@ -42,25 +47,28 @@ export function labelPosition(
   }
   return {
     x: (fretOffset + MAX_FRET_REACH + 0.5) / BOARD_COLUMNS,
-    y: (guitarString - 0.5) / STRING_COUNT,
+    y: (guitarString - 0.5) / stringCount,
   };
 }
 
 // One drawing serves every card: the strings and frets are the same wherever
 // the shape is played, and only the names written over them differ.
-export function renderBoardSvg(): string {
+export function renderBoardSvg(
+  stringCount: number = STANDARD_TUNING.length,
+): string {
+  const height = boardHeight(stringCount);
   const frets = Array.from({ length: BOARD_COLUMNS + 1 }, (_, column) => {
     const x = round(column * BOARD.cellWidth);
-    return `<line x1="${x}" y1="0" x2="${x}" y2="${BOARD_HEIGHT}"/>`;
+    return `<line x1="${x}" y1="0" x2="${x}" y2="${height}"/>`;
   }).join("");
-  const strings = Array.from({ length: STRING_COUNT }, (_, row) => {
+  const strings = Array.from({ length: stringCount }, (_, row) => {
     const y = round((row + 0.5) * BOARD.stringGap);
     return `<line x1="0" y1="${y}" x2="${BOARD_WIDTH}" y2="${y}"/>`;
   }).join("");
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}"`,
-    ` width="${BOARD_WIDTH}" height="${BOARD_HEIGHT}" role="img"`,
-    ` aria-label="Guitar fretboard, ${STRING_COUNT} strings and ${BOARD_COLUMNS} frets around the root">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOARD_WIDTH} ${height}"`,
+    ` width="${BOARD_WIDTH}" height="${height}" role="img"`,
+    ` aria-label="Fretboard, ${stringCount} strings and ${BOARD_COLUMNS} frets around the root">`,
     `<style>.fret{stroke:#52606d;stroke-width:${BOARD.fretWidth}}`,
     `.string{stroke:#cbd5e1;stroke-width:${BOARD.stringWidth}}</style>`,
     `<rect width="100%" height="100%" fill="#111827"/>`,

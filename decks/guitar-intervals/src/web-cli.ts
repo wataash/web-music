@@ -5,20 +5,16 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { createWebPackage } from "@web-music/anki-apkg/package";
-
-import { createDeckArtifacts } from "./generate";
-import { PACKAGE_SPEC } from "./package-spec";
+import { createWebDeck } from "./web-deck";
 
 const { values } = parseArgs({
   options: { output: { type: "string", short: "o" } },
 });
 const outputPath = resolve(values.output ?? "dist/guitar-intervals.json");
-const artifacts = createDeckArtifacts();
 const document = {
   format: "web-music-flashcards-deck",
   version: 1,
-  deck: createWebPackage(PACKAGE_SPEC, artifacts.notes, artifacts.media),
+  deck: createWebDeck(),
 } as const;
 
 await mkdir(dirname(outputPath), { recursive: true });

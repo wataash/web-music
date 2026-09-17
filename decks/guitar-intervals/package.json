@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@web-music/anki-apkg": "workspace:*"
+    "@web-music/anki-apkg": "workspace:*",
+    "@web-music/practice-ui": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -22,5 +23,10 @@
   },
   "engines": {
     "node": ">=22.5"
+  },
+  "exports": {
+    "./web-deck": "./src/web-deck.ts",
+    "./cards": "./src/cards.ts",
+    "./learning-order": "./src/learning-order.ts"
   }
 }

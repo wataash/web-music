@@ -11,11 +11,12 @@ import { describe, expect, it } from "vitest";
 import { createWebPackage } from "@web-music/anki-apkg/package";
 
 import { BOARD_COLUMNS, labelPosition, renderBoardSvg } from "./board";
-import { GUITAR_INTERVAL_CARDS } from "./cards";
+import { GUITAR_INTERVAL_CARDS, STANDARD_TUNING } from "./cards";
 import {
   BOARD_FILENAME,
   createDeckArtifacts,
   createDeckNotes,
+  createWebDeck,
   generateAnkiDeck,
 } from "./generate";
 import { PACKAGE_SPEC } from "./package-spec";
@@ -100,6 +101,31 @@ describe("guitar interval deck generation", () => {
     expect(labelPosition(1, 6).x).toBeCloseTo(12.5 / BOARD_COLUMNS);
     expect(() => labelPosition(0, 0)).toThrow(RangeError);
     expect(() => labelPosition(1, 7)).toThrow(RangeError);
+  });
+
+  it("draws another instrument its own board under its own guids", () => {
+    const bass = [43, 38, 33, 28];
+    const deck = createWebDeck(bass);
+    const standard = createWebDeck();
+    expect(deck.notes).toHaveLength(204);
+    expect(deck.decks).toEqual(standard.decks);
+    expect(deck.models[0].mid).toBe(standard.models[0].mid);
+    expect(deck.media[0].data).toContain("Fretboard, 4 strings");
+    expect(deck.media[0].filename).not.toBe(standard.media[0].filename);
+    const standardGuids = new Set(standard.notes.map(({ guid }) => guid));
+    expect(deck.notes.some(({ guid }) => standardGuids.has(guid))).toBe(false);
+    for (const note of deck.notes) {
+      expect(note.fields[8]).toBe("43 38 33 28");
+      expect(note.fields[6]).toContain('data-strings="4"');
+      expect(note.fields[6]).toContain(`src="${deck.media[0].filename}"`);
+    }
+    // The root on the lowest string sits on the bottom row of four.
+    expect(deck.notes.find((note) => note.fields[0] === "r4-s1-0")?.fields[6])
+      .toContain("--fret-y:87.5%");
+    // No chord forms on a bass: the levels still fill from 1 to 10.
+    const levels = deck.notes.map((note) => Number(/learning-level::(\d+)/.exec(note.tags)![1]));
+    expect(new Set(levels)).toEqual(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+    expect(createWebDeck(STANDARD_TUNING).notes).toEqual(standard.notes);
   });
 
   it("crops the board to the reader's window without redrawing it", () => {

@@ -260,6 +260,9 @@ importers:
       '@web-music/anki-apkg':
         specifier: workspace:*
         version: link:../../packages/anki-apkg
+      '@web-music/practice-ui':
+        specifier: workspace:*
+        version: link:../../packages/practice-ui
     devDependencies:
       '@types/node':
         specifier: ^24.0.0

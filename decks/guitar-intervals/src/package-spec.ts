@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { PackageSpec } from "@web-music/anki-apkg/package";
+import type { PackageSpec } from "@web-music/anki-apkg/web-package";
+import { tuningSlug } from "@web-music/practice-ui/tuning";
 
+import { STANDARD_TUNING, type Tuning } from "./cards";
 import {
   BACK_TEMPLATE,
   CARD_CSS,
@@ -16,6 +18,19 @@ export const ROOT_DECK_ID = 1_788_700_000_001;
 export const DECK_CONFIG_ID = 1_788_700_000_002;
 export const NOTE_ID_BASE = 1_788_700_100_000;
 export const CARD_ID_BASE = 1_788_700_200_000;
+
+// Another instrument is another deck of cards under the same name: its guids
+// come from its own namespace, so its study state is its own, and it replaces
+// the previous instrument's content on import. Standard guitar keeps the
+// namespace everything was written under before there were other instruments.
+export function packageNamespace(tuning: Tuning): string {
+  const slug = tuningSlug(tuning);
+  return slug === "" ? "guitar-intervals" : `guitar-intervals:${slug}`;
+}
+
+export function packageSpec(tuning: Tuning = STANDARD_TUNING): PackageSpec {
+  return { ...PACKAGE_SPEC, namespace: packageNamespace(tuning) };
+}
 
 export const PACKAGE_SPEC: PackageSpec = {
   namespace: "guitar-intervals",
