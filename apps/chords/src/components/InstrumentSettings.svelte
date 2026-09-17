@@ -4,7 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import TuningSettings from './TuningSettings.svelte';
+  import TuningSettings from '@web-music/practice-ui/TuningSettings.svelte';
+  import { defaultBassStrings } from '../lib/tuning';
   import BassStringPicker from './BassStringPicker.svelte';
   let { tuning = $bindable<number[]>([]), tuningPreset = $bindable(''), bassStrings = $bindable<number[]>([]), onclose }: {
     tuning?: number[]; tuningPreset?: string; bassStrings?: number[]; onclose: () => void;
@@ -15,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 </script>
 <dialog bind:this={dialog} aria-labelledby="instrument-title" oncancel={event => { event.preventDefault(); close(); }}>
   <header><h2 id="instrument-title">Instrument and tuning</h2><button aria-label="Close instrument settings" onclick={close}>×</button></header>
-  <TuningSettings bind:tuning bind:tuningPreset onpreset={strings => bassStrings = strings} />
+  <TuningSettings bind:tuning bind:tuningPreset onpreset={(strings, preset) => bassStrings = preset?.bassStrings ?? defaultBassStrings(strings)} />
   <BassStringPicker bind:value={bassStrings} stringCount={tuning.length} />
 </dialog>
 <style>

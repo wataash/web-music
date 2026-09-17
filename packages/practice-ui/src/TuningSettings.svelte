@@ -3,21 +3,31 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import { MIN_STRINGS, MAX_STRINGS, NOTE_NAMES, TUNING_PRESETS, matchingPreset, defaultBassStrings } from '../lib/tuning';
-  let { tuning = $bindable<number[]>([]), tuningPreset = $bindable(''), onpreset }: { tuning?: number[]; tuningPreset?: string; onpreset: (strings: number[]) => void } = $props();
+  // The instrument's strings, as the chord practice and the guitar decks both
+  // ask for them. A preset fills every string at once; a string count or a
+  // single pitch makes the tuning the reader's own.
+  import { MIN_STRINGS, MAX_STRINGS, NOTE_NAMES, TUNING_PRESETS, matchingPreset, type TuningPreset } from './tuning';
+  let { tuning = $bindable<number[]>([]), tuningPreset = $bindable(''), onpreset, onchange }: {
+    tuning?: number[]; tuningPreset?: string;
+    // Told the whole tuning as well as the preset, since a string count is a
+    // change of instrument with no preset behind it.
+    onpreset?: (tuning: number[], preset?: TuningPreset) => void;
+    onchange?: (tuning: number[]) => void;
+  } = $props();
   const selectedPreset = $derived(matchingPreset(tuning, tuningPreset));
   function choose(event: Event) {
     const selected = TUNING_PRESETS.find(p => p.id === (event.currentTarget as HTMLSelectElement).value);
-    if (selected) { tuning = [...selected.pitches]; tuningPreset = selected.id; onpreset(selected.bassStrings ?? defaultBassStrings(tuning)); }
+    if (selected) { tuning = [...selected.pitches]; tuningPreset = selected.id; onpreset?.(tuning, selected); onchange?.(tuning); }
   }
   function resize(count: number) {
     tuning = Array.from({ length: count }, (_, i) => tuning[i] ?? Math.max(0, tuning[tuning.length - 1] - 5 * (i - tuning.length + 1)));
     tuningPreset = '';
-    onpreset(defaultBassStrings(tuning));
+    onpreset?.(tuning);
+    onchange?.(tuning);
   }
   function pitch(index: number, note: number, octave: number) {
     const midi = (octave + 1) * 12 + note;
-    if (midi >= 0 && midi <= 127) tuning = tuning.map((value, i) => i === index ? midi : value);
+    if (midi >= 0 && midi <= 127) { tuning = tuning.map((value, i) => i === index ? midi : value); onchange?.(tuning); }
   }
 </script>
 <section class="tuning-editor" aria-label="Tuning">
