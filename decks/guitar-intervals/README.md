@@ -9,7 +9,8 @@ used as a bundled deck in the web app.
 Guitar Intervals
 ```
 
-One flat deck of 462 cards. The front marks the root `1` and puts `?` on
+One flat deck of 462 cards for a six-string guitar (`strings × (strings × 13 − 1)`
+for another instrument). The front marks the root `1` and puts `?` on
 another position; the back writes that position's degree in its place.
 
 ```text
@@ -24,6 +25,23 @@ front                                    back
 
 String 1 (high E) is drawn at the top, as the fretboard deck draws it.
 Standard tuning.
+
+## Other instruments
+
+Everything is generated from the open strings, as MIDI numbers with string 1
+first, and the web app calls the same generator (`src/web-deck.ts`, which
+needs nothing from node) for the instrument its reader chose. Each note
+carries its tuning in the `Tuning` field, so the app can tell which
+instrument a card was drawn for and sound it on those strings. Another
+instrument's notes get their own guid namespace (`guitar-intervals:<pitches>`),
+so its study state is its own; standard guitar keeps the `guitar-intervals`
+namespace everything was written under before. The chord forms of the
+learning order apply where the first six strings are a standard guitar's;
+other instruments are staged by musical role and distance alone.
+
+```console
+pnpm generate:anki --tuning 43,38,33,28   # a four-string bass
+```
 
 ## No fret numbers
 

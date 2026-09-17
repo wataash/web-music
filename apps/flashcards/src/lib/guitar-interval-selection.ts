@@ -7,6 +7,7 @@
 
 import type { NoteRow } from "./db";
 import { guitarShapeIds, guitarShapeIdsFor, LEARNING_LEVEL_TAG } from "./guitar-shapes";
+import { DEFAULT_GUITAR_TUNING, type Tuning } from "./guitar-tuning";
 
 const GUITAR_INTERVALS_DECK = "Guitar Intervals";
 
@@ -18,14 +19,18 @@ export type FretWindow = Readonly<{ left: number; right: number }>;
 export type FretWindowSide = keyof FretWindow;
 export type GuitarOverrides = Readonly<Record<string, boolean>>;
 
-export function parseGuitarOverrides(value: unknown): GuitarOverrides {
+// Kept per instrument: a shape's id names strings, and what those strings are
+// tuned to is what makes it a shape.
+export function parseGuitarOverrides(value: unknown, tuning: Tuning = DEFAULT_GUITAR_TUNING): GuitarOverrides {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const result: Record<string, boolean> = {};
   for (const [id, enabled] of Object.entries(value)) {
-    const match = id.match(/^r([1-6])-s([1-6])-(0|[fb][1-6])$/);
+    const match = id.match(/^r(\d+)-s(\d+)-(0|[fb][1-6])$/);
     if (!match || typeof enabled !== "boolean") continue;
     const offset = match[3] === "0" ? 0 : Number(match[3].slice(1)) * (match[3][0] === "b" ? -1 : 1);
-    const key = guitarShapeIdsFor(Number(match[1]), Number(match[2]), offset)[0] ?? id;
+    const ids = guitarShapeIdsFor(Number(match[1]), Number(match[2]), offset, tuning);
+    if (ids.length === 0) continue;
+    const key = ids[0];
     // Conflicting old per-position choices prefer exclusion.
     result[key] = (result[key] ?? true) && enabled;
   }
@@ -79,8 +84,8 @@ export function parseFretWindow(value: unknown): FretWindow {
 
 // How many cells a window can ask about: every string at every fret in it,
 // less the root's own cell.
-export function fretWindowCellCount(window: FretWindow): number {
-  return 6 * (window.left + window.right + 1) - 1;
+export function fretWindowCellCount(window: FretWindow, stringCount = DEFAULT_GUITAR_TUNING.length): number {
+  return stringCount * (window.left + window.right + 1) - 1;
 }
 
 export function isGuitarIntervalCard(note: Pick<NoteRow, "fields">): boolean {

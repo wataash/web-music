@@ -11,6 +11,8 @@ import type { NoteRow } from "./db";
 
 export const FRETBOARD_NOTE_TO_POSITIONS_DECK =
   "Guitar Fretboard::Note → Positions";
+export const FRETBOARD_POSITION_TO_NOTE_DECK =
+  "Guitar Fretboard::Position → Note";
 
 export type FretboardNoteSpelling =
   | "natural"

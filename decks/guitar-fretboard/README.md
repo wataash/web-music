@@ -92,6 +92,21 @@ under both names writes them the same way `Position → Note` answers with them.
 Only the naturals are asked until the reader turns the rest on: the web app's
 gear on `Note → Positions` picks the notes, and ships on `Naturals`.
 
+## Other instruments
+
+Everything is generated from the open strings, as MIDI numbers with string 1
+first, and the web app calls the same generator (`src/web-deck.ts`, which
+needs nothing from node) for the instrument its reader chose. Each note
+carries its tuning in the `Tuning` field; the web card template draws the neck
+from it, and the app sounds a position on those strings. Another instrument's
+notes get their own guid namespace (`guitar-fretboard:<pitches>`), so its
+study state is its own; standard guitar keeps the `guitar-fretboard`
+namespace everything was written under before.
+
+```console
+pnpm generate:anki --tuning 43,38,33,28   # a four-string bass
+```
+
 ## Generate
 
 Node.js 22.5 or later and pnpm are required.

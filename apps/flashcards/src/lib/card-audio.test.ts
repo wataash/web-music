@@ -138,6 +138,21 @@ describe("the sound of an answer", () => {
     });
   });
 
+  it("sounds a card on the strings it was drawn for", () => {
+    // A four-string bass: string 4 is E1, string 1 is G2.
+    const bass = "43 38 33 28";
+    expect(
+      answerSound(note(["id", "guitar-interval", "4", "3", "0", "11 P4", "", "", bass])),
+    ).toEqual({ instrument: "guitar", semitones: [28 + 7, 33 + 7] });
+    expect(
+      answerSound(note(["position-to-note", "natural", "1", "5", "C", "", "", "", bass], "direction::position-to-note")),
+    ).toEqual({ instrument: "guitar", semitones: [48] });
+    expect(tapSound({ kind: "fret", string: 4, fret: 0 }, [43, 38, 33, 28])?.semitones).toEqual([28]);
+    expect(tapSound({ kind: "fret", string: 5, fret: 0 }, [43, 38, 33, 28])).toBeNull();
+    expect(tappedAnswerSound([{ kind: "fret-offset", string: 1, offset: 0 }], null, false, [43, 38, 33, 28]).semitones)
+      .toEqual([43 + GUITAR_INTERVAL_ROOT_FRET]);
+  });
+
   it("plays the guitar root then a correct tapped target once", () => {
     const answer = answerSound(note(["id", "guitar-interval", "6", "5", "2", "P5", "", ""]));
     expect(tappedAnswerSound([{ kind: "fret-offset", string: 5, offset: 2 }], answer, true))

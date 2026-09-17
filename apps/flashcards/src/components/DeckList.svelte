@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
   import DeckActionsSheet from "@web-music/practice-ui/DeckActionsSheet.svelte";
   import DeckVisibilitySettings from "./DeckVisibilitySettings.svelte";
   import type { FretWindow } from "../lib/guitar-interval-selection";
+  import type { Tuning } from "../lib/guitar-tuning";
   import NoteSettingsDialog from "./NoteSettingsDialog.svelte";
   import type {
     CircleNoteSelection,
@@ -62,6 +63,7 @@ SPDX-License-Identifier: Apache-2.0
     onfretwindowchange,
     onguitardifficultychange,
     onguitaroverrideschange,
+    onguitartuningchange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
     ondismisserror,
@@ -93,6 +95,7 @@ SPDX-License-Identifier: Apache-2.0
     onfretwindowchange: (selection: FretWindow) => void;
     onguitardifficultychange: (difficulty: number) => void;
     onguitaroverrideschange: (overrides: Readonly<Record<string, boolean>>) => void;
+    onguitartuningchange: (tuning: Tuning) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
     ondismisserror: () => void;
@@ -542,6 +545,7 @@ SPDX-License-Identifier: Apache-2.0
     {onfretwindowchange}
     {onguitardifficultychange}
     {onguitaroverrideschange}
+    {onguitartuningchange}
     {onintervalpairselectionchange}
     {onstaffnoteselectionchange}
     onclose={closeNoteSettings}

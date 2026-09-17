@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import { guitarShapeId, guitarShapeIds, mergeGuitarStates, normalizeGuitarLevels } from "./guitar-shapes";
+import { guitarShapeId, guitarShapeIds, guitarShapeKey, mergeGuitarStates, normalizeGuitarLevels } from "./guitar-shapes";
 import { includesGuitarIntervalCard, parseGuitarOverrides } from "./guitar-interval-selection";
 import type { NoteRow, StateRow } from "./db";
 
-function note(root: number, target: number, offset = 0, level = 10): NoteRow {
+function note(root: number, target: number, offset = 0, level = 10, tuning?: string): NoteRow {
   return { id: root * 100 + target, guid: `${root}-${target}`, pkg: "Guitar Intervals", mid: 1,
     tags: `learning-level::${level}`,
-    fields: ["id", "guitar-interval", String(root), String(target), String(offset)] };
+    fields: ["id", "guitar-interval", String(root), String(target), String(offset), "", "", "", ...(tuning ? [tuning] : [])] };
 }
 
 describe("shared guitar shapes", () => {
@@ -21,6 +21,21 @@ describe("shared guitar shapes", () => {
     expect(guitarShapeIds(note(6, 6, 1))).toHaveLength(6);
     expect(guitarShapeId(note(1, 6))).not.toBe(guitarShapeId(note(6, 1)));
     expect(guitarShapeId(note(1, 2, -6))).not.toBe(guitarShapeId(note(1, 2, 6)));
+  });
+
+  it("groups by the strings a card was drawn for and keys another instrument's progress apart", () => {
+    // A bass in fourths: every neighbouring pair is the same shape.
+    const bass = "43 38 33 28";
+    expect(guitarShapeIds(note(1, 2, 0, 10, bass))).toEqual(["r1-s2-0", "r2-s3-0", "r3-s4-0"]);
+    expect(guitarShapeIds(note(4, 1, 2, 10, bass))).toEqual(["r4-s1-f2"]);
+    expect(guitarShapeIds(note(5, 1, 0, 10, bass))).toEqual([]);
+    // A reentrant ukulele: string 4 to 3 is not string 3 to 2.
+    expect(guitarShapeIds(note(4, 3, 0, 10, "69 64 60 67"))).toEqual(["r4-s3-0"]);
+    const card = { id: 1, key: "k", nid: 1, did: 1, ord: 0, newOrder: 1, pkg: "Guitar Intervals" };
+    expect(guitarShapeKey(card, note(1, 2))).toBe('guitar-shape:["Guitar Intervals",1,"r1-s2-0",0]');
+    expect(guitarShapeKey(card, note(1, 2, 0, 10, "64 59 55 50 45 40"))).toBe('guitar-shape:["Guitar Intervals",1,"r1-s2-0",0]');
+    expect(guitarShapeKey(card, note(1, 2, 0, 10, bass))).toBe('guitar-shape:["Guitar Intervals",1,"r1-s2-0",0,"43-38-33-28"]');
+    expect(parseGuitarOverrides({ "r3-s4-0": false, "r5-s6-0": true }, [43, 38, 33, 28])).toEqual({ "r1-s2-0": false });
   });
 
   it.each([[3, 246, 118], [6, 462, 220]])("counts distinct shapes within ±%i frets", (reach, count, unique) => {

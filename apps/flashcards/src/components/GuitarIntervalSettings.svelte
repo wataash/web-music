@@ -3,11 +3,11 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { liveQuery } from "dexie";
-  import { db, type NoteRow } from "../lib/db";
+  import { createWebDeck } from "guitar-intervals-anki/web-deck";
+  import type { NoteRow } from "../lib/db";
   import GuitarIntervalMap from "./GuitarIntervalMap.svelte";
-  import { guitarShapeId } from "../lib/guitar-shapes";
+  import { guitarShapeId, normalizeGuitarLevels } from "../lib/guitar-shapes";
+  import type { Tuning } from "../lib/guitar-tuning";
   import {
     DEFAULT_FRET_WINDOW,
     clampFretReach,
@@ -22,6 +22,7 @@ SPDX-License-Identifier: Apache-2.0
 
   let {
     deckLabel,
+    tuning,
     selection,
     difficulty,
     overrides,
@@ -31,6 +32,9 @@ SPDX-License-Identifier: Apache-2.0
     onchange,
   }: {
     deckLabel: string;
+    // The instrument the dialog is drafting, which may not be the one the
+    // deck in the database is drawn for yet.
+    tuning: Tuning;
     selection: FretWindow;
     difficulty: number;
     overrides: Readonly<Record<string, boolean>>;
@@ -44,17 +48,15 @@ SPDX-License-Identifier: Apache-2.0
   } = $props();
 
   const draft = $derived(selection);
-  let notes = $state<readonly NoteRow[]>([]);
-  let loaded = $state(false);
-  onMount(() => {
-    const subscription = liveQuery(() =>
-      db.notes.where("pkg").equals(deckLabel).toArray(),
-    ).subscribe((rows) => {
-      notes = rows;
-      loaded = true;
-    });
-    return () => subscription.unsubscribe();
+  // The cards as the app would import them for this instrument, generated
+  // here rather than read from the database: the map has to show the
+  // instrument being chosen before it is applied, and the deck in the
+  // database is the same generator's output.
+  const notes = $derived.by((): readonly NoteRow[] => {
+    const deck = createWebDeck(tuning);
+    return normalizeGuitarLevels(deck.notes.map((note) => ({ ...note, pkg: deckLabel })));
   });
+  const loaded = true;
   const selectedNotes = $derived(notes.filter((note) =>
     includesGuitarIntervalCard(note, draft, difficulty, overrides),
   ));
@@ -115,11 +117,11 @@ SPDX-License-Identifier: Apache-2.0
   {/if}
 </section>
 
-<GuitarIntervalMap {notes} {selectedNotes} window={draft} {overrides} {onoverrideschange} />
+<GuitarIntervalMap {notes} {selectedNotes} window={draft} stringCount={tuning.length} {overrides} {onoverrideschange} />
 
 <div class="table-summary">
   <span>{deckLabel}</span>
-  <span>{fretWindowCellCount(draft)} positions per root in window</span>
+  <span>{fretWindowCellCount(draft, tuning.length)} positions per root in window</span>
 </div>
 
 <div class="reaches">

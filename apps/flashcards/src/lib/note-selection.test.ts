@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_CIRCLE_NOTE_SELECTION } from "./circle-note-selection";
 import { DEFAULT_FRETBOARD_NOTE_SELECTION } from "./fretboard-card";
 import { DEFAULT_FRET_WINDOW } from "./guitar-interval-selection";
+import { DEFAULT_GUITAR_TUNING } from "./guitar-tuning";
 import { DEFAULT_INTERVAL_PAIR_SELECTION } from "./interval-pair-selection";
 import { deckSettingsTarget, includesSelectedNote } from "./note-selection";
 import {
@@ -21,6 +22,7 @@ const selections = {
   fretboardNotes: new Set(DEFAULT_FRETBOARD_NOTE_SELECTION),
   fretWindow: DEFAULT_FRET_WINDOW,
   guitarDifficulty: 10, guitarOverrides: {},
+  guitarTuning: DEFAULT_GUITAR_TUNING,
   intervalPairs: new Set(DEFAULT_INTERVAL_PAIR_SELECTION),
   staff: DEFAULT_STAFF_NOTE_SELECTION,
 };

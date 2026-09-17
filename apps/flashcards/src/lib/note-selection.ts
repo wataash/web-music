@@ -9,9 +9,11 @@ import {
 } from "./circle-note-selection";
 import type { NoteRow } from "./db";
 import {
+  FRETBOARD_POSITION_TO_NOTE_DECK,
   fretboardNoteDeckSetting,
   includesFretboardNoteCard,
 } from "./fretboard-card";
+import type { Tuning } from "./guitar-tuning";
 import {
   guitarIntervalDeckSetting,
   includesGuitarIntervalCard,
@@ -38,6 +40,9 @@ export type NoteSelections = Readonly<{
   fretWindow: FretWindow;
   guitarDifficulty: number;
   guitarOverrides: Readonly<Record<string, boolean>>;
+  // The instrument both guitar decks are drawn for. Not a predicate: the
+  // notes in the database are already that instrument's.
+  guitarTuning: Tuning;
   intervalPairs: ReadonlySet<string>;
   staff: StaffNoteSelection;
 }>;
@@ -55,11 +60,18 @@ export function includesSelectedNote(
   );
 }
 
+export function isGuitarDeckTarget(target: DeckSettingsTarget): boolean {
+  return ["fretboard-note", "guitar-interval", "guitar-instrument"].includes(target.kind);
+}
+
 // Which settings panel a deck's gear opens, or null when it has no gear.
 export type DeckSettingsTarget =
   | Readonly<{ kind: "circle"; setting: CircleNoteDeckSetting }>
   | Readonly<{ kind: "fretboard-note"; setting: Readonly<{ deckLabel: string }> }>
   | Readonly<{ kind: "guitar-interval"; setting: Readonly<{ deckLabel: string }> }>
+  // A guitar deck with nothing of its own to narrow: its gear offers the
+  // instrument, which every guitar deck's gear offers as well.
+  | Readonly<{ kind: "guitar-instrument"; setting: Readonly<{ deckLabel: string }> }>
   | Readonly<{ kind: "interval"; setting: IntervalDeckSetting }>
   | Readonly<{ kind: "staff"; setting: StaffNoteDeckSetting }>;
 
@@ -76,6 +88,9 @@ export function deckSettingsTarget(
   }
   const guitar = guitarIntervalDeckSetting(deckName);
   if (guitar !== null) return { kind: "guitar-interval", setting: guitar };
+  if (deckName === FRETBOARD_POSITION_TO_NOTE_DECK) {
+    return { kind: "guitar-instrument", setting: { deckLabel: "Position → Note" } };
+  }
   const staff = staffNoteDeckSetting(deckName);
   if (staff !== null) return { kind: "staff", setting: staff };
   return null;

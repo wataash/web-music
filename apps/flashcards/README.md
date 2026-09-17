@@ -71,6 +71,22 @@ bundled web decks and schedules them with FSRS.
   board itself; RESET goes back to three each way, and CANCEL puts the card
   back. The ⋮ sizes the board and the names on it, with the same
   screen-width option the keyboard has
+- Both guitar decks are drawn for one instrument, chosen at the top of either
+  deck's settings: the same presets the Chords app offers — guitar with 6 to 9
+  strings, bass with 4 to 8, Chapman Stick, violin family, ukulele, mandolin
+  family and tenor banjo — or any 2–12 strings tuned by hand. The packages
+  ship for a six-string guitar in standard tuning; for any other instrument
+  the app generates both decks itself, from the same code the packages are
+  built with, and imports them in the bundled ones' place, so the question
+  map, the cards, and what a tap on the neck sounds all follow the strings
+  chosen. Each instrument keeps its own progress, since a position is a
+  different question on different strings: switching to a bass starts its
+  decks new, and switching back finds the guitar's schedule as it was. The
+  shapes turned off by hand are kept per instrument too; the learning range,
+  the fret window and the note selection are shared. The chord-form stages of
+  the learning range apply where the first six strings are a standard
+  guitar's, such as a seven-string; other instruments are staged by musical
+  role and distance alone
 - Music Staff chooses the notes to ask per clef: Basic (up to 2 ledger lines,
   the default), Advanced (up to 4), Esoteric (up to 6), or an individual
   selection. Each row shows the actual staff so the position is visible.

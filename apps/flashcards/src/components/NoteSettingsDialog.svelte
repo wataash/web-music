@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
   import CircleNoteSettings from "./CircleNoteSettings.svelte";
   import FretboardNoteSettings from "./FretboardNoteSettings.svelte";
   import GuitarIntervalSettings from "./GuitarIntervalSettings.svelte";
+  import InstrumentSettings from "./InstrumentSettings.svelte";
   import IntervalPairSettings from "./IntervalPairSettings.svelte";
   import SettingsDialog from "./SettingsDialog.svelte";
   import StaffNoteSettings from "./StaffNoteSettings.svelte";
@@ -17,9 +18,11 @@ SPDX-License-Identifier: Apache-2.0
     CircleRing,
   } from "../lib/circle-note-selection";
   import type { FretWindow } from "../lib/guitar-interval-selection";
-  import type {
-    DeckSettingsTarget,
-    NoteSelections,
+  import { sameTuning, type Tuning } from "../lib/guitar-tuning";
+  import {
+    isGuitarDeckTarget,
+    type DeckSettingsTarget,
+    type NoteSelections,
   } from "../lib/note-selection";
   import type { StaffNoteSelection } from "../lib/staff-note-selection";
 
@@ -35,6 +38,7 @@ SPDX-License-Identifier: Apache-2.0
     onfretwindowchange,
     onguitardifficultychange,
     onguitaroverrideschange,
+    onguitartuningchange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
     onclose,
@@ -52,6 +56,7 @@ SPDX-License-Identifier: Apache-2.0
     onfretwindowchange: (selection: FretWindow) => void;
     onguitardifficultychange: (difficulty: number) => void;
     onguitaroverrideschange: (overrides: Readonly<Record<string, boolean>>) => void;
+    onguitartuningchange: (tuning: Tuning) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
     onclose: () => void;
@@ -75,6 +80,11 @@ SPDX-License-Identifier: Apache-2.0
   let fretboardNotes = $state<readonly string[]>(
     untrack(() => [...noteSelections.fretboardNotes]),
   );
+  let guitarTuning = $state<Tuning>(untrack(() => [...noteSelections.guitarTuning]));
+  // The instrument is every guitar deck's, so it is set once above their
+  // sections rather than in each of them.
+  const guitarDecks = $derived(targets.some(isGuitarDeckTarget));
+  const sections = $derived(targets.filter((target) => target.kind !== "guitar-instrument"));
 
   const SCOPE_FIELDS = {
     "note-to-cell": "noteToCell",
@@ -108,6 +118,11 @@ SPDX-License-Identifier: Apache-2.0
     if (kinds.has("interval")) onintervalpairselectionchange(intervalPairs);
     if (kinds.has("fretboard-note")) {
       onfretboardnoteselectionchange(fretboardNotes);
+    }
+    // Before the shapes turned off by hand, which are kept per instrument:
+    // they are written for the instrument being applied, not the one before.
+    if (guitarDecks && !sameTuning(guitarTuning, noteSelections.guitarTuning)) {
+      onguitartuningchange(guitarTuning);
     }
     if (kinds.has("guitar-interval")) {
       onfretwindowchange(fretWindow);
@@ -143,7 +158,18 @@ SPDX-License-Identifier: Apache-2.0
   onapply={apply}
   oncancel={onclose}
 >
-  {#each targets as target (sectionKey(target))}
+  {#if guitarDecks}
+    <InstrumentSettings
+      tuning={guitarTuning}
+      applied={noteSelections.guitarTuning}
+      onchange={(tuning) => {
+        guitarTuning = tuning;
+        // The shapes turned off by hand were another instrument's.
+        guitarOverrides = {};
+      }}
+    />
+  {/if}
+  {#each sections as target (sectionKey(target))}
     <div class="deck-section">
       {#if target.kind === "circle"}
         <CircleNoteSettings
@@ -169,6 +195,7 @@ SPDX-License-Identifier: Apache-2.0
       {:else if target.kind === "guitar-interval"}
         <GuitarIntervalSettings
           deckLabel={target.setting.deckLabel}
+          tuning={guitarTuning}
           selection={fretWindow}
           difficulty={guitarDifficulty}
           ondifficultychange={(value) => { guitarDifficulty = value; guitarOverrides = {}; }}

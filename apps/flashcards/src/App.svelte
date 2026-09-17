@@ -63,6 +63,14 @@ SPDX-License-Identifier: Apache-2.0
     type StaffNoteSelection,
   } from "./lib/staff-note-selection";
   import {
+    DEFAULT_GUITAR_TUNING,
+    GUITAR_TUNING_KEY,
+    parseGuitarTuning,
+    tuningStorageKey,
+    type Tuning,
+  } from "./lib/guitar-tuning";
+  import { retuneGuitarDecks } from "./lib/guitar-deck-sync";
+  import {
     deckListScrollTopFromHistoryState,
     deckFromHistoryState,
     historyStateForDeck,
@@ -113,6 +121,8 @@ SPDX-License-Identifier: Apache-2.0
   const INTERVAL_PAIR_SELECTION_KEY =
     "music-flashcards:interval-pair-selection";
   const GUITAR_DIFFICULTY_KEY = "music-flashcards:guitar-difficulty";
+  // Per instrument: the key is suffixed for any tuning but standard guitar.
+  const GUITAR_OVERRIDES_KEY = "music-flashcards:guitar-overrides";
   const FRET_WINDOW_KEY = "music-flashcards:guitar-fret-window";
   const FRETBOARD_NOTE_SELECTION_KEY =
     "music-flashcards:guitar-fretboard-note-selection";
@@ -133,6 +143,7 @@ SPDX-License-Identifier: Apache-2.0
   );
   let guitarOverrides = $state<Readonly<Record<string, boolean>>>({});
   let guitarDifficulty = $state<number>(DEFAULT_GUITAR_DIFFICULTY);
+  let guitarTuning = $state<Tuning>(DEFAULT_GUITAR_TUNING);
   let fretWindow = $state<FretWindow>(DEFAULT_FRET_WINDOW);
   let fretboardNoteSelection = $state<readonly string[]>(
     DEFAULT_FRETBOARD_NOTE_SELECTION,
@@ -147,6 +158,7 @@ SPDX-License-Identifier: Apache-2.0
     fretWindow,
     guitarDifficulty,
     guitarOverrides,
+    guitarTuning,
     intervalPairs: new Set(intervalPairSelection),
     staff: staffNoteSelection,
   });
@@ -272,9 +284,47 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function setGuitarOverrides(value: Readonly<Record<string, boolean>>): void {
-    guitarOverrides = parseGuitarOverrides(value);
-    try { localStorage.setItem("music-flashcards:guitar-overrides", JSON.stringify(guitarOverrides)); } catch { /* Optional preference. */ }
+    guitarOverrides = parseGuitarOverrides(value, guitarTuning);
+    try { localStorage.setItem(tuningStorageKey(GUITAR_OVERRIDES_KEY, guitarTuning), JSON.stringify(guitarOverrides)); } catch { /* Optional preference. */ }
     void refresh();
+  }
+
+  function loadGuitarOverrides(tuning: Tuning): Readonly<Record<string, boolean>> {
+    try {
+      return parseGuitarOverrides(JSON.parse(localStorage.getItem(tuningStorageKey(GUITAR_OVERRIDES_KEY, tuning)) ?? "{}"), tuning);
+    } catch {
+      return {};
+    }
+  }
+
+  // The instrument the guitar decks are drawn for. The decks in the database
+  // are generated again for it, and the shapes turned off by hand come from
+  // its own store, since a shape is an instrument's.
+  async function setGuitarTuning(tuning: Tuning): Promise<void> {
+    guitarTuning = parseGuitarTuning(tuning);
+    guitarOverrides = loadGuitarOverrides(guitarTuning);
+    try {
+      localStorage.setItem(GUITAR_TUNING_KEY, JSON.stringify(guitarTuning));
+    } catch {
+      // The preference is optional when storage is unavailable.
+    }
+    await syncGuitarDecks();
+  }
+
+  // Redraw the guitar decks for the instrument when they are not drawn for it
+  // yet: after the setting changes, and after an import has written the
+  // bundled standard-guitar decks over them.
+  async function syncGuitarDecks(): Promise<void> {
+    busy = true;
+    try {
+      const replaced = await retuneGuitarDecks(guitarTuning);
+      if (replaced.length > 0) deckVersion += 1;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      busy = false;
+    }
+    await refresh();
   }
 
   function setGuitarDifficulty(value: number): void {
@@ -431,6 +481,7 @@ SPDX-License-Identifier: Apache-2.0
             .map(({ id }) => id)
             .join(", ")}`,
         );
+        await syncGuitarDecks();
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -520,6 +571,7 @@ SPDX-License-Identifier: Apache-2.0
         );
       }
     }
+    await syncGuitarDecks();
     queueDevSync(undefined, decks.length === 0);
   }
 
@@ -583,8 +635,12 @@ SPDX-License-Identifier: Apache-2.0
       fretboardNoteSelection = DEFAULT_FRETBOARD_NOTE_SELECTION;
     }
     try {
-      guitarOverrides = parseGuitarOverrides(JSON.parse(localStorage.getItem("music-flashcards:guitar-overrides") ?? "{}"));
-    } catch { guitarOverrides = {}; }
+      const saved = localStorage.getItem(GUITAR_TUNING_KEY);
+      if (saved !== null) guitarTuning = parseGuitarTuning(JSON.parse(saved));
+    } catch {
+      guitarTuning = DEFAULT_GUITAR_TUNING;
+    }
+    guitarOverrides = loadGuitarOverrides(guitarTuning);
     try {
       const saved = localStorage.getItem(GUITAR_DIFFICULTY_KEY);
       if (saved !== null) guitarDifficulty = parseGuitarDifficulty(JSON.parse(saved));
@@ -646,6 +702,7 @@ SPDX-License-Identifier: Apache-2.0
     onfretwindowchange={setFretWindow}
     onguitardifficultychange={setGuitarDifficulty}
     onguitaroverrideschange={setGuitarOverrides}
+    onguitartuningchange={(tuning) => void setGuitarTuning(tuning)}
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}
   />
@@ -680,6 +737,7 @@ SPDX-License-Identifier: Apache-2.0
     onfretwindowchange={setFretWindow}
     onguitardifficultychange={setGuitarDifficulty}
     onguitaroverrideschange={setGuitarOverrides}
+    onguitartuningchange={(tuning) => void setGuitarTuning(tuning)}
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}
     ondismisserror={() => (error = null)}

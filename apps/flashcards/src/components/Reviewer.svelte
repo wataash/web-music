@@ -121,6 +121,7 @@ SPDX-License-Identifier: Apache-2.0
     settingsDeckFromHistoryState,
   } from "../lib/navigation";
   import { isFretboardNoteToPositionsCard } from "../lib/fretboard-card";
+  import { noteTuning, type Tuning } from "../lib/guitar-tuning";
   import { isPianoKeyboardCard, isStaffReadingCard } from "../lib/staff-card";
 
   let {
@@ -136,6 +137,7 @@ SPDX-License-Identifier: Apache-2.0
     onfretwindowchange,
     onguitardifficultychange,
     onguitaroverrideschange,
+    onguitartuningchange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
   }: {
@@ -161,6 +163,7 @@ SPDX-License-Identifier: Apache-2.0
     onfretwindowchange: (selection: FretWindow) => void;
     onguitardifficultychange: (difficulty: number) => void;
     onguitaroverrideschange: (overrides: Readonly<Record<string, boolean>>) => void;
+    onguitartuningchange: (tuning: Tuning) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
   } = $props();
@@ -352,6 +355,7 @@ SPDX-License-Identifier: Apache-2.0
       taps,
       answer,
       isIntervalCard(item.note) || isGuitarIntervalCard(item.note),
+      noteTuning(item.note),
     );
     sound(played.semitones, played.instrument);
     if (revealing) showAnswer(false);
@@ -1160,6 +1164,7 @@ SPDX-License-Identifier: Apache-2.0
     {onfretwindowchange}
     {onguitardifficultychange}
     {onguitaroverrideschange}
+    {onguitartuningchange}
     {onintervalpairselectionchange}
     {onstaffnoteselectionchange}
     onclose={closeNoteSettings}

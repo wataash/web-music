@@ -9,6 +9,7 @@ import DeckList from "./DeckList.svelte";
 import { DEFAULT_CIRCLE_NOTE_SELECTION } from "../lib/circle-note-selection";
 import { DEFAULT_FRETBOARD_NOTE_SELECTION } from "../lib/fretboard-card";
 import { DEFAULT_FRET_WINDOW } from "../lib/guitar-interval-selection";
+import { DEFAULT_GUITAR_TUNING } from "../lib/guitar-tuning";
 import { DEFAULT_INTERVAL_PAIR_SELECTION } from "../lib/interval-pair-selection";
 import { DEFAULT_STAFF_NOTE_SELECTION } from "../lib/staff-note-selection";
 
@@ -54,6 +55,7 @@ describe("deck-list scroll position", () => {
           fretWindow: DEFAULT_FRET_WINDOW,
           guitarDifficulty: 10,
           guitarOverrides: {},
+          guitarTuning: DEFAULT_GUITAR_TUNING,
           intervalPairs: new Set(DEFAULT_INTERVAL_PAIR_SELECTION),
           staff: DEFAULT_STAFF_NOTE_SELECTION,
         },
@@ -72,6 +74,7 @@ describe("deck-list scroll position", () => {
         oncirclenoteselectionchange: () => {},
         onfretboardnoteselectionchange: () => {},
         onguitaroverrideschange: () => {},
+        onguitartuningchange: () => {},
         onguitardifficultychange: () => {},
         onfretwindowchange: () => {},
         onintervalpairselectionchange: () => {},

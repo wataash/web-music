@@ -8,13 +8,18 @@ SPDX-License-Identifier: Apache-2.0
   import { parseGuitarOverrides } from "../lib/guitar-interval-selection";
   import { guitarShapeId, guitarShapeIds } from "../lib/guitar-shapes";
 
-  let { notes, selectedNotes, window, overrides, onoverrideschange }: {
+  import { noteTuning } from "../lib/guitar-tuning";
+
+  let { notes, selectedNotes, window, stringCount, overrides, onoverrideschange }: {
     notes: readonly NoteRow[]; selectedNotes: readonly NoteRow[]; window: FretWindow;
+    stringCount: number;
     overrides: Readonly<Record<string, boolean>>;
     onoverrideschange: (value: Readonly<Record<string, boolean>>) => void;
   } = $props();
-  const strings = [1, 2, 3, 4, 5, 6];
-  const roots = [6, 5, 4, 3, 2, 1];
+  // String 1 first down each board; the boards run from the lowest root up.
+  const strings = $derived(Array.from({ length: stringCount }, (_, i) => i + 1));
+  const roots = $derived([...strings].reverse());
+  const tuning = $derived(notes.length > 0 ? noteTuning(notes[0]) : []);
   const offsets = Array.from({ length: MAX_FRET_REACH * 2 + 1 }, (_, i) => i - MAX_FRET_REACH);
   let inspected = $state<string | null>(null);
   const allCells = $derived(new Map(notes.map((note) =>
@@ -49,7 +54,7 @@ SPDX-License-Identifier: Apache-2.0
                         aria-pressed={included(note)}
                         disabled={offset < -window.left || offset > window.right}
                         aria-label="String {string}, fret {offsetLabel(offset)}: {note.fields[5]}, {included(note) ? 'included' : 'excluded'}"
-                        onclick={() => { inspected = `${root}:${string}:${offset}`; onoverrideschange({ ...parseGuitarOverrides(overrides), [guitarShapeId(note)]: !included(note) }); }}>{note.fields[5].split(' ')[0]}</button>
+                        onclick={() => { inspected = `${root}:${string}:${offset}`; onoverrideschange({ ...parseGuitarOverrides(overrides, tuning), [guitarShapeId(note)]: !included(note) }); }}>{note.fields[5].split(' ')[0]}</button>
                     {:else}<span>—</span>{/if}
                   </td>
                 {/each}

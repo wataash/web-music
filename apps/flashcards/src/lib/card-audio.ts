@@ -6,10 +6,11 @@
 // a drawing names its keys and cells in strings and frets; both come back from
 // here as MIDI semitones, which is all the synthesiser wants.
 
-import { guitarSemitone } from "@web-music/practice-ui/guitar";
+import { fretPitch } from "@web-music/practice-ui/guitar";
 export { guitarSemitone, GUITAR_OPEN_STRINGS } from "@web-music/practice-ui/guitar";
 import type { NoteRow } from "./db";
 import { isGuitarIntervalCard } from "./guitar-interval-selection";
+import { DEFAULT_GUITAR_TUNING, noteTuning, type Tuning } from "./guitar-tuning";
 import { intervalAnswerNote, isIntervalCard } from "./interval-pair-selection";
 import type { Instrument } from "@web-music/practice-ui/tones";
 
@@ -23,6 +24,13 @@ const NATURAL_SEMITONES = [0, 2, 4, 5, 7, 9, 11] as const;
 // reaches six frets either way, and from there every one of them is on the
 // neck rather than behind the nut.
 export const GUITAR_INTERVAL_ROOT_FRET = 7;
+
+// The neck a card draws ends at the 24th fret, on any instrument.
+const MAX_FRET = 24;
+
+function pitchAt(tuning: Tuning, guitarString: number, fret: number): number | null {
+  return fret > MAX_FRET ? null : fretPitch(tuning, guitarString, fret);
+}
 
 
 // A tap on a drawing, as the card names the place that was touched: a key
@@ -40,12 +48,14 @@ export type CardSound = Readonly<{
 
 // Reveal an interval with its root first, then the tapped pitch and any
 // unanswered target. A correct tap supplies the target at its chosen octave.
+// A tap on a neck names a string, and the card says what it is tuned to.
 export function tappedAnswerSound(
   taps: readonly CardTap[],
   answer: CardSound | null,
   interval: boolean,
+  tuning: Tuning = DEFAULT_GUITAR_TUNING,
 ): CardSound {
-  const tapped = taps.flatMap((tap) => tapSound(tap) ?? []);
+  const tapped = taps.flatMap((tap) => tapSound(tap, tuning) ?? []);
   const played = [...new Set(tapped.flatMap(({ semitones }) => semitones))];
   const prefix = interval ? answer?.semitones.slice(0, 1) ?? [] : [];
   const targets = interval
@@ -66,13 +76,13 @@ export function tappedAnswerSound(
 }
 
 
-export function tapSound(tap: CardTap): CardSound | null {
+export function tapSound(tap: CardTap, tuning: Tuning = DEFAULT_GUITAR_TUNING): CardSound | null {
   if (tap.kind === "key") {
     return { instrument: "piano", semitones: [tap.semitone] };
   }
   const fret =
     tap.kind === "fret" ? tap.fret : GUITAR_INTERVAL_ROOT_FRET + tap.offset;
-  const semitone = guitarSemitone(tap.string, fret);
+  const semitone = pitchAt(tuning, tap.string, fret);
   return semitone === null
     ? null
     : { instrument: "guitar", semitones: [semitone] };
@@ -127,8 +137,9 @@ function guitarIntervalAnswerSound(
   const targetString = Number(note.fields[3]);
   const offset = Number(note.fields[4]);
   if (!Number.isInteger(targetString) || !Number.isInteger(offset)) return null;
-  const root = guitarSemitone(Number(note.fields[2]), GUITAR_INTERVAL_ROOT_FRET);
-  const target = guitarSemitone(targetString, GUITAR_INTERVAL_ROOT_FRET + offset);
+  const tuning = noteTuning(note);
+  const root = pitchAt(tuning, Number(note.fields[2]), GUITAR_INTERVAL_ROOT_FRET);
+  const target = pitchAt(tuning, targetString, GUITAR_INTERVAL_ROOT_FRET + offset);
   return root === null || target === null
     ? null
     : { instrument: "guitar", semitones: [root, target] };
@@ -142,8 +153,9 @@ function fretboardAnswerSound(
 ): CardSound | null {
   const guitarString = Number(note.fields[2]);
   const fret = Number(note.fields[3]);
+  const tuning = noteTuning(note);
   if (Number.isInteger(fret) && (note.fields[3] ?? "") !== "") {
-    const semitone = guitarSemitone(guitarString, fret);
+    const semitone = pitchAt(tuning, guitarString, fret);
     return semitone === null
       ? null
       : { instrument: "guitar", semitones: [semitone] };
@@ -153,7 +165,7 @@ function fretboardAnswerSound(
     .filter(Boolean)
     .flatMap((position) => {
       const [written, writtenFret] = position.split("-");
-      const semitone = guitarSemitone(Number(written), Number(writtenFret));
+      const semitone = pitchAt(tuning, Number(written), Number(writtenFret));
       return semitone === null ? [] : [semitone];
     });
   return semitones.length === 0
