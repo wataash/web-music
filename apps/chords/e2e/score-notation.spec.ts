@@ -4,12 +4,21 @@ import { expect, test, type Page } from '@playwright/test';
 import { closeLibrary, importLink, openLibrary } from './helpers';
 import { scramble } from '@web-music/ireal';
 
+// The minor-chord spelling lives in the settings sheet.
+async function setMinorNotation(page: Page, on: boolean): Promise<void> {
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  const item = page.getByRole('menuitemcheckbox', { name: 'Write minor chords as Cm7' });
+  if ((await item.getAttribute('aria-checked')) !== String(on)) await item.click();
+  await page.keyboard.press('Escape');
+}
+
+
 // Synthetic charts isolate notation seen in the iReal app without bundling songs.
 async function openScore(page: Page, raw: string) {
   await page.goto('/');
   await openLibrary(page);
   await importLink(page, 'irealb://' + encodeURIComponent('Notation Example=Example==Swing=C==1r34LbKcu7' + scramble(raw) + '==0=0'));
-  await expect(page.getByRole('status').filter({ hasText: 'Imported 1 song' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Added 1 song' })).toBeVisible();
   await closeLibrary(page);
   await page.getByText('Full chart', { exact: true }).click();
   return page.locator('.full-score .ireal-sheet');
@@ -141,11 +150,22 @@ test('selects written and repeated chords from the score in practice and list vi
   await repeat.press('Enter');
   await expect(page.getByLabel('Chord number', { exact: true })).toHaveValue('4');
   await page.getByRole('button', { name: 'List', exact: true }).click();
-  await page.getByText('Full chart', { exact: true }).click();
   await sheet.getByRole('button', { name: 'C7', exact: true }).focus();
   await page.keyboard.press('Space');
-  await expect(page.locator('.chord-list li[aria-current="true"]')).toContainText('1 / 4');
-  await page.getByRole('button', { name: 'Practice', exact: true }).click();
+  await expect(page.locator('.chord-list li[aria-current="true"]')).toContainText('1 / 2');
+  // Choosing a chord on the chart brings its card into view.
+  await sheet.getByRole('button', { name: 'D7', exact: true }).click();
+  const card = page.locator('.chord-list li[aria-current="true"]');
+  await expect(card).toContainText('2 / 2');
+  // At the top of the list, or as far down as the list can scroll.
+  await expect.poll(async () => {
+    const list = (await page.locator('.chord-list').boundingBox())!;
+    const box = (await card.boundingBox())!;
+    const atEnd = await page.locator('.chord-list').evaluate(el => el.scrollTop + el.clientHeight >= el.scrollHeight - 1);
+    return Math.abs(box.y - list.y) < 4 || (atEnd && box.y >= list.y && box.y < list.y + list.height);
+  }).toBe(true);
+  await sheet.getByRole('button', { name: 'C7', exact: true }).click();
+  await page.getByRole('button', { name: 'Card', exact: true }).click();
   await expect(page.getByLabel('Chord number', { exact: true })).toHaveValue('1');
   await page.getByText('Full chart', { exact: true }).click();
   await page.locator('.chord-source').getByRole('button', { name: 'D7', exact: true }).click();
@@ -181,7 +201,7 @@ test('zooms the chart without changing its rows or the fretboard and restores th
   await page.setViewportSize({ width: 390, height: 1000 });
   const sheet = await openScore(page, '[C7XyQ|D7XyQ|E7XyQ|F7XyQ|G7XyQZ');
   const before = (await sheet.boundingBox())!;
-  const board = page.locator('.board-part');
+  const board = page.locator('.card-area .board-frame');
   const boardWidth = (await board.boundingBox())!.width;
   const size = page.getByLabel('Chart size', { exact: true });
   await size.selectOption('2');
@@ -230,7 +250,7 @@ test('moves through the score with one Tab stop, arrow keys and Home/End', async
   await sheet.getByRole('button', { name: 'D7', exact: true }).click();
   await page.keyboard.press('ArrowDown');
   await expect(sheet.getByRole('button', { name: 'A7', exact: true })).toBeFocused();
-  await expect(page.locator('.chord-list li[aria-current="true"]')).toContainText('6 / 8');
+  await expect(page.locator('.chord-list li[aria-current="true"]')).toContainText('6 / 7');
 });
 
 test('shares minor notation and annotation highlighting across charts and reloads', async ({ page }, info) => {
@@ -238,19 +258,23 @@ test('shares minor notation and annotation highlighting across charts and reload
   const sheet = await openScore(page, '*A[QC-7/E<XyQSoft>XyQ|D-^7(G-7)XyQ|N1G7XyQZ');
   await expect(sheet.locator('.quality').first()).toHaveText('-7');
   const initial = await sheet.locator('.comment').evaluate(el => getComputedStyle(el).color);
-  await page.getByLabel('Minor chords', { exact: true }).selectOption('m');
+  await setMinorNotation(page, true);
   await page.getByLabel('Highlight annotations', { exact: true }).check();
   await expect(sheet.locator('.quality')).toHaveText(['m7', 'm△7', 'm7', '7']);
+  // The headings follow the same choice.
+  await expect(page.locator('.question-heading h2')).toHaveText('Cm7/E');
   await expect.poll(() => sheet.locator('.comment').evaluate(el => getComputedStyle(el).color)).not.toBe(initial);
   await page.screenshot({ path: info.outputPath('notation-options.png') });
   await page.reload();
-  await expect(page.getByLabel('Minor chords', { exact: true })).toHaveValue('m');
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await expect(page.getByRole('menuitemcheckbox', { name: 'Write minor chords as Cm7' })).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
   await expect(page.getByLabel('Highlight annotations', { exact: true })).toBeChecked();
   await page.getByText('Full chart', { exact: true }).click();
   await expect(page.locator('.chord-source .quality').first()).toHaveText('m7');
   await expect(page.locator('.chord-source .ireal-sheet')).toHaveClass(/highlight-annotations/);
   await page.getByText('Full chart', { exact: true }).click();
-  await page.getByLabel('Minor chords', { exact: true }).selectOption('-');
+  await setMinorNotation(page, false);
   await page.getByLabel('Highlight annotations', { exact: true }).uncheck();
   await expect(sheet.locator('.quality').first()).toHaveText('-7');
   await expect.poll(() => sheet.locator('.comment').evaluate(el => getComputedStyle(el).color)).toBe(initial);
@@ -259,10 +283,10 @@ test('shares minor notation and annotation highlighting across charts and reload
 test('prints only the transposed chart and restores the screen', async ({ page }, info) => {
   await openScore(page, '[T44C-7XyQ|F7XyQ|xXyQ|G7XyQZ');
   await page.getByLabel('Song key', { exact: true }).selectOption('D');
-  await page.getByLabel('Minor chords', { exact: true }).selectOption('m');
+  await setMinorNotation(page, true);
   await page.getByLabel('Chart size', { exact: true }).selectOption('2');
-  await page.evaluate(() => { window.print = () => { window.dispatchEvent(new Event("beforeprint")); }; });
-  await page.getByRole('button', { name: 'Print / PDF', exact: true }).click();
+  // The browser's own print command is the way in.
+  await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
   const output = page.locator('.chart-print');
   await expect(output).toBeHidden();
   await page.emulateMedia({ media: 'print' });

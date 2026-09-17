@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
   import { irealLabel } from "../lib/ireal-labels";
   import type { ScoreToken } from '../lib/chord-metadata';
   import { layoutIreal, irealChordParts, commentText, type IrealItem } from '../lib/ireal-layout';
-  let { blocks, symbols, selected = [], contextIndex, onselect }: { blocks: ScoreToken[][]; symbols: string[]; selected?: number[]; contextIndex?: number; onselect?: (index: number) => void } = $props();
+  let { blocks, symbols, sublabels, selected = [], contextIndex, onselect }: { blocks: ScoreToken[][]; symbols: string[]; sublabels?: string[]; selected?: number[]; contextIndex?: number; onselect?: (index: number) => void } = $props();
   const allRows = $derived(layoutIreal(blocks));
   const rows = $derived(allRows.filter(row => contextIndex === undefined || row.items.some(item => item.indices.includes(contextIndex))));
   const visibleItems = $derived(rows.flatMap(row => row.items).filter(item => item.indices.length));
@@ -77,7 +77,7 @@ SPDX-License-Identifier: Apache-2.0
             {@const symbol = symbols[token.chordIndex]}
             {@const parts = irealChordParts(symbol, minorNotation())}
             <button type="button" class="chord" tabindex={item === tabItem ? 0 : -1} data-score-index={item.indices[0]} onkeydown={event => navigate(event, item)} disabled={!onselect} onclick={() => choose(item.indices)} use:fitChord={item.span ?? 1} class:narrow={token.narrow} class:selected={active} aria-label={symbol} title={`Original notation: ${token.raw}`}>
-              <span class="main-chord" class:invisible-root={token.raw.startsWith("W")}><span class="root">{parts.root}</span>{#if parts.accidental}<span class="accidental">{parts.accidental}</span>{/if}<span class="quality">{parts.quality}</span></span>{#if parts.bass}<span class="bass">/{parts.bass}</span>{/if}
+              <span class="main-chord" class:invisible-root={token.raw.startsWith("W")}><span class="root">{parts.root}</span>{#if parts.accidental}<span class="accidental">{parts.accidental}</span>{/if}<span class="quality">{parts.quality}</span></span>{#if parts.bass}<span class="bass">/{parts.bass}</span>{/if}{#if sublabels?.[token.chordIndex]}<span class="sublabel">{sublabels[token.chordIndex]}</span>{/if}
             </button>
           {:else if token.kind === 'bar'}
             <span class="bar" class:double={['[', ']'].includes(token.raw)} class:final={token.raw === 'Z'} title={irealLabel(token.label)}>
@@ -147,6 +147,8 @@ SPDX-License-Identifier: Apache-2.0
   .narrow { font-stretch: condensed; letter-spacing: -0.055em; }
   .alternate { top: 23%; }
   .alternate .chord { display: inline-flex; align-items: baseline; font-size: clamp(12px, 2.5cqw, 18px); }
+  /* The degree in small under the name. */
+  .sublabel { font-size: 0.45em; font-weight: 400; line-height: 1.1; color: var(--on-surface-muted); }
   .alternate .bass { margin-left: 0.1em; }
   .selected { color: var(--text-accent); background: color-mix(in srgb, var(--text-accent) 15%, transparent); border-radius: 3px; }
   .bar { position: absolute; top: 0; height: 95%; border-left: 1.5px solid currentColor; }

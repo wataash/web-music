@@ -6,7 +6,7 @@ test('navigates, saves the position and resets in single and list modes', async 
   await page.goto('/');
   const number = page.getByLabel('Chord number', { exact: true });
   await expect(number).toHaveValue('1');
-  await page.getByRole('button', { name: 'Next screen', exact: true }).click();
+  await page.getByRole('button', { name: 'Next chord', exact: true }).click();
   await expect(number).toHaveValue('2');
   await number.fill('3');
   await number.press('Tab');

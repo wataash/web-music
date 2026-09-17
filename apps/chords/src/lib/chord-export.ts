@@ -5,7 +5,7 @@ import { irealLabel } from './ireal-labels';
 import type { ImportedSong } from './chord-import';
 
 function songPayload(song: ImportedSong): string {
-  if (song.customText !== undefined) throw new Error('Use text export for custom charts.');
+  if (song.customText !== undefined || song.metadata.score.format === 'chordwiki') throw new Error('Use text export for custom and ChordWiki charts.');
   const before: string[] = Array(headers.length).fill('');
   const after: string[] = [];
   for (const field of song.metadata.score.fields) {

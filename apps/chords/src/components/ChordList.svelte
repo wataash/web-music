@@ -4,12 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
   import { DEFAULT_TUNING } from "../lib/tuning";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { chordViewPersistence } from "../lib/chord-view";
-  const { remember, viewKey, hasView } = chordViewPersistence();
+  const { remember, viewKey, hasView, minorNotation } = chordViewPersistence();
   import { CHORD_BOARD_NUT_X, CHORD_BOARD_FRET_WIDTH, chordBoardHeight } from "../lib/chord-fretboard";
   import type { ChordDescription } from "../lib/chords";
-  import type { AnnotatedChord } from "../lib/chord-metadata";
+  import { chordLyric, type AnnotatedChord } from "../lib/chord-metadata";
+  import { headingChord } from "../lib/ireal-layout";
   import ChordMetadata from "./ChordMetadata.svelte";
   import SongSource from "./SongSource.svelte";
   import ChordSource from "./ChordSource.svelte";
@@ -19,7 +20,6 @@ SPDX-License-Identifier: Apache-2.0
 
   let {
     chords,
-    comments = [],
     songId = "",
     sourceSymbols = [],
     sourceIndex = $bindable(0),
@@ -28,13 +28,15 @@ SPDX-License-Identifier: Apache-2.0
     bassStrings = $bindable<number[]>([]),
     soundEnabled,
     shortcutsEnabled = true,
-    uniqueChordsOnly = false,
     uniqueBySection = false,
+    editable = false,
+    heading = (symbol: string) => headingChord(symbol, minorNotation()),
+    subheading = () => undefined,
+    sublabels,
     onplay,
     onplayfret,
   }: {
     chords: AnnotatedChord[];
-    comments?: readonly string[];
     songId?: string;
     sourceSymbols?: string[];
     sourceIndex?: number;
@@ -43,8 +45,12 @@ SPDX-License-Identifier: Apache-2.0
     tuning?: readonly number[];
     soundEnabled: boolean;
     shortcutsEnabled?: boolean;
-    uniqueChordsOnly?: boolean;
     uniqueBySection?: boolean;
+    editable?: boolean;
+    // What a card calls its chord: its name, or its degree in the key.
+    heading?: (symbol: string) => string;
+    subheading?: (symbol: string) => string | undefined;
+    sublabels?: string[];
     onplay: (chord: ChordDescription) => void;
     onplayfret: (string: number, fret: number) => void;
   } = $props();
@@ -77,6 +83,14 @@ SPDX-License-Identifier: Apache-2.0
     if (soundEnabled && !chords[index].noChord) onplay(chords[index]);
   }
 
+  // A chord chosen on a chart is brought into view: the chart is above the
+  // list, and the card it names may be anywhere down it.
+  async function jumpToSource(value: number): Promise<void> {
+    sourceIndex = value;
+    await tick();
+    entries[currentIndex]?.scrollIntoView({ block: "start", behavior: "instant" });
+  }
+
   function move(step: number): void {
     const next = currentIndex + step;
     if (next >= 0 && next < chords.length) selectChord(next);
@@ -98,24 +112,25 @@ SPDX-License-Identifier: Apache-2.0
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <main class="chord-list" aria-label="Chord list" tabindex="0" bind:this={scrollElement} use:remember={viewKey("list-scroll")}>
   <div class="list-content">
-    <ChordMetadata annotation={{ comments }} label="Song comments" />
-    <SongSource {songId} symbols={sourceSymbols} bind:open={fullChartOpen} onselect={(value) => sourceIndex = value} selected={[sourceIndex]} />
-    <p class="count">{chords.length} chords · {uniqueChordsOnly ? uniqueBySection ? "Unique chords in first-appearance order within each section" : "Unique chords in first-appearance order" : "In chart order"}</p>
+    <SongSource {songId} symbols={sourceSymbols} {sublabels} bind:open={fullChartOpen} onselect={(value) => void jumpToSource(value)} selected={[sourceIndex]} {editable} />
+    <p class="count">{chords.length} chords · {uniqueBySection ? "Unique chords in first-appearance order within each section" : "Unique chords in first-appearance order"}</p>
     <ol>
       {#each chords as chord, index}
+        {@const lyric = chordLyric(songId, chord.sourceIndices?.[0] ?? index)}
         <li bind:this={entries[index]} aria-current={currentIndex === index ? "true" : undefined}>
           <ChordMetadata annotation={chord.annotation} />
-          {#if !fullChartOpen}<ChordSource {songId} onselect={(value) => sourceIndex = value} indices={chord.sourceIndices ?? []} symbols={sourceSymbols} />{/if}
+          {#if !fullChartOpen}<ChordSource {songId} onselect={(value) => void jumpToSource(value)} indices={chord.sourceIndices ?? []} symbols={sourceSymbols} {sublabels} />{/if}
           <div class="heading">
             <span class="number">{index + 1} / {chords.length}</span>
-            <h2>{chord.symbol}</h2>
+            <h2>{heading(chord.symbol)}{#if subheading(chord.symbol)}<span class="chord-name">{subheading(chord.symbol)}</span>{/if}</h2>
+            {#if lyric}<p class="lyric" aria-label="Lyrics">{lyric}</p>{/if}
             {#if !chord.noChord}
               <button disabled={!soundEnabled} aria-label={`${index + 1}: Play ${chord.symbol}`} onclick={() => selectChord(index)}>Play chord</button>
             {/if}
           </div>
           <div data-list-board={index} class="list-board" class:loaded={loaded.has(index)} style:aspect-ratio={loaded.has(index) ? undefined : `${CHORD_BOARD_NUT_X + fretCount * CHORD_BOARD_FRET_WIDTH} / ${chordBoardHeight(tuning.length)}`}>
             {#if loaded.has(index)}
-              <ChordFretboard {tuning} {chord} {fretCount} {bassStrings} revealed={true} bind:scale={boardScale} onplay={onplayfret} />
+              <ChordFretboard {tuning} {chord} {fretCount} {bassStrings} bind:scale={boardScale} onplay={onplayfret} />
             {/if}
           </div>
           {#if chord.noChord}
@@ -149,6 +164,8 @@ SPDX-License-Identifier: Apache-2.0
   li[aria-current="true"] { box-shadow: inset 3px 0 var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--bg)); }
   .heading { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
   h2 { margin: 0; font-size: 28px; }
+  .chord-name { margin-left: 0.5em; font-size: 14px; color: var(--on-surface-muted); }
+  .lyric { flex-basis: 100%; margin: 0; font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
   button { padding: 8px 12px; color: var(--on-surface); background: var(--surface); border: 1px solid var(--divider); border-radius: 6px; }
   button:hover { background: color-mix(in srgb, var(--on-surface) 6%, var(--surface)); }
   button:focus-visible { outline: 2px solid var(--text-accent); outline-offset: 2px; }

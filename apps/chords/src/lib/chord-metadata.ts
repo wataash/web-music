@@ -21,6 +21,54 @@ export function songScore(id: string): SourceScore | undefined {
   return bySong[id]?.score;
 }
 
+// The lines a chord sits on and the lyric lines under them, up to the next
+// line with a chord: a ChordWiki chart is read a line at a time.
+export function scoreContext(id: string, index: number): ScoreToken[][] {
+  const blocks = songScore(id)?.blocks ?? [];
+  const start = blocks.findIndex(block => block.some(token => token.chordIndex === index));
+  if (start < 0) return [];
+  let end = start + 1;
+  while (end < blocks.length && !blocks[end].some(token => token.kind === "chord")) end++;
+  return blocks.slice(start, end);
+}
+
+// The words a ChordWiki chord is sung on: the text after it up to the next
+// chord, carried over a line break when the next line starts without one,
+// since a chord at the end of a line is the first chord of the next. A
+// ChordWiki chart is practised in written order, so a practice index is
+// its chord index.
+export function chordLyric(id: string, index: number): string {
+  const score = songScore(id);
+  if (score?.format !== "chordwiki") return "";
+  const words: string[] = [];
+  let after = false;
+  lines: for (const block of score.blocks) {
+    if (after && block.every(token => token.kind === "break")) break;
+    for (const token of block) {
+      if (token.chordIndex === index) after = true;
+      else if (!after) continue;
+      else if (token.chordIndex !== undefined) break lines;
+      else if (token.kind === "text") words.push(token.text ?? "");
+    }
+  }
+  return words.join(" ").replace(/\s+/g, " ").trim();
+}
+
+// ChordWiki marks no sections; a blank line is where one ends.
+function blankLineSections(blocks: ScoreToken[][]): number[] {
+  const starts: number[] = [];
+  let pending = true;
+  for (const block of blocks) {
+    if (block.every(token => token.kind === "break")) { pending = true; continue; }
+    for (const token of block) {
+      if (token.chordIndex === undefined) continue;
+      if (pending) starts.push(token.chordIndex);
+      pending = false;
+    }
+  }
+  return starts;
+}
+
 // Without sections a symbol is kept once for the whole song; with them it is
 // kept once per section, so a chord reused later starts its section again.
 export function uniqueAnnotatedChords(chords: AnnotatedChord[], sections: readonly number[] = []): AnnotatedChord[] {
@@ -52,13 +100,18 @@ export function chordAnnotation(id: string, index: number): ChordAnnotation {
     if (annotation.section) section = annotation.section;
     if (annotation.chordIndex === index) comments.push(...annotation.comments);
   }
+  const score = songScore(id);
+  if (!section && score?.format === "chordwiki") {
+    const ordinal = blankLineSections(score.blocks).filter(start => start <= index).length;
+    if (ordinal) section = String(ordinal);
+  }
   return { section, comments };
 }
 
 // Resolve repetitions at read time so existing imports and their IDs stay intact.
 export function practiceEntries(id: string, chordCount: number): IrealEvent[] {
   const score = songScore(id);
-  return score ? practiceCache[id] ??= resolveIreal(score.blocks).events : Array.from({ length: chordCount }, (_, chordIndex) => ({ chordIndex, comments: [] }));
+  return score?.format === "ireal" ? practiceCache[id] ??= resolveIreal(score.blocks).events : Array.from({ length: chordCount }, (_, chordIndex) => ({ chordIndex, comments: [] }));
 }
 
 export function practiceAnnotation(id: string, index: number): ChordAnnotation {

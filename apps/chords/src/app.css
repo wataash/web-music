@@ -1,0 +1,17 @@
+/* SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com> */
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/* An open disclosure shows how far it reaches: a box around it from the
+   summary to the end of what it opened. The summary keeps its place at the
+   margin, so closed and open headings line up. */
+details[open] {
+  border: 1px solid color-mix(in srgb, var(--text-accent) 45%, transparent);
+  border-radius: 8px;
+  padding: 0 12px 8px;
+  margin-left: -13px;
+  margin-right: -13px;
+}
+
+details[open] > summary {
+  padding-left: 0;
+}

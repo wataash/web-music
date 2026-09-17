@@ -8,13 +8,15 @@ import { PRACTICE_KEYS } from "./chords";
 import { clampFretCount, DEFAULT_BASS_STRINGS, DEFAULT_FRET_COUNT } from "./chord-fretboard";
 
 export type ChordView = { open?: boolean; x?: number; y?: number };
+// How a chord is called: by its name, by its degree in the key, or both.
+export type ChordNaming = 'names' | 'degrees' | 'both';
 
 const STORAGE_KEY = "chord-practice-progress";
 
 export function defaultChordProgress() {
-  return { minorNotation: '-' as '-' | 'm', highlightAnnotations: false, chartZoom: 1, sequenceVersion: 1, songId: CHORD_SONGS[0].id, positions: {} as Record<string, number>,
-    listMode: false, uniqueChordsOnly: false, uniqueBySection: false, insertBlankBoards: false,
-    tuning: [...DEFAULT_TUNING], tuningPreset: 'guitar-6', revealed: true, separator: false, bassStrings: [...DEFAULT_BASS_STRINGS], fretCount: DEFAULT_FRET_COUNT,
+  return { minorNotation: '-' as '-' | 'm', highlightAnnotations: false, chordNames: 'names' as ChordNaming, chartZoom: 1, sequenceVersion: 1, songId: CHORD_SONGS[0].id, positions: {} as Record<string, number>,
+    listMode: false, uniqueBySection: false,
+    tuning: [...DEFAULT_TUNING], tuningPreset: 'guitar-6', bassStrings: [...DEFAULT_BASS_STRINGS], fretCount: DEFAULT_FRET_COUNT,
     keys: {} as Record<string, string>, views: {} as Record<string, ChordView> };
 }
 
@@ -35,6 +37,7 @@ export function loadChordProgress(songs: readonly ChordSong[] = CHORD_SONGS): Re
     }
     if (stored.minorNotation === 'm') progress.minorNotation = 'm';
     if (typeof stored.highlightAnnotations === 'boolean') progress.highlightAnnotations = stored.highlightAnnotations;
+    if (['names', 'degrees', 'both'].includes(stored.chordNames as string)) progress.chordNames = stored.chordNames as ChordNaming;
     if ([1, 1.25, 1.5, 2].includes(stored.chartZoom)) progress.chartZoom = stored.chartZoom;
     progress.tuning = normalizeTuning(stored.tuning);
     progress.tuningPreset = matchingPreset(progress.tuning, stored.tuningPreset)?.id ?? '';
@@ -50,11 +53,9 @@ export function loadChordProgress(songs: readonly ChordSong[] = CHORD_SONGS): Re
       }
       progress.views[key] = valid;
     }
-    for (const key of ["listMode", "uniqueChordsOnly", "uniqueBySection", "insertBlankBoards", "revealed", "separator"] as const) {
+    for (const key of ["listMode", "uniqueBySection"] as const) {
       if (typeof stored[key] === "boolean") progress[key] = stored[key];
     }
-    if (!progress.insertBlankBoards) { progress.revealed = true; progress.separator = false; }
-    if ((progress.positions[progress.songId] ?? 0) !== 0) progress.separator = false;
   } catch { /* Storage may be unavailable or contain invalid JSON. */ }
   return progress;
 }

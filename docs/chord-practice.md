@@ -2,7 +2,7 @@
 
 The independent app lives in `apps/chords/`; shared UI and audio modules live in `packages/practice-ui/`. See [the app README](../apps/chords/README.md) for development and testing.
 
-Built-in songs are short original practice examples. Import individual songs or playlists using iReal Pro sharing links or shared HTML. ChordWiki import and display are not supported.
+Built-in songs are short original practice examples. Import individual songs or playlists using iReal Pro sharing links or shared HTML, or paste a chart in ChordWiki notation; a ChordWiki chart is shown line by line, chords over lyrics, and exports as text.
 
 Imported songs and charts are stored in the browser's IndexedDB and are never sent to a server. Favorites and practice positions are stored in localStorage. External charts, lyrics and analysis playlists are not bundled.
 

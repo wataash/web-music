@@ -13,7 +13,7 @@ test("imports, searches, transposes, persists and deletes iReal songs", async ({
   await page.goto("/");
   await openLibrary(page);
   await importLink(page, url);
-  await expect(page.getByRole("status").filter({ hasText: "Imported 2 songs" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Added 2 songs" })).toBeVisible();
   await expect(page.getByLabel("Song", { exact: true })).toContainText("Import One");
   const firstId = await page.getByLabel("Song", { exact: true }).getAttribute('data-selected');
   await closeLibrary(page);
@@ -33,13 +33,13 @@ test("imports, searches, transposes, persists and deletes iReal songs", async ({
   await page.reload();
   await openLibrary(page);
   await expect(page.getByLabel("Song", { exact: true })).toHaveAttribute('data-selected', secondId);
-  await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
+  await page.getByRole('button', { name: 'Add chart', exact: true }).click();
   await page.getByLabel("HTML file", { exact: true }).setInputFiles({ name: "test.html", mimeType: "text/html", buffer: Buffer.from(`<a href="${url}">Test</a>`) });
   await expect(page.getByLabel("Song", { exact: true })).toHaveAttribute('data-selected', firstId);
   await expect(page.getByLabel("Song", { exact: true }).locator('button').filter({ hasText: "Import One" })).toHaveCount(1);
   await closeLibrary(page);
   await page.getByRole('button', { name: 'Chord practice settings' }).click();
-  await page.getByRole("button", { name: "Delete selected imported chart" }).click();
+  await page.getByRole("button", { name: "Delete current imported chart" }).click();
   await openLibrary(page);
   await expect(page.getByLabel("Song", { exact: true }).locator(`button[value="${firstId}"]`)).toHaveCount(0);
   await expect(page.getByLabel("Song", { exact: true }).locator(`button[value="${secondId}"]`)).toHaveCount(1);
@@ -52,9 +52,9 @@ test("imports and searches the complete local Jazz playlist", async ({ page }) =
   await page.goto("/");
   await openLibrary(page);
   const initial = await page.getByLabel("Song", { exact: true }).locator("button").count();
-  await page.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
+  await page.getByRole('button', { name: 'Add chart', exact: true }).click();
   await page.getByLabel("HTML file", { exact: true }).setInputFiles(path);
-  await expect(page.getByRole("status").filter({ hasText: "Imported 1460 songs" })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByRole("status").filter({ hasText: "Added 1460 songs" })).toBeVisible({ timeout: 30000 });
   await expect(page.getByLabel("Song", { exact: true }).locator("button")).toHaveCount(initial + 1460);
   await page.getByLabel("Search songs", { exact: true }).fill(source.title);
   await page.getByLabel("Song", { exact: true }).getByRole('button', { name: `${source.title} · ${source.artist}`, exact: true }).click();

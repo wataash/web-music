@@ -7,7 +7,10 @@ import { extractIrealPlaylist } from "@web-music/ireal";
 import type { ChordSong } from "./chord-songs";
 import type { SongMetadata } from "./chord-metadata";
 import { describeChord, parseNote } from "./chords";
-import { refreshCustomChart } from "./custom-chart";
+import { createCustomChart, refreshCustomChart } from "./custom-chart";
+import { parseChordWiki } from "./chordwiki-import";
+
+export type ChordImportFormat = "ireal" | "chordwiki" | "list";
 
 export type ImportedSong = ChordSong & { metadata: SongMetadata; playlist: string; importedAt?: number; customText?: string };
 
@@ -29,9 +32,28 @@ export const saveImportedSongs = (songs: ImportedSong[]) => library.transaction(
 });
 export const deleteImportedSong = (id: string) => library.songs.delete(id);
 
-export async function parseChordImport(text: string) {
-  const parsed = extractIrealPlaylist(text);
+// What a chart typed as a chord list needs besides its text, and what an
+// edited chart keeps.
+export type ChordImportOptions = Readonly<{ title?: string; key?: string; id?: string }>;
+
+// The reader names the notation; a paste that plainly belongs to another
+// one is pointed there rather than parsed as nothing.
+export async function parseChordImport(text: string, format: ChordImportFormat = "ireal", options: ChordImportOptions = {}) {
   const songs: ImportedSong[] = [];
+  const irealLink = /ireal(?:book|b)?:\/\//.test(text);
+  if (format === "list") {
+    try { songs.push(createCustomChart(text, options.title ?? "", options.key ?? "C", options.id)); }
+    catch (error) { return { songs, errors: [error instanceof Error ? error.message : String(error)] }; }
+    return { songs, errors: [] };
+  }
+  if (format === "chordwiki") {
+    if (irealLink) return { songs, errors: ["This is an iReal Pro link. Choose iReal Pro to import it."] };
+    try { songs.push(await parseChordWiki(text, options.id)); }
+    catch (error) { return { songs, errors: [`ChordWiki: ${error instanceof Error ? error.message : String(error)}`] }; }
+    return { songs, errors: [] };
+  }
+  if (!irealLink && /\[[A-G][^\]]*\]/.test(text)) return { songs, errors: ["No iReal Pro link found. This looks like a ChordWiki chart: choose ChordWiki to import it."] };
+  const parsed = extractIrealPlaylist(text);
   const errors = parsed.errors.map(error => `${error.title}: ${error.message}`);
   for (const source of parsed.songs) {
     try {

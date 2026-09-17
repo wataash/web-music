@@ -41,7 +41,7 @@ SPDX-License-Identifier: Apache-2.0
   <p><code>=</code> and <code>→</code> above explain conversions; do not type them. Append a bass note such as <code>/C#</code> to any chord. <code>n</code> or <code>N.C.</code> stays silent.</p>
   <details class="all-notations">
     <summary>All supported chord spellings</summary>
-    <p>Each entry is a complete example with root A. Use these spellings as written; arbitrary combinations of suffixes or parentheses may not be supported.</p>
+    <p>Each entry is a complete example with root A. Use these spellings as written. Tensions can also be listed in parentheses after any of them, the ChordWiki way: A7(9,13), Am7(11), AM7(#11), A7(b9,b13), A6(9), A(omit3), A7-5(b9). Other combinations of suffixes may not be supported.</p>
     {#each CHORD_NOTATION_GROUPS as group}
       <h4>{group.label}</h4>
       <ul aria-label={group.label}>{#each group.symbols as symbol}<li><code>{symbol}</code></li>{/each}</ul>

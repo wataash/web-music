@@ -7,10 +7,12 @@ import type { ChordView } from "./chord-progress";
 export const CHORD_VIEW_CONTEXT = Symbol("chord-view");
 export type ChordViewStore = {
   scope: () => string;
+  // Whether a chart is open is the reader's choice for the song, not for
+  // one view of it, so disclosures are kept under the song alone.
+  songScope?: () => string;
   views: () => Record<string, ChordView>;
   save: () => void;
   minorNotation?: () => '-' | 'm';
-  setMinorNotation?: (value: '-' | 'm') => void;
   highlightAnnotations?: () => boolean;
   setHighlightAnnotations?: (value: boolean) => void;
   chartZoom?: () => number;
@@ -20,6 +22,7 @@ export type ChordViewStore = {
 export function chordViewPersistence() {
   const store = getContext<ChordViewStore | undefined>(CHORD_VIEW_CONTEXT);
   const viewKey = (name: string) => `${store?.scope() ?? ""}:${name}`;
+  const songKey = (name: string) => `${store?.songScope?.() ?? store?.scope() ?? ""}:${name}`;
   const hasView = (key: string) => !!store?.views()[key];
   function remember(node: HTMLElement, initialKey: string) {
     const views = store?.views();
@@ -62,9 +65,8 @@ export function chordViewPersistence() {
     };
   }
   return {
-    remember, viewKey, hasView,
+    remember, viewKey, songKey, hasView,
     minorNotation: () => store?.minorNotation?.() ?? '-',
-    setMinorNotation: (value: '-' | 'm') => store?.setMinorNotation?.(value),
     highlightAnnotations: () => store?.highlightAnnotations?.() ?? false,
     setHighlightAnnotations: (value: boolean) => store?.setHighlightAnnotations?.(value),
     chartZoom: () => store?.chartZoom?.() ?? 1,

@@ -5,6 +5,7 @@ import { mount } from "svelte";
 import ChordPractice from "./components/ChordPractice.svelte";
 import { checkForUpdateOnResume } from "@web-music/practice-ui/app-update";
 import "@web-music/practice-ui/theme.css";
+import "./app.css";
 
 mount(ChordPractice, { target: document.getElementById("app")! });
 if (import.meta.env.PROD) checkForUpdateOnResume();

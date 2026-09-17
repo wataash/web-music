@@ -12,7 +12,7 @@ it("restores song positions and modes and resets them to defaults", () => {
   vi.stubGlobal("localStorage", { getItem: () => value, setItem: (_: string, next: string) => { value = next; } });
   const progress = { ...defaultChordProgress(), songId: CHORD_SONGS[1].id,
     positions: { [CHORD_SONGS[0].id]: 1, [CHORD_SONGS[1].id]: 2 },
-    listMode: true, uniqueChordsOnly: true, uniqueBySection: true, insertBlankBoards: true, revealed: false,
+    listMode: true, uniqueBySection: true,
     bassStrings: [], fretCount: 12, keys: { [CHORD_SONGS[1].id]: "C" },
     views: { source: { open: true }, scroll: { x: 33, y: 1700 } } };
   saveChordProgress(progress);

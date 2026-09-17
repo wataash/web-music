@@ -14,6 +14,9 @@ importers:
 
   apps/chords:
     dependencies:
+      '@web-music/chordwiki':
+        specifier: workspace:*
+        version: link:../../packages/chordwiki
       '@web-music/ireal':
         specifier: workspace:*
         version: link:../../packages/ireal

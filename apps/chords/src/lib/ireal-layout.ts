@@ -114,6 +114,14 @@ export function irealChordParts(symbol: string, minor: '-' | 'm' = '-') {
     bass: (match[4] ?? '').replaceAll('b', '♭').replaceAll('#', '♯') };
 }
 
+// A symbol as the card and list headings write it: the app's own spelling,
+// with a minor chord's `-` swapped for `m` when the reader prefers that.
+export function headingChord(symbol: string, minor: '-' | 'm' = '-'): string {
+  if (minor === '-') return symbol;
+  const match = /^([A-G][#b]*)(-)(.*)$/.exec(symbol);
+  return match ? `${match[1]}m${match[3]}` : symbol;
+}
+
 // Expanded repeat tokens can have an empty raw spelling (for example Kcl).
 function isRepeatToken(token: ScoreToken): boolean {
   return token.kind === 'symbol' && ['％', '𝄎', '/'].includes(token.text ?? '');

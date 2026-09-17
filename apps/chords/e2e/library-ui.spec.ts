@@ -9,9 +9,9 @@ for (const width of [320, 1000]) test(`library controls and import dialog at ${w
   await page.goto('/');
   await expect(page.getByLabel('Search songs')).not.toBeVisible();
   await openLibrary(page);
-  const trigger = page.getByRole('button', { name: 'Import iReal Pro charts', exact: true });
+  const trigger = page.getByRole('button', { name: 'Add chart', exact: true });
   await trigger.click();
-  const dialog = page.getByRole('dialog', { name: 'Import iReal Pro charts' });
+  const dialog = page.getByRole('dialog', { name: 'Add chart' });
   await expect(dialog).toBeVisible();
   if (width === 320) {
     await page.keyboard.press('Escape');
@@ -20,7 +20,7 @@ for (const width of [320, 1000]) test(`library controls and import dialog at ${w
     await trigger.click();
   }
   await page.getByLabel('Shared link / HTML').fill('irealb://' + encodeURIComponent('Evening Practice with a Very Long Song Title=Example Composer==Swing=C==1r34LbKcu7' + scramble('[C7XyQ|F7XyQZ') + '==0=0'));
-  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await expect(page.locator('.song-title')).toHaveText('Evening Practice with a Very Long Song Title');
   await expect(page.locator('.song-meta')).toHaveText('Example Composer · Swing');
@@ -38,31 +38,30 @@ for (const width of [320, 1000]) test(`library controls and import dialog at ${w
   await expect(page.locator('.full-score h3')).toHaveCount(0);
   await expect(page.getByRole('group', { name: 'Strings for bass notes' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Reset settings and position' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Delete selected imported chart' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Delete current imported chart' })).toHaveCount(0);
   await openLibrary(page);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Choose song', exact: true })).toBeFocused();
   await expect(page.getByLabel('Search songs')).not.toBeVisible();
   await expect(page.locator('.question-heading').getByRole('button', { name: 'Play chord' })).toBeVisible();
   await page.screenshot({ path: info.outputPath(`library-${width}.png`) });
-  await page.getByRole('button', { name: 'Instrument settings' }).click();
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await page.getByRole('button', { name: /^Instrument and tuning/ }).click();
   const bass = page.getByRole('group', { name: 'Strings for bass notes' });
   await expect(bass).toBeVisible();
   await bass.getByLabel('String 1', { exact: true }).check();
   await page.screenshot({ path: info.outputPath(`instrument-${width}.png`) });
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: 'Instrument settings' })).toBeFocused();
-  await page.getByRole('button', { name: 'Chord practice settings' }).click();
   await expect(bass).toHaveCount(0);
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
   await page.screenshot({ path: info.outputPath(`settings-${width}.png`) });
   const frets = page.getByRole('group', { name: 'Frets', exact: true });
   await expect(frets).toContainText('24');
   await page.getByRole('button', { name: 'Frets smaller' }).click();
   await expect(frets).toContainText('23');
-  await expect(page.getByRole('menuitemcheckbox', { name: 'Insert blank fretboards between chords' })).toBeVisible();
-  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menuitemcheckbox', { name: 'Sound' })).toBeVisible();
+  await page.getByRole('button', { name: /^Instrument and tuning/ }).click();
   await expect(page.getByRole('dialog', { name: 'Settings', exact: true })).not.toBeVisible();
-  await page.getByRole('button', { name: 'Instrument settings' }).click();
   await expect(bass.getByLabel('String 1', { exact: true })).toBeChecked();
 });
 
@@ -123,12 +122,15 @@ test('sorts imported songs without changing selection and copies an importable l
   await page.getByLabel('Playlist', { exact: true }).selectOption('playlist:Sort test');
   await page.getByLabel('Sort songs').selectOption('import');
   await expect.poll(() => picker.locator('button').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(['Zulu test · Alpha', 'Alpha test · Zulu']);
-  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  await closeLibrary(page);
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await page.getByRole('button', { name: 'Export current chart', exact: true }).click();
   await page.getByRole('button', { name: 'Copy song link', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Song link copied');
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toMatch(/^irealb:\/\//);
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await openLibrary(page);
   await importLink(page, copied);
   await expect(page.locator('.song-title')).toHaveText('Zulu test');
   await page.getByLabel('Playlist', { exact: true }).selectOption('playlist:Sort test');
@@ -143,13 +145,15 @@ for (const width of [320, 1000]) test(`keeps the view switch fixed at ${width}px
   await expect(toggle).toBeVisible();
   const original = await toggle.boundingBox();
   await toggle.getByRole('button', { name: 'List', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Unique chords', exact: true })).toBeVisible();
+  await expect(toggle.getByRole('button', { name: 'List', exact: true })).toHaveAttribute('aria-pressed', 'true');
   expect(await toggle.boundingBox()).toEqual(original);
-  await page.getByRole('button', { name: 'Unique chords', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'By section', exact: true })).toBeVisible();
+  await toggle.getByRole('button', { name: 'By section', exact: true }).click();
+  await expect(toggle.getByRole('button', { name: 'By section', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(toggle.getByRole('button', { name: 'List', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.chord-list')).toBeVisible();
   expect(await toggle.boundingBox()).toEqual(original);
   await page.screenshot({ path: info.outputPath(`view-switch-${width}.png`) });
-  await toggle.getByRole('button', { name: 'Practice', exact: true }).click();
+  await toggle.getByRole('button', { name: 'Card', exact: true }).click();
   expect(await toggle.boundingBox()).toEqual(original);
 });
 

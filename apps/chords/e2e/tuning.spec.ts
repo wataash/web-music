@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, test, type Page } from '@playwright/test';
 
-const settings = (page: Page) => page.getByRole('button', { name: 'Instrument settings' }).click();
+const settings = async (page: Page) => {
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await page.getByRole('button', { name: /^Instrument and tuning/ }).click();
+};
 const close = (page: Page) => page.getByRole('button', { name: 'Close instrument settings' }).click();
 
 test('changes instrument, custom tuning and bass strings across practice and list views', async ({ page }, info) => {
@@ -82,10 +85,12 @@ test('persists new instruments and custom string counts', async ({ page }, info)
 for (const width of [320, 1000]) test(`fits and zooms a 12-string board with fixed pitch labels at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 1000 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Instrument settings' }).click();
+  await settings(page);
   await page.getByLabel('Instrument preset').selectOption('stick-12');
   await page.getByRole('button', { name: 'Close instrument settings' }).click();
-  await expect(page.getByRole('button', { name: 'Instrument settings' })).toHaveText('Stick · 12 strings');
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await expect(page.getByRole('button', { name: 'Instrument and tuning: Stick · 12 strings' })).toBeVisible();
+  await page.keyboard.press('Escape');
   const controls = page.getByRole('group', { name: 'Fretboard view' });
   const scroll = page.locator('.board-scroll');
   await controls.getByRole('button', { name: 'Fit', exact: true }).click();
@@ -109,6 +114,6 @@ for (const width of [320, 1000]) test(`fits and zooms a 12-string board with fix
   await expect(page.getByRole('button', { name: 'List', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('group', { name: 'Fretboard view' }).first().getByRole('button', { name: 'Zoom', exact: true }).click();
   await expect.poll(() => page.locator('.board-scroll').first().evaluate(el => el.scrollWidth - el.clientWidth)).toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Practice', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Practice', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Card', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Card', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });

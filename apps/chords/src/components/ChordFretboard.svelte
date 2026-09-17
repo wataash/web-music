@@ -23,7 +23,6 @@ SPDX-License-Identifier: Apache-2.0
     fretCount,
     bassStrings = DEFAULT_BASS_STRINGS,
     tuning = DEFAULT_TUNING,
-    revealed,
     scale = $bindable<CardScale>(1),
     interactive = true,
     onplay,
@@ -32,7 +31,6 @@ SPDX-License-Identifier: Apache-2.0
     fretCount: number;
     bassStrings?: readonly number[];
     tuning?: readonly number[];
-    revealed: boolean;
     scale?: CardScale;
     interactive?: boolean;
     onplay?: (string: number, fret: number) => void;
@@ -61,9 +59,7 @@ SPDX-License-Identifier: Apache-2.0
       (fret) => fret <= visibleFretCount,
     ),
   );
-  const markers = $derived(
-    revealed ? fretboardMarkers(chord, visibleFretCount, bassStrings, tuning) : [],
-  );
+  const markers = $derived(fretboardMarkers(chord, visibleFretCount, bassStrings, tuning));
   const markerDescription = $derived(
     chord.tones.map(({ interval, note }) => `${interval} ${note}`).join(", "),
   );
@@ -133,9 +129,7 @@ SPDX-License-Identifier: Apache-2.0
     onpointerdown={startDrag}
     onpointermove={drag}
     onlostpointercapture={() => lastCell = null}
-    aria-label={revealed
-      ? `${chord.symbol} chord tones: ${markerDescription || "No chord tones"}`
-      : `Empty fretboard for ${chord.symbol}`}
+    aria-label={`${chord.symbol} chord tones: ${markerDescription || "No chord tones"}`}
   >
     <rect class="background" width={boardRight} height={CANVAS_HEIGHT} />
 

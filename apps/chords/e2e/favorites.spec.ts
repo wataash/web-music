@@ -17,7 +17,7 @@ test('favorites built-in and imported songs, persists and filters them', async (
   const firstId = await picker.getAttribute('data-selected');
   await expect(unfavorite).toHaveAttribute('aria-pressed', 'true');
   await importLink(page, 'irealb://' + encodeURIComponent('Favorite Example=Example==Swing=C==1r34LbKcu7C|G7==0=0'));
-  await expect(page.getByRole('status').filter({ hasText: 'Imported 1 song' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Added 1 song' })).toBeVisible();
   const importedId = await picker.getAttribute('data-selected');
   await closeLibrary(page);
   await favorite.click();

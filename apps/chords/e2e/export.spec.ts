@@ -14,9 +14,9 @@ test('downloads original-key charts and imports the playlist on another browser 
   await expect(page.locator('.song-title')).toHaveText('First Example');
   await closeLibrary(page);
   await page.getByLabel('Song key', { exact: true }).selectOption('D');
-  await openLibrary(page);
   for (const scope of ['song', 'playlist']) {
-    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await page.getByRole('button', { name: 'Export current chart', exact: true }).click();
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('dialog', { name: 'Export iReal charts' }).getByRole('button', { name: new RegExp('^Export ' + scope + ':') }).click();
     const download = await downloadPromise;
@@ -30,9 +30,9 @@ test('downloads original-key charts and imports the playlist on another browser 
       const other = await context.newPage();
       await other.goto('http://localhost:17382');
       await openLibrary(other);
-      await other.getByRole('button', { name: 'Import iReal Pro charts', exact: true }).click();
+      await other.getByRole('button', { name: 'Add chart', exact: true }).click();
       await other.getByLabel('HTML file', { exact: true }).setInputFiles(path);
-      await expect(other.getByRole('status').filter({ hasText: 'Imported 2 songs' })).toBeVisible();
+      await expect(other.getByRole('status').filter({ hasText: 'Added 2 songs' })).toBeVisible();
       await expect(other.locator('.song-title')).toHaveText('First Example');
       await context.close();
     }

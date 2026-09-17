@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { ImportedSong } from './chord-import';
 import type { ScoreToken } from './chord-metadata';
-import { formatNote, parseChordSymbol, parseNote, SUPPORTED_CHORD_QUALITIES } from './chords';
+import { formatNote, parseChordSymbol, parseNote, qualityIntervals, SUPPORTED_CHORD_QUALITIES } from './chords';
 
 const PREFIX_FAMILIES = [
   { pattern: /^(maj|M|△|Δ|\^)/, spellings: ['M', '^', 'maj', '△', 'Δ'] },
@@ -27,6 +27,8 @@ const IREAL_INPUT_ALIASES: Readonly<Record<string, string>> = {
   '2': 'sus2', sus: 'sus4', '7sus4': '7sus', sus7: '7sus',
   '11': '9sus', '9sus4': '9sus', '7b9sus': '7susb9',
   '7b13sus': '7susb9b13', '7susb13': '7susb9b13',
+  // ChordWiki writes an altered fifth after the seventh.
+  '7-5': '7#11', '7+5': '7#5', 'M7-5': '^7b5', 'M7+5': '^7#5', augM7: '^7#5', '6add9': '69',
 };
 
 function prefixSpellings(quality: string): string[] {
@@ -46,9 +48,17 @@ function normalizeQuality(suffix: string): string | undefined {
     const canonical = Object.hasOwn(IREAL_INPUT_ALIASES, quality) ? IREAL_INPUT_ALIASES[quality] : quality;
     if (supportedQualities.has(canonical)) return canonical;
   }
+  // Tensions in parentheses, the ChordWiki way: the base is normalized like
+  // any other quality and the list is kept, if the whole resolves.
+  const parenthesized = /^(.*?)(\([^()]*\))$/.exec(suffix);
+  if (!parenthesized) return undefined;
+  // A bare M before the parentheses is a major triad, not a major seventh.
+  const base = /^M?$/.test(parenthesized[1]) ? '' : normalizeQuality(parenthesized[1]);
+  const quality = base === undefined ? undefined : base + parenthesized[2];
+  return quality !== undefined && qualityIntervals(quality) !== undefined ? quality : undefined;
 }
 
-function normalizeInputChord(input: string): string {
+export function normalizeInputChord(input: string): string {
   if (input === 'n') return 'N.C.';
   const symbol = input.replaceAll('♭', 'b').replaceAll('♯', '#').replaceAll('−', '-');
   const parsed = parseChordSymbol(symbol, true);

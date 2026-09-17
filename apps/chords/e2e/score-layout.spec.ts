@@ -15,7 +15,7 @@ test('preserves four-bar rows at desktop and phone widths', async ({ page }, tes
   await page.goto('/');
   await openLibrary(page);
   await importLink(page, link);
-  await expect(page.getByRole('status').filter({ hasText: 'Imported 1 song' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'Added 1 song' })).toBeVisible();
   await closeLibrary(page);
   await page.getByText('Full chart', { exact: true }).click();
   if (!localSong) {

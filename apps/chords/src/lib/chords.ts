@@ -69,6 +69,37 @@ const QUALITY_INTERVALS: Readonly<Record<string, readonly IntervalDefinition[]>>
 
 export const SUPPORTED_CHORD_QUALITIES: readonly string[] = Object.keys(QUALITY_INTERVALS);
 
+// A quality written the ChordWiki way: a base quality and the tensions or
+// alterations listed in parentheses after it — `7(9,13)`, `m7(11)`,
+// `(omit3)`, `7(b9,b13)`. The base is looked up, and each item then adds a
+// tension, drops a chord tone or alters the fifth.
+const TENSION_DEGREES = ["b9", "9", "#9", "11", "#11", "b13", "13"] as const;
+function composeQuality(suffix: string): readonly IntervalDefinition[] | undefined {
+  const match = /^(.*?)\(([^()]*)\)$/.exec(suffix);
+  if (!match) return undefined;
+  const base = QUALITY_INTERVALS[match[1]];
+  if (!base) return undefined;
+  let tones = [...base];
+  for (const item of match[2].split(",").map(text => text.trim())) {
+    const omit = /^(?:omit|no)([35])$/.exec(item);
+    const fifth = /^([-+b#])5$/.exec(item);
+    if (omit) tones = tones.filter(tone => tone.letterSteps !== Number(omit[1]) - 1);
+    else if (fifth) tones = tones.map(tone => tone.label === "P5" ? degreeInterval("-b".includes(fifth[1]) ? "d5" : "A5") : tone);
+    else if ((TENSION_DEGREES as readonly string[]).includes(item)) { if (!tones.some(tone => tone.label === item)) tones.push(degreeInterval(item)); }
+    else return undefined;
+  }
+  return tones;
+}
+
+function degreeInterval(label: string): IntervalDefinition {
+  const degree = DEGREES.get(label)!;
+  return { label, semitones: degree.semitones, letterSteps: degree.size - 1 };
+}
+
+export function qualityIntervals(suffix: string): readonly IntervalDefinition[] | undefined {
+  return Object.hasOwn(QUALITY_INTERVALS, suffix) ? QUALITY_INTERVALS[suffix] : composeQuality(suffix);
+}
+
 export const PRACTICE_KEYS = [
   "F#",
   "Gb",
@@ -121,7 +152,7 @@ export function parseChordSymbol(symbol: string, allowUnknown = false): ParsedCh
   );
   if (!match) throw new TypeError(`Invalid chord: ${symbol}`);
   const suffix = match[2];
-  if (!allowUnknown && !Object.hasOwn(QUALITY_INTERVALS, suffix)) {
+  if (!allowUnknown && qualityIntervals(suffix) === undefined) {
     throw new TypeError(`Unsupported chord quality: ${symbol}`);
   }
   return {
@@ -157,10 +188,11 @@ export function describeChord(
   if (chord === null) {
     return { symbol: transposedSymbol, tones: [], bass: null, noChord: true };
   }
-  if (!Object.hasOwn(QUALITY_INTERVALS, chord.suffix)) {
+  const intervals = qualityIntervals(chord.suffix);
+  if (intervals === undefined) {
     return { symbol: transposedSymbol, tones: [], bass: null, noChord: false, unsupported: true };
   }
-  const tones = QUALITY_INTERVALS[chord.suffix].map((interval) => {
+  const tones = intervals.map((interval) => {
     const note = noteAtInterval(chord.root, interval);
     return {
       interval: interval.label,
