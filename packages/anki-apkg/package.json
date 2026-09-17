@@ -6,9 +6,11 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./package": "./src/package.ts"
+    "./package": "./src/package.ts",
+    "./web-package": "./src/web-package.ts"
   },
   "scripts": {
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -16,7 +18,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=22.5"
