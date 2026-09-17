@@ -210,3 +210,8 @@ New cards stay in the earliest remaining teaching group. Due cards take
 precedence over future cards, and filters and daily limits still apply.
 History comes from the review log, so undoing an answer also removes its
 influence. Small candidate sets can still repeat a degree or shape.
+The staff-reading queues do the same: a card is kept from following the note
+one line or space away on the same clef, and from following its mirror in
+the ledger lines — the ±1.5, ±3 and ±3.5, ±4, ±4.5 and ±5 ledger positions
+each form one group, counted in lines above or below the staff with the space
+past a line as a half, the same for every clef.

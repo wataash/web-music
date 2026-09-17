@@ -45,7 +45,7 @@ import {
 } from "./undo";
 import { effectiveHiddenDeckNames } from "./deck-hiding";
 import { compareDeckNames } from "./deck-visibility";
-import { diverseIndex, introductionGroup, supportsDiversity } from "./queue-diversity";
+import { diverseIndex, diversityKind, introductionGroup, supportsDiversity } from "./queue-diversity";
 
 export const NEW_PER_DAY = DEFAULT_NEW_PER_DAY;
 
@@ -273,7 +273,7 @@ export async function nextCard(
     const notes = await db.notes.bulkGet(candidates.map(({ card }) => card.nid));
     const eligible = candidates.flatMap((candidate, index) => {
       const note = notes[index];
-      return note && note.fields[1] === firstNote.fields[1] &&
+      return note && diversityKind(note) === diversityKind(firstNote) &&
         (queue !== news || introductionGroup(note) === introductionGroup(firstNote))
         ? [{ candidate, note }] : [];
     });
