@@ -7,19 +7,16 @@ import { fileURLToPath } from "node:url";
 
 import {
   inspectAnkiPackage,
-  NOTE_TO_POSITIONS_DECK_ID,
-  POSITION_TO_NOTE_DECK_ID,
-  stableNoteGuid,
   writeAnkiPackage,
   type AnkiPackageSummary,
   type MediaFile,
   type PackageNote,
 } from "./apkg";
-import {
-  CARDS,
-  type FretboardCard,
-} from "./cards";
+import { STANDARD_TUNING, fretboardCards, type Tuning } from "./cards";
 import { QUESTION_CUE, renderFretboardSvg } from "./fretboard";
+import { createPackageNote, formatPositions } from "./web-deck";
+
+export { createDeckNotes, createWebDeck } from "./web-deck";
 
 const PACKAGE_DIRECTORY = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -36,19 +33,22 @@ export type DeckArtifacts = Readonly<{
   media: readonly MediaFile[];
 }>;
 
-export function createDeckArtifacts(): DeckArtifacts {
+export function createDeckArtifacts(tuning: Tuning = STANDARD_TUNING): DeckArtifacts {
   const media: MediaFile[] = [];
+  const stringCount = tuning.length;
 
-  const notes = CARDS.map((card) => {
+  const notes = fretboardCards(tuning).map((card) => {
     const frontSvg =
       card.kind === "position-to-note"
         ? renderFretboardSvg({
             string: card.string,
             fret: card.fret,
             cue: QUESTION_CUE,
+            stringCount,
           })
         : renderFretboardSvg({
             highlightedString: card.string,
+            stringCount,
             title: `${card.note} positions on string ${card.string}`,
             description: `A guitar fretboard with string ${card.string} highlighted, asking for every ${card.note} position.`,
           });
@@ -59,8 +59,10 @@ export function createDeckArtifacts(): DeckArtifacts {
             string: card.string,
             fret: card.fret,
             note: card.note,
+            stringCount,
           })
         : renderFretboardSvg({
+            stringCount,
             targets: card.frets.map((fret) => ({
               string: card.string,
               fret,
@@ -80,64 +82,25 @@ export function createDeckArtifacts(): DeckArtifacts {
       card,
       imageField(frontFilename),
       imageField(backFilename),
+      tuning,
     );
   });
 
   return { notes, media };
 }
 
-export function createWebDeckArtifacts(): DeckArtifacts {
-  return {
-    notes: CARDS.map((card) => createPackageNote(card, "", "")),
-    media: [],
-  };
-}
-
 export async function generateAnkiDeck(
   outputPath = DEFAULT_OUTPUT_PATH,
+  tuning: Tuning = STANDARD_TUNING,
 ): Promise<AnkiPackageSummary> {
-  const artifacts = createDeckArtifacts();
+  const artifacts = createDeckArtifacts(tuning);
   await writeAnkiPackage({
     outputPath,
     notes: artifacts.notes,
     media: artifacts.media,
+    tuning,
   });
   return inspectAnkiPackage(outputPath);
-}
-
-function createPackageNote(
-  card: FretboardCard,
-  frontImage: string,
-  backImage: string,
-): PackageNote {
-  return {
-    id: card.id,
-    guid: stableNoteGuid(card.id),
-    deckId: deckIdForCard(card),
-    fields: [
-      card.id,
-      card.spelling,
-      String(card.string),
-      card.kind === "position-to-note" ? String(card.fret) : "",
-      card.note,
-      frontImage,
-      backImage,
-      card.kind === "note-to-positions" ? formatPositions(card) : "",
-    ],
-    tags: [card.tag, `direction::${card.kind}`],
-  };
-}
-
-function deckIdForCard(card: FretboardCard): number {
-  return card.kind === "position-to-note"
-    ? POSITION_TO_NOTE_DECK_ID
-    : NOTE_TO_POSITIONS_DECK_ID;
-}
-
-function formatPositions(
-  card: Extract<FretboardCard, { kind: "note-to-positions" }>,
-): string {
-  return card.frets.map((fret) => `${card.string}-${fret}`).join(" ");
 }
 
 function imageField(filename: string): string {

@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { GUITAR_OPEN_STRINGS } from "@web-music/practice-ui/guitar";
+
 // How a card writes the note it is about. A pitch with two names is written
 // under both at once wherever a card answers with it, and Note → Positions
 // also asks it under each name on its own.
@@ -33,8 +35,17 @@ export type FretboardCard = PositionToNoteCard | NoteToPositionsCard;
 export const FRET_COUNT = 24;
 export const STRING_COUNT = 6;
 
+// The open strings, as MIDI note numbers with string 1 first. Standard
+// guitar is E4 B3 G3 D3 A2 E2; the app asks for other instruments.
+export type Tuning = readonly number[];
+export const STANDARD_TUNING: Tuning = GUITAR_OPEN_STRINGS;
+
+// Pitch classes counted from A, the way the note names below are listed.
 // String 1 (high E) is rendered at the top, matching guitar_board.
-export const OPEN_STRING_PITCH_CLASSES = [7, 2, 10, 5, 0, 7] as const;
+export function openStringPitchClasses(tuning: Tuning): readonly number[] {
+  return tuning.map((pitch) => (pitch - 9 + 120) % 12);
+}
+export const OPEN_STRING_PITCH_CLASSES = openStringPitchClasses(STANDARD_TUNING);
 
 const FLAT_NAMES = [
   "A",
@@ -79,8 +90,10 @@ export const NOTE_NAMES = {
   ),
 } as const;
 
-export const POSITION_TO_NOTE_CARDS: readonly PositionToNoteCard[] =
-  OPEN_STRING_PITCH_CLASSES.flatMap((openPitchClass, stringIndex) =>
+export function positionToNoteCards(
+  tuning: Tuning = STANDARD_TUNING,
+): readonly PositionToNoteCard[] {
+  return openStringPitchClasses(tuning).flatMap((openPitchClass, stringIndex) =>
     Array.from({ length: FRET_COUNT + 1 }, (_, fret) => {
       const string = stringIndex + 1;
       const pitchClass = (openPitchClass + fret) % 12;
@@ -101,6 +114,10 @@ export const POSITION_TO_NOTE_CARDS: readonly PositionToNoteCard[] =
       };
     }),
   );
+}
+
+export const POSITION_TO_NOTE_CARDS: readonly PositionToNoteCard[] =
+  positionToNoteCards();
 
 // Every spelling the other direction asks about, low to high from A, each
 // accidental pitch under its sharp name, its flat name and both together.
@@ -120,8 +137,10 @@ export const NOTE_TO_POSITIONS_NOTES: readonly Readonly<{
   ];
 }).flat();
 
-export const NOTE_TO_POSITIONS_CARDS: readonly NoteToPositionsCard[] =
-  OPEN_STRING_PITCH_CLASSES.flatMap((openPitchClass, stringIndex) =>
+export function noteToPositionsCards(
+  tuning: Tuning = STANDARD_TUNING,
+): readonly NoteToPositionsCard[] {
+  return openStringPitchClasses(tuning).flatMap((openPitchClass, stringIndex) =>
     NOTE_TO_POSITIONS_NOTES.map(({ note, pitchClass, spelling }) => {
       const string = stringIndex + 1;
       const frets = Array.from(
@@ -141,8 +160,15 @@ export const NOTE_TO_POSITIONS_CARDS: readonly NoteToPositionsCard[] =
       };
     }),
   );
+}
 
-export const CARDS: readonly FretboardCard[] = [
-  ...POSITION_TO_NOTE_CARDS,
-  ...NOTE_TO_POSITIONS_CARDS,
-];
+export const NOTE_TO_POSITIONS_CARDS: readonly NoteToPositionsCard[] =
+  noteToPositionsCards();
+
+export function fretboardCards(
+  tuning: Tuning = STANDARD_TUNING,
+): readonly FretboardCard[] {
+  return [...positionToNoteCards(tuning), ...noteToPositionsCards(tuning)];
+}
+
+export const CARDS: readonly FretboardCard[] = fretboardCards();

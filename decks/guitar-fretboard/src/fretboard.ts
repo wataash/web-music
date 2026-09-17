@@ -39,6 +39,8 @@ export type FretboardSvgInput = Readonly<{
   // told which one they touched and played it. Only the app asks for them:
   // Anki has no sound to play and would carry them in every one of its images.
   hitCells?: boolean;
+  // How many strings the neck has; a guitar's six unless the app says otherwise.
+  stringCount?: number;
 }>;
 
 export function calcNormalizedFretPositions(fretCount: number): number[] {
@@ -58,15 +60,16 @@ export function renderFretboardSvg({
   title: explicitTitle,
   description: explicitDescription,
   hitCells = false,
+  stringCount = STRING_COUNT,
 }: FretboardSvgInput): string {
   if (
     highlightedString !== undefined &&
     (!Number.isInteger(highlightedString) ||
       highlightedString < 1 ||
-      highlightedString > STRING_COUNT)
+      highlightedString > stringCount)
   ) {
     throw new RangeError(
-      `highlightedString must be from 1 to ${STRING_COUNT}`,
+      `highlightedString must be from 1 to ${stringCount}`,
     );
   }
 
@@ -87,7 +90,7 @@ export function renderFretboardSvg({
     (string !== undefined || fret !== undefined
       ? [
           {
-            string: validateString(string),
+            string: validateString(string, stringCount),
             fret: validateFret(fret),
             label: note ?? cue,
             labelKind: note ? ("answer" as const) : cue ? ("cue" as const) : undefined,
@@ -96,7 +99,7 @@ export function renderFretboardSvg({
       : []);
 
   for (const target of normalizedTargets) {
-    validateString(target.string);
+    validateString(target.string, stringCount);
     validateFret(target.fret);
   }
 
@@ -106,7 +109,7 @@ export function renderFretboardSvg({
     );
   }
 
-  const boardHeight = CANVAS.stringGap * (STRING_COUNT - 1);
+  const boardHeight = CANVAS.stringGap * (stringCount - 1);
   const nutHeight = boardHeight + 30;
   const labelHeight = CANVAS.fretLabelFontSize + CANVAS.noteRadius;
   const canvasHeight = labelHeight + boardHeight + labelHeight;
@@ -115,13 +118,13 @@ export function renderFretboardSvg({
   );
   const canvasWidth = fretXs[fretXs.length - 2];
   const stringYs = Array.from(
-    { length: STRING_COUNT },
+    { length: stringCount },
     (_, index) => labelHeight + CANVAS.stringGap * index,
   );
   const inlayY = stringYs[0] + (stringYs[1] - stringYs[0]) * 0.2;
   const inlayBottom =
-    stringYs[STRING_COUNT - 2] +
-    (stringYs[STRING_COUNT - 1] - stringYs[STRING_COUNT - 2]) * 0.8;
+    stringYs[stringCount - 2] +
+    (stringYs[stringCount - 1] - stringYs[stringCount - 2]) * 0.8;
   const inlayHeight = inlayBottom - inlayY;
   const title =
     explicitTitle ??
@@ -148,7 +151,7 @@ export function renderFretboardSvg({
     .slice(0, -1)
     .map(
       (x, fretIndex) =>
-        `<line data-fret="${fretIndex}" x1="${x}" y1="${stringYs[0]}" x2="${x}" y2="${stringYs[STRING_COUNT - 1]}" stroke="#9ca3af" stroke-width="${CANVAS.fretLineWidth}"/>`,
+        `<line data-fret="${fretIndex}" x1="${x}" y1="${stringYs[0]}" x2="${x}" y2="${stringYs[stringCount - 1]}" stroke="#9ca3af" stroke-width="${CANVAS.fretLineWidth}"/>`,
     )
     .join("");
   const fretLabels = fretXs
@@ -214,7 +217,7 @@ export function renderFretboardSvg({
   // takes no pointer at all.
   const cells = !hitCells
     ? ""
-    : Array.from({ length: STRING_COUNT }, (_, stringIndex) =>
+    : Array.from({ length: stringCount }, (_, stringIndex) =>
         Array.from({ length: FRET_COUNT + 1 }, (_, fretIndex) => {
           const left =
             fretIndex === 0 ? 0 : fretXs[fretIndex - 1];
@@ -238,7 +241,7 @@ export function renderFretboardSvg({
     `<desc id="description">${escapeXml(description)}</desc>`,
     `<style>text{font-family:Arial,"Noto Sans",sans-serif}.fretboard__fret-label{fill:#a8b0bc;font-size:${CANVAS.fretLabelFontSize}px;font-weight:600}.fretboard__string-highlight{stroke:#fde68a;stroke-width:14;stroke-linecap:round}.fretboard__string{stroke:#cbd5e1}.fretboard__inlay{fill:#52606d}.fretboard__target{fill:#fde68a;stroke:#a16207;stroke-width:1.5}.fretboard__label{fill:#111827;font-size:17px;font-weight:700}.fretboard__label--stacked{font-size:13px}</style>`,
     `<rect width="100%" height="100%" fill="#111827"/>`,
-    `<rect x="0" y="${(stringYs[0] + stringYs[STRING_COUNT - 1] - nutHeight) / 2}" width="${CANVAS.nutWidth}" height="${nutHeight}" fill="#d1d5db"/>`,
+    `<rect x="0" y="${(stringYs[0] + stringYs[stringCount - 1] - nutHeight) / 2}" width="${CANVAS.nutWidth}" height="${nutHeight}" fill="#d1d5db"/>`,
     fretLines,
     fretLabels,
     stringHighlight,
@@ -251,9 +254,9 @@ export function renderFretboardSvg({
   ].join("");
 }
 
-function validateString(string: number | undefined): number {
-  if (!Number.isInteger(string) || string! < 1 || string! > STRING_COUNT) {
-    throw new RangeError(`string must be from 1 to ${STRING_COUNT}`);
+function validateString(string: number | undefined, stringCount: number): number {
+  if (!Number.isInteger(string) || string! < 1 || string! > stringCount) {
+    throw new RangeError(`string must be from 1 to ${stringCount}`);
   }
   return string!;
 }
@@ -324,6 +327,9 @@ export const WEB_FRETBOARD_SCRIPT = `
   const host = document.querySelector("[data-fretboard]");
   if (!(host instanceof HTMLElement)) return;
   const string = Number(host.dataset.string);
+  // The card's own strings; a card from before the field was added is a
+  // guitar's.
+  const stringCount = (host.dataset.tuning ?? "").split(" ").filter(Boolean).length || STRING_COUNT;
   const noteToPositions = host.dataset.hasPositions === "true";
   const back = host.dataset.side === "back";
   let input;
@@ -361,7 +367,7 @@ export const WEB_FRETBOARD_SCRIPT = `
       ? { string, fret, note: host.dataset.note ?? "" }
       : { string, fret, cue: ${JSON.stringify(QUESTION_CUE)} };
   }
-  host.innerHTML = renderFretboardSvg({ ...input, hitCells: true });
+  host.innerHTML = renderFretboardSvg({ ...input, hitCells: true, stringCount });
 })();
 </script>
 `.trim();

@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -26,109 +25,47 @@ import {
   FIELD_NAMES,
   FRONT_TEMPLATE,
   MODEL_NAME,
-  NOTE_TO_POSITIONS_DECK_NAME,
-  POSITION_TO_NOTE_DECK_NAME,
-  ROOT_DECK_NAME,
-  WEB_BACK_TEMPLATE,
-  WEB_FRONT_TEMPLATE,
 } from "./template";
+import { STANDARD_TUNING, type Tuning } from "./cards";
+import {
+  DECK_CONFIG_ID,
+  DECK_DEFINITIONS,
+  MODEL_ID,
+  TEMPLATE_NAME,
+  buildNoteRows,
+  validatePackageInput,
+  type MediaFile,
+  type NoteRow,
+  type PackageNote,
+} from "./web-deck";
 
-export const MODEL_ID = 1_786_800_000_000;
-export const ROOT_DECK_ID = 1_786_800_000_001;
-export const DECK_CONFIG_ID = 1_786_800_000_004;
-export const POSITION_TO_NOTE_DECK_ID = 1_786_800_000_005;
-export const NOTE_TO_POSITIONS_DECK_ID = 1_786_800_000_006;
+export {
+  DECK_CONFIG_ID,
+  MODEL_ID,
+  NOTE_TO_POSITIONS_DECK_ID,
+  POSITION_TO_NOTE_DECK_ID,
+  ROOT_DECK_ID,
+  createWebDeckData,
+  stableNoteGuid,
+  type MediaFile,
+  type PackageNote,
+  type WebDeckData,
+} from "./web-deck";
 
-const NOTE_ID_BASE = 1_786_800_100_000;
-const CARD_ID_BASE = 1_786_800_200_000;
 const TEMPLATE_ID = 1_786_800_300_000;
-const TEMPLATE_NAME = "Card 1";
 const DECK_CONFIG_NAME = "Guitar Fretboard — Random New Cards";
 const NEW_CARD_GATHER_PRIORITY = 4; // NEW_CARD_GATHER_PRIORITY_RANDOM_CARDS
 const NEW_CARD_SORT_ORDER = 4; // NEW_CARD_SORT_ORDER_RANDOM
 
-type DeckDefinition = Readonly<{
-  id: number;
-  name: string;
-  description: string;
-}>;
-
-const DECK_DEFINITIONS: readonly DeckDefinition[] = [
-  {
-    id: ROOT_DECK_ID,
-    name: ROOT_DECK_NAME,
-    description:
-      "Position-to-note and note-to-position drills for the guitar fretboard.",
-  },
-  {
-    id: POSITION_TO_NOTE_DECK_ID,
-    name: POSITION_TO_NOTE_DECK_NAME,
-    description:
-      "Identify the note name at a marked fretboard position, spelt under both of its names where it has two.",
-  },
-  {
-    id: NOTE_TO_POSITIONS_DECK_ID,
-    name: NOTE_TO_POSITIONS_DECK_NAME,
-    description:
-      "Recall every occurrence of a note on one guitar string, under its natural, flat, sharp or both-names spelling.",
-  },
-];
-
-type NoteRow = Readonly<{
-  noteId: number;
-  cardId: number;
-  deckId: number;
-  guid: string;
-  fields: readonly string[];
-  tags: readonly string[];
-  due: number;
-}>;
-
-function buildNoteRows(notes: readonly PackageNote[]): readonly NoteRow[] {
-  const dueByNoteId = new Map(
-    [...notes]
-      .sort((left, right) =>
-        shuffledOrderKey(left.id).localeCompare(shuffledOrderKey(right.id)),
-      )
-      .map(({ id }, index) => [id, index + 1]),
-  );
-  return notes.map((note, index) => {
-    const due = dueByNoteId.get(note.id);
-    if (due === undefined) {
-      throw new Error(`${note.id}: missing shuffled due position`);
-    }
-    return {
-      noteId: NOTE_ID_BASE + index,
-      cardId: CARD_ID_BASE + index,
-      deckId: note.deckId,
-      guid: note.guid,
-      fields: note.fields,
-      tags: note.tags,
-      due,
-    };
-  });
-}
 const ZIP_DATE = new Date("1980-01-01T00:00:00.000Z");
 const FIELD_SEPARATOR = "\u001f";
-
-export type PackageNote = Readonly<{
-  id: string;
-  guid: string;
-  deckId: number;
-  fields: readonly string[];
-  tags: readonly string[];
-}>;
-
-export type MediaFile = Readonly<{
-  filename: string;
-  content: string | Uint8Array;
-}>;
 
 export type AnkiPackageInput = Readonly<{
   outputPath: string;
   notes: readonly PackageNote[];
   media: readonly MediaFile[];
   modifiedAt?: Date;
+  tuning?: Tuning;
 }>;
 
 export type AnkiPackageSummary = Readonly<{
@@ -154,91 +91,12 @@ export type AnkiPackageSummary = Readonly<{
   >;
 }>;
 
-export type WebDeckData = Readonly<{
-  models: readonly Readonly<{
-    mid: number;
-    name: string;
-    css: string;
-    fieldNames: readonly string[];
-    templates: readonly Readonly<{
-      name: string;
-      ord: number;
-      qfmt: string;
-      afmt: string;
-    }>[];
-  }>[];
-  decks: readonly Readonly<{ did: number; name: string }>[];
-  notes: readonly Readonly<{
-    id: number;
-    guid: string;
-    mid: number;
-    fields: readonly string[];
-    tags: string;
-  }>[];
-  cards: readonly Readonly<{
-    id: number;
-    nid: number;
-    did: number;
-    ord: number;
-    newOrder: number;
-  }>[];
-  media: readonly Readonly<{ filename: string; data: string }>[];
-  rootDeckNames: readonly string[];
-}>;
-
-export function createWebDeckData(
-  notes: readonly PackageNote[],
-  media: readonly MediaFile[],
-): WebDeckData {
-  validatePackageInput(notes, media);
-  const rows = buildNoteRows(notes);
-  return {
-    models: [
-      {
-        mid: MODEL_ID,
-        name: MODEL_NAME,
-        css: CARD_CSS,
-        fieldNames: FIELD_NAMES,
-        templates: [
-          {
-            ord: 0,
-            name: TEMPLATE_NAME,
-            qfmt: WEB_FRONT_TEMPLATE,
-            afmt: WEB_BACK_TEMPLATE,
-          },
-        ],
-      },
-    ],
-    decks: DECK_DEFINITIONS.map(({ id, name }) => ({ did: id, name })),
-    notes: rows.map((row) => ({
-      id: row.noteId,
-      guid: row.guid,
-      mid: MODEL_ID,
-      fields: row.fields,
-      tags: row.tags.join(" "),
-    })),
-    cards: rows.map((row) => ({
-      id: row.cardId,
-      nid: row.noteId,
-      did: row.deckId,
-      ord: 0,
-      newOrder: row.due,
-    })),
-    media: media.map(({ filename, content }) => {
-      if (typeof content !== "string") {
-        throw new Error(`${filename}: web deck media must be text`);
-      }
-      return { filename, data: content };
-    }),
-    rootDeckNames: [ROOT_DECK_NAME],
-  };
-}
-
 export async function writeAnkiPackage({
   outputPath,
   notes,
   media,
   modifiedAt = new Date(),
+  tuning = STANDARD_TUNING,
 }: AnkiPackageInput): Promise<void> {
   validatePackageInput(notes, media);
   const temporaryDirectory = await mkdtemp(
@@ -250,7 +108,7 @@ export async function writeAnkiPackage({
   );
 
   try {
-    const noteRows = buildNoteRows(notes);
+    const noteRows = buildNoteRows(notes, tuning);
     const v18DatabasePath = join(temporaryDirectory, "collection.v18");
     writeAnki21bDatabase(v18DatabasePath, buildV18Input(noteRows, modifiedAt));
     writeLegacyUpgradeNoticeDatabase(fallbackDatabasePath, modifiedAt);
@@ -418,13 +276,6 @@ export async function inspectAnkiPackage(
   }
 }
 
-export function stableNoteGuid(id: string): string {
-  return createHash("sha256")
-    .update(`guitar-fretboard:${id}`)
-    .digest("base64url")
-    .slice(0, 16);
-}
-
 function buildV18Input(
   noteRows: readonly NoteRow[],
   modifiedAt: Date,
@@ -478,12 +329,6 @@ function buildV18Input(
   };
 }
 
-function shuffledOrderKey(noteId: string): string {
-  return createHash("sha256")
-    .update(`guitar-fretboard:new-card-order:${noteId}`)
-    .digest("hex");
-}
-
 function countRows(
   database: DatabaseSync,
   table: "notes" | "cards" | "notetypes",
@@ -494,31 +339,3 @@ function countRows(
   return row.count;
 }
 
-function validatePackageInput(
-  notes: readonly PackageNote[],
-  media: readonly MediaFile[],
-): void {
-  if (new Set(notes.map(({ id }) => id)).size !== notes.length) {
-    throw new Error("duplicate note id");
-  }
-  if (new Set(notes.map(({ guid }) => guid)).size !== notes.length) {
-    throw new Error("duplicate note guid");
-  }
-  if (new Set(media.map(({ filename }) => filename)).size !== media.length) {
-    throw new Error("duplicate media filename");
-  }
-  for (const note of notes) {
-    if (
-      ![POSITION_TO_NOTE_DECK_ID, NOTE_TO_POSITIONS_DECK_ID].includes(
-        note.deckId,
-      )
-    ) {
-      throw new Error(`${note.id}: invalid child deck id ${note.deckId}`);
-    }
-    if (note.fields.length !== FIELD_NAMES.length) {
-      throw new Error(
-        `${note.id}: expected ${FIELD_NAMES.length} fields, got ${note.fields.length}`,
-      );
-    }
-  }
-}

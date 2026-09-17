@@ -16,7 +16,8 @@ import {
 import { CARDS } from "./cards";
 import {
   createDeckArtifacts,
-  createWebDeckArtifacts,
+  createDeckNotes,
+  createWebDeck,
   generateAnkiDeck,
 } from "./generate";
 import {
@@ -195,18 +196,41 @@ describe("Anki deck generation", () => {
   });
 
   test("keeps the web deck small and free of SVG media", () => {
-    const artifacts = createWebDeckArtifacts();
-    const deck = createWebDeckData(artifacts.notes, artifacts.media);
+    const notes = createDeckNotes();
+    const deck = createWebDeck();
 
-    expect(artifacts.media).toEqual([]);
+    expect(deck.media).toEqual([]);
     expect(
-      artifacts.notes.every(
-        ({ fields }) => fields[5] === "" && fields[6] === "",
+      notes.every(
+        ({ fields }) => fields[5] === "" && fields[6] === "" && fields[8] === "64 59 55 50 45 40",
       ),
     ).toBe(true);
+    expect(createWebDeckData(notes, [])).toEqual(deck);
     expect(WEB_FRONT_TEMPLATE).not.toContain('data-note="{{Note}}" data-fret');
     expect(WEB_BACK_TEMPLATE).toContain('data-note="{{Note}}"');
     expect(JSON.stringify(deck).length).toBeLessThan(250_000);
+  });
+
+  test("draws another instrument its own neck under its own guids", () => {
+    const bass = [43, 38, 33, 28];
+    const deck = createWebDeck(bass);
+    const standard = createWebDeck();
+    expect(deck.notes).toHaveLength(4 * 25 + 4 * 22);
+    expect(deck.decks).toEqual(standard.decks);
+    const standardGuids = new Set(standard.notes.map(({ guid }) => guid));
+    expect(deck.notes.some(({ guid }) => standardGuids.has(guid))).toBe(false);
+    for (const note of deck.notes) {
+      expect(note.fields[8]).toBe("43 38 33 28");
+      expect(Number(note.fields[2])).toBeLessThanOrEqual(4);
+    }
+    // The open E on the lowest string: string 4 of a bass is E1.
+    const lowE = deck.notes.find((note) => note.fields[0] === "position-to-note-string-4-fret-0");
+    expect(lowE?.fields[4]).toBe("E");
+    // A card's tuning is what the template draws the neck from.
+    expect(WEB_FRONT_TEMPLATE).toContain('data-tuning="{{Tuning}}"');
+    expect(WEB_BACK_TEMPLATE).toContain('data-tuning="{{Tuning}}"');
+    // The heading drops 24F on whichever string, not only a guitar's six.
+    expect(WEB_BACK_TEMPLATE).toContain("/^\\d+-24$/");
   });
 
   test("writes an inspectable Anki package", async () => {
@@ -228,7 +252,7 @@ describe("Anki deck generation", () => {
       expect(summary.mediaCount).toBe(564);
       expect(new Set(summary.mediaFilenames).size).toBe(564);
       expect(new Set(summary.noteGuids).size).toBe(282);
-      expect(summary.noteFields.every((fields) => fields.length === 8)).toBe(
+      expect(summary.noteFields.every((fields) => fields.length === 9)).toBe(
         true,
       );
       expect(new Set(summary.newCardIdsByDue)).toEqual(

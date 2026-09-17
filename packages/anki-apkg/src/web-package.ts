@@ -5,6 +5,8 @@
 // document carries, without node. The Anki archive is written by package.ts.
 
 import { sha256Base64Url, sha256Hex } from "./sha256";
+
+export { sha256Base64Url, sha256Hex } from "./sha256";
 import type { Anki21bCardRequirement } from "./index";
 
 export type PackageModel = Readonly<{

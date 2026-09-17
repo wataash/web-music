@@ -238,6 +238,9 @@ importers:
       '@web-music/anki-apkg':
         specifier: workspace:*
         version: link:../../packages/anki-apkg
+      '@web-music/practice-ui':
+        specifier: workspace:*
+        version: link:../../packages/practice-ui
       jszip:
         specifier: ^3.10.1
         version: 3.10.1

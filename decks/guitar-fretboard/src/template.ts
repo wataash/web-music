@@ -17,6 +17,10 @@ export const FIELD_NAMES = [
   "FrontImage",
   "BackImage",
   "Positions",
+  // The open strings the card was drawn for, as MIDI numbers with string 1
+  // first: what the app sounds a position with, and how it tells one
+  // instrument's deck from another's.
+  "Tuning",
 ] as const;
 
 function heading(showAnswer: boolean): string {
@@ -34,7 +38,7 @@ const POSITION_LABEL_SCRIPT = `
 for (const answer of document.querySelectorAll(".position-answer")) {
   answer.textContent = (answer.textContent ?? "")
     .split(" ")
-    .filter((position) => !/^[1-6]-24$/.test(position))
+    .filter((position) => !/^\\d+-24$/.test(position))
     .join(" ");
 }
 </script>
@@ -59,7 +63,7 @@ ${POSITION_LABEL_SCRIPT}
 export const WEB_FRONT_TEMPLATE = `
 <main class="fretboard-card">
 ${heading(false)}
-  <div class="diagram" data-card-part="board" data-fretboard data-side="front" data-string="{{String}}" data-fret="{{Fret}}" {{#Positions}}data-has-positions="true" data-note="{{Note}}"{{/Positions}}></div>
+  <div class="diagram" data-card-part="board" data-fretboard data-side="front" data-tuning="{{Tuning}}" data-string="{{String}}" data-fret="{{Fret}}" {{#Positions}}data-has-positions="true" data-note="{{Note}}"{{/Positions}}></div>
 </main>
 ${POSITION_LABEL_SCRIPT}
 ${WEB_FRETBOARD_SCRIPT}
@@ -68,7 +72,7 @@ ${WEB_FRETBOARD_SCRIPT}
 export const WEB_BACK_TEMPLATE = `
 <main class="fretboard-card">
 ${heading(true)}
-  <div class="diagram" data-card-part="board" data-fretboard data-side="back" data-string="{{String}}" data-fret="{{Fret}}" data-note="{{Note}}" {{#Positions}}data-has-positions="true" data-positions="{{Positions}}"{{/Positions}}></div>
+  <div class="diagram" data-card-part="board" data-fretboard data-side="back" data-tuning="{{Tuning}}" data-string="{{String}}" data-fret="{{Fret}}" data-note="{{Note}}" {{#Positions}}data-has-positions="true" data-positions="{{Positions}}"{{/Positions}}></div>
 </main>
 ${POSITION_LABEL_SCRIPT}
 ${WEB_FRETBOARD_SCRIPT}

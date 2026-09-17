@@ -5,8 +5,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { createWebDeckData } from "./apkg";
-import { createWebDeckArtifacts } from "./generate";
+import { createWebDeck } from "./web-deck";
 
 const { values } = parseArgs({
   options: { output: { type: "string", short: "o" } },
@@ -14,11 +13,10 @@ const { values } = parseArgs({
 const outputPath = resolve(
   values.output ?? "dist/guitar-fretboard-notes.json",
 );
-const artifacts = createWebDeckArtifacts();
 const document = {
   format: "web-music-flashcards-deck",
   version: 1,
-  deck: createWebDeckData(artifacts.notes, artifacts.media),
+  deck: createWebDeck(),
 } as const;
 
 await mkdir(dirname(outputPath), { recursive: true });
