@@ -11,6 +11,17 @@ SPDX-License-Identifier: Apache-2.0
     summary.focus();
     summary.scrollIntoView({ block: 'nearest' });
   }
+  const chart = [
+    ['Header lines', 'title: Blues in C · key: Am · artist: · style: · tempo:'],
+    ['Barlines', '| bar · || double · |: :| repeat · |] final'],
+    ['Section', '[A] [B] [Intro] on its own line or before the bars'],
+    ['Time signature', '4/4 · 3/4 · 12/8'],
+    ['Endings', '| 1. C7 | G7 :| 2. C7 |]'],
+    ['Repeats', '% previous bar · %% | | previous two bars · / previous chord'],
+    ['Notes and marks', '<Fine> <D.S. al Coda> · coda · segno · fermata · fine'],
+    ['Alternate chord', 'C7 (Db7) — in parentheses after a space'],
+    ['No chord', 'NC = N.C. = n'],
+  ];
   const common = [
     ['Major seventh', 'Amaj7 = AM7 = A^7 = A△7 = AΔ7 = A^'],
     ['Minor seventh', 'Am7 = A-7 = Amin7'],
@@ -22,16 +33,17 @@ SPDX-License-Identifier: Apache-2.0
     ['iReal rewrites', 'A11 → A9sus; A7b5 → A7#11; A7b13 → A7#5'],
     ['Tensions', 'A9, A13, A7b9, A7#9, A^7#11'],
     ['Slash bass', 'A7/C#, Dm7/G'],
-    ['No chord', 'n = N.C.'],
   ];
 </script>
 
 <details class="notation-help" bind:this={details}>
   <summary bind:this={summary}>Chord notation help</summary>
   <h3>Bars and lines</h3>
-  <p>Spaces separate bars: <code>A7 D7 A7 A7</code> makes four bars. A new line starts a chart row.</p>
-  <p>If a line contains <code>|</code>, barlines separate its bars: <code>Dm7 G7 | Cmaj7</code> puts Dm7 and G7 in the first bar and Cmaj7 in the second. Leading and trailing barlines are optional.</p>
-  <p>Use up to 16 chords per line. Extra spaces, full-width spaces and blank lines are ignored. Keep each chord symbol together without spaces.</p>
+  <p>Each line is one row of the chart. Spaces separate bars: <code>A7 D7 A7 A7</code> makes four bars. With <code>|</code> in a line, the barlines separate its bars and spaces put chords in the same bar: <code>Dm7 G7 | Cmaj7</code>. Use up to 16 chords per line; a blank line adds space between rows.</p>
+  <table><caption>Chart notation</caption><tbody>
+    {#each chart as [label, examples]}<tr><th scope="row">{label}</th><td><code>{examples}</code></td></tr>{/each}
+  </tbody></table>
+  <p>The chart compiles to iReal Pro’s notation, so it is laid out, practised and exported like an imported chart.</p>
   <h3>Common spellings</h3>
   <p>Chord shorthands follow <a href="https://www.irealpro.com/learn/chord-symbols/" target="_blank" rel="noreferrer">iReal Pro’s notation rules</a>. In particular, <code>A^</code> includes the major seventh and <code>Ah</code> includes the minor seventh. Rewrites also apply to saved custom charts. Your original input is kept for editing and text export.</p>
   <p>Examples use A. Replace it with any uppercase root A–G. Accidentals can be <code>b</code> / <code>♭</code> or <code>#</code> / <code>♯</code>, as in <code>Bbmaj7</code> and <code>F♯m7</code>. A minus sign <code>−</code> also works for minor chords.</p>

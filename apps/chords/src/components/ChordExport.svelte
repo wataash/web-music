@@ -22,13 +22,14 @@ SPDX-License-Identifier: Apache-2.0
   // ChordWiki source the score preserved.
   const textOf = (song: ImportedSong) => song.customText ?? chordWikiText(song);
   const text = $derived(song && textOf(song));
-  const playlistSongs = $derived(song ? songs.filter(candidate => candidate.playlist === song.playlist && textOf(candidate) === undefined) : []);
-  function download(playlist: boolean) {
+  const playlistSongs = $derived(song ? songs.filter(candidate => candidate.playlist === song.playlist && chordWikiText(candidate) === undefined) : []);
+  // The text a chart came in as, or iReal's HTML of the song or its playlist.
+  function download(kind: 'text' | 'song' | 'playlist') {
     if (!song) return;
     try {
-      const title = playlist ? song.playlist || 'Unlisted imports' : song.title;
-      const custom = text !== undefined;
-      const content = custom ? text! : exportIrealHtml(playlist ? playlistSongs : [song], song.playlist);
+      const custom = kind === 'text';
+      const title = kind === 'playlist' ? song.playlist || 'Unlisted imports' : song.title;
+      const content = custom ? text! : exportIrealHtml(kind === 'playlist' ? playlistSongs : [song], song.playlist);
       const url = URL.createObjectURL(new Blob([content], { type: custom ? 'text/plain;charset=utf-8' : 'text/html;charset=utf-8' }));
       const anchor = document.createElement('a');
       anchor.href = url;
@@ -43,17 +44,20 @@ SPDX-License-Identifier: Apache-2.0
 <dialog bind:this={dialog} aria-labelledby="export-title">
   <h2 id="export-title">{text !== undefined ? 'Export chart text' : 'Export iReal charts'}</h2>
   {#if song && song.customText !== undefined}
-    <p>Save your original chord text. Paste it under Chord list in Add chart to recreate it. Set the original key to {song.originalKey}.</p>
-    <button onclick={() => download(false)}>Download chord text</button>
+    <p>Save your chart text. Paste it under Chord chart in Add chart to recreate it. Set the original key to {song.originalKey}. The chart can also go to iReal Pro as a link or an HTML file.</p>
+    <button onclick={() => download('text')}>Download chord text</button>
+    <button onclick={copyLink}>Copy song link</button>
+    {#if copied}<p role="status">Song link copied.</p>{/if}
+    <button onclick={() => download('song')}>Export song for iReal Pro: {song.title}</button>
   {:else if song && text !== undefined}
     <p>Save the ChordWiki text as it was added. Paste it under ChordWiki in Add chart to recreate the chart.</p>
-    <button onclick={() => download(false)}>Download ChordWiki text</button>
+    <button onclick={() => download('text')}>Download ChordWiki text</button>
   {:else if song}
     <p>Save an HTML file to import on another device. Original keys and notation are preserved.</p>
     <button onclick={copyLink}>Copy song link</button>
     {#if copied}<p role="status">Song link copied.</p>{/if}
-    <button onclick={() => download(false)}>Export song: {song.title}</button>
-    <button onclick={() => download(true)}>Export playlist: {song.playlist || 'Unlisted imports'} ({playlistSongs.length})</button>
+    <button onclick={() => download('song')}>Export song: {song.title}</button>
+    <button onclick={() => download('playlist')}>Export playlist: {song.playlist || 'Unlisted imports'} ({playlistSongs.length})</button>
   {/if}
   {#if error}<p role="alert">{error}</p>{/if}
   <button onclick={() => dialog.close()}>Cancel</button>

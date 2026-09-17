@@ -60,11 +60,11 @@ Fretless instruments use the same semitone grid as a pitch-position guide. Paire
 
 Tuning references: [Stick Enterprises](https://stick.com/tunings-and-tech/stick-tunings/), [Yamaha violin](https://data.yamaha.com/files/download/other_assets/2/793262/yev104_yev105_en_om_c0.pdf), [Yamaha viola/cello](https://usa.yamaha.com/files/download/other_assets/9/2298929/viola_cello_10multi_om_a1_print.pdf), [Fender ukulele](https://www.fender.com/articles/setup/how-to-tune-a-ukulele), [Eastman mandolin family](https://www.eastmanguitars.com/mandolin_educational), and [Deering banjo](https://www.deeringbanjos.com/en-ca/pages/how-to-tune-a-banjo).
 
-## Adding iReal Pro, ChordWiki and chord-list charts
+## Adding iReal Pro, ChordWiki and chord charts
 
-Choose the song title → **Add chart** and choose the notation — iReal Pro, ChordWiki or a chord list typed on the spot; the choice is remembered. For iReal Pro, right-click an iReal link on a computer, or touch and hold it on a phone or tablet, and copy its address; paste the `irealb://` or `irealbook://` link into “Shared link / HTML”, then choose “Add”. You can also select a shared HTML file. Both individual songs and playlists are supported. Imported songs can be searched, transposed, displayed in a list and deleted. Importing the same chart again does not create a duplicate.
+Choose the song title → **Add chart** and choose the notation — iReal Pro, ChordWiki or a chord chart typed on the spot; the choice is remembered. For iReal Pro, right-click an iReal link on a computer, or touch and hold it on a phone or tablet, and copy its address; paste the `irealb://` or `irealbook://` link into “Shared link / HTML”, then choose “Add”. You can also select a shared HTML file. Both individual songs and playlists are supported. Imported songs can be searched, transposed, displayed in a list and deleted. Importing the same chart again does not create a duplicate.
 
-A chart in ChordWiki notation — `{title:…}`, `{key:…}` and other directives, with chords in brackets such as `[Am7]` before the lyric they fall on — is pasted into “ChordWiki text” under the ChordWiki choice, or selected as a `.wiki` or text file, one song at a time. A paste in another notation is pointed at its own choice rather than parsed as nothing. Whatever is typed is drawn under the field as it is typed — the first song's chart, with its title, key and chord count, and for a playlist how many songs come with it — so a chart can be checked before it is added. A ChordWiki chart or a chord list, once added, opens on its own full chart, and **Edit current chart** in the ⋮ settings menu opens its text in the same dialog again, keeping the song's id and so its favorite and its place, and **Copy current chart** opens the same text as a new chart, titled as a copy, to be added beside the original. The chart goes into the “ChordWiki” playlist. `{key:Am}` sets the original key to its tonic; without a key directive the first chord's root stands in, and the key selector transposes from there. `{c:…}` lines before the first chord become the song's comments and `{ci:…}` lines annotate the chord that follows them; a blank line ends a section for “By section”. Chords are respelled the way the chart editor respells its input (`AbM7` → `Ab^7`, `Bm7` → `B-7`), and tensions in parentheses are kept and voiced: `7(9,13)`, `m7(11)`, `M7(#11)`, `7(b9,b13)`, `6(9)`, `(omit3)`, `7-5(b9)`. A chord the app cannot voice is shown as written. On the card and in the list, the words a chord is sung on — the text after it up to the next chord, carried over a line break — are shown under the chord's name, above the neck. The chart view prints every line as ChordWiki does, chords above their lyrics with the rhythm and bar marks in between; the source text is kept exactly, and Export writes it back out as a text file. Practice follows the written order; ChordWiki has no repeat signs to expand.
+A chart in ChordWiki notation — `{title:…}`, `{key:…}` and other directives, with chords in brackets such as `[Am7]` before the lyric they fall on — is pasted into “ChordWiki text” under the ChordWiki choice, or selected as a `.wiki` or text file, one song at a time. A paste in another notation is pointed at its own choice rather than parsed as nothing. Whatever is typed is drawn under the field as it is typed — the first song's chart, with its title, key and chord count, and for a playlist how many songs come with it — so a chart can be checked before it is added. A ChordWiki chart or a chord chart, once added, opens on its own full chart, and **Edit current chart** in the ⋮ settings menu opens its text in the same dialog again, keeping the song's id and so its favorite and its place, and **Copy current chart** opens the same text as a new chart, titled as a copy, to be added beside the original. The chart goes into the “ChordWiki” playlist. `{key:Am}` sets the original key to its tonic; without a key directive the first chord's root stands in, and the key selector transposes from there. `{c:…}` lines before the first chord become the song's comments and `{ci:…}` lines annotate the chord that follows them; a blank line ends a section for “By section”. Chords are respelled the way the chart editor respells its input (`AbM7` → `Ab^7`, `Bm7` → `B-7`), and tensions in parentheses are kept and voiced: `7(9,13)`, `m7(11)`, `M7(#11)`, `7(b9,b13)`, `6(9)`, `(omit3)`, `7-5(b9)`. A chord the app cannot voice is shown as written. On the card and in the list, the words a chord is sung on — the text after it up to the next chord, carried over a line break — are shown under the chord's name, above the neck. The chart view prints every line as ChordWiki does, chords above their lyrics with the rhythm and bar marks in between; the source text is kept exactly, and Export writes it back out as a text file. Practice follows the written order; ChordWiki has no repeat signs to expand.
 
 Charts and song information are stored in this browser's IndexedDB (`music-flashcards-chord-library`) and are never sent to a server. Use **Export current chart** in the ⋮ settings menu to save the current imported song or its complete playlist as an HTML file for another device or a backup. Exports preserve the stored original key, notation, comments and song settings, regardless of the display key or library filters. Clearing site data deletes the library. Resetting practice settings does not delete imported charts.
 
@@ -98,21 +98,41 @@ Use Ctrl+P (Cmd+P on macOS) or the browser’s Print menu to print the current k
 
 The library sorts by title, artist, or import order. Import order is recorded for new imports; older charts without this information appear first, sorted by title. Reimporting a chart preserves its recorded position. **Export current chart → Copy song link** copies the original iReal chart directly; HTML export remains available if clipboard access fails.
 
-### Chord lists
+### Chord charts
 
-Under the **Chord list** notation, enter an optional title and original key,
-then type a chord progression. Spaces separate bars and line breaks preserve
-chart rows. If a line contains `|`, those separators define its bars, allowing
-multiple chords in a bar (`Dm7 G7 | Cmaj7`). Leading/trailing barlines, full-width
-spaces, blank lines, `maj7` spelling and Unicode accidentals are accepted. Each
-line supports up to 16 chords; invalid symbols show their line and bar number.
+Under the **Chord chart** notation, enter an optional title and original key,
+then type the chart the way a lead sheet writes it. The text compiles to iReal
+Pro's notation, so the chart is laid out on iReal's 16-cell rows, practised with
+its repeat signs resolved, and exported as an iReal link or HTML file as well as
+its own text.
+
+```
+title: Example Blues      ← header lines: title, key, artist, style, tempo
+key: C
+
+[A] 4/4                   ← [section]; time signature
+|: C7 | F7 | C7 % | C7 |  ← |: :| repeat; % previous bar, %% and an empty bar
+| F7 | F7 | C7 | C7 |       for the previous two, / previous chord
+| G7 | F7 | 1. C7 | G7 :| ← 1. 2. endings
+| 2. C7 <Fine> | G7 |]    ← <note>; |] final bar; || double bar
+| Dm7 (Db7) G7 | NC |     ← (alternate chord) after a space; NC
+```
+
+Each line is one row. Spaces separate bars when a line has no `|`
+(`A7 D7 A7 A7`); with `|`, the barlines define the bars and spaces put chords in
+the same bar (`Dm7 G7 | Cmaj7`). Leading/trailing barlines, full-width spaces,
+`maj7` spelling and Unicode accidentals are accepted; a blank line adds space
+between rows. Each line supports up to 16 chords; invalid symbols show their
+line and bar number. `coda`, `segno`, `fermata` and `fine` are written as words;
+a `title:` or `key:` line overrides the dialog's fields, and `key: Am` sets a
+minor key.
 The chart is drawn as it is typed; Add opens the full chart to practice it with
 transposition, fretboards and List. Charts are stored locally in the same browser
 library. **Edit current chart** in the ⋮ settings menu restores the source text and updates the same song,
 preserving favorites and its library order; saving starts at the first chord in
-the original key. **Export current chart** downloads the original progression as a text file;
-paste it under Chord list and set its original key to recreate it. Chord lists do
-not export as iReal links or join iReal playlist exports.
+the original key. **Export current chart** downloads the chart text — paste it
+under Chord chart and set its original key to recreate it — or copies an iReal
+link or saves an iReal HTML file of the song.
 
 Custom input accepts qualities such as `A^7`, `Amaj13#11`,
 `Amin13`, `Amaj7b5`, `Amaj7#9`, `Amin7b6` and `Amin9b6`. Major spellings

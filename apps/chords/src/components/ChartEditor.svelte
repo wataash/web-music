@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
 
   const FORMAT_KEY = "chord-import-format";
   const FORMATS: readonly { id: ChordImportFormat; label: string }[] = [
-    { id: "ireal", label: "iReal Pro" }, { id: "chordwiki", label: "ChordWiki" }, { id: "list", label: "Chord list" },
+    { id: "ireal", label: "iReal Pro" }, { id: "chordwiki", label: "ChordWiki" }, { id: "list", label: "Chord chart" },
   ];
   function savedFormat(): ChordImportFormat {
     const saved = localStorage.getItem(FORMAT_KEY);
@@ -43,7 +43,14 @@ SPDX-License-Identifier: Apache-2.0
 {key:C}
 [C]Lyrics [G]lyrics [Am]lyrics [F]lyrics
 [C]Lyrics [G]lyrics [C]lyrics`;
-  const LIST_PLACEHOLDER = "A7 D7 A7 A7\nD7 D7 A7 A7\nE7 D7 A7 A7";
+  const LIST_PLACEHOLDER = `title: Example Blues
+key: C
+
+[A] 4/4
+|: C7 | F7 | C7 % | C7 |
+| F7 | F7 | C7 | C7 |
+| G7 | F7 | 1. C7 | G7 :|
+| 2. C7 <Fine> | G7 |]`;
 
   let text = $state("");
   let title = $state("");
@@ -147,7 +154,7 @@ SPDX-License-Identifier: Apache-2.0
   {:else}
     <div class="fields"><label>Title (optional)<input bind:value={title} disabled={busy} /></label><label>Original key<select aria-label="Original key" bind:value={key} disabled={busy}>{#each PRACTICE_KEYS as note}<option>{note}</option>{/each}</select></label></div>
     <label>Chord progression<textarea bind:value={text} rows="7" disabled={busy} spellcheck={false} autocapitalize="off" aria-describedby="chord-list-help" placeholder={LIST_PLACEHOLDER}></textarea></label>
-    <p id="chord-list-help">Spaces separate bars; line breaks start chart rows. With | in a line, spaces put chords inside the same bar: Dm7 G7 | Cmaj7. Up to 16 chords per line. Blank lines are ignored.</p>
+    <p id="chord-list-help">A chart the way a lead sheet writes it: | between bars, |: and :| for repeats, 1. and 2. for endings, [A] for a section, % for the previous bar, &lt;text&gt; for a note. A line without | puts each chord in its own bar; each line is one row. Title and key can also be written as title: and key: lines.</p>
     <ChordNotationHelp bind:this={notationHelp} />
   {/if}
   {#if preview}

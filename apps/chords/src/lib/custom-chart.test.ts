@@ -5,6 +5,7 @@ import { createCustomChart, CHORD_NOTATION_GROUPS, refreshCustomChart } from './
 import { resolveIreal } from './ireal-layout';
 import { describeChord } from './chords';
 import { exportIrealLink } from './chord-export';
+import { extractIrealPlaylist } from '@web-music/ireal';
 import { QUALITY_INTERVALS } from '@web-music/ireal/intervals';
 
 const blues = 'A7 D7 A7 A7\nD7 D7 A7 A7\nE7 D7 A7 A7';
@@ -54,7 +55,7 @@ describe('custom charts', () => {
     expect(edited.id).toBe(original.id);
     expect(edited.customText).toBe('Dm7 G7');
     expect(edited.chords).toEqual(['D-7', 'G7']);
-    expect(() => exportIrealLink([edited])).toThrow('text export');
+    expect(extractIrealPlaylist(exportIrealLink([edited])).songs[0].chords).toEqual(['Dm7', 'G7']);
   });
   it.each(['', 'A7 | | D7', 'A7 nonsense', 'Cwat', 'Amaj123', 'Aø13', 'Adimwat', 'A7sus44', 'C '.repeat(17)])('rejects invalid input: %s', input => {
     expect(() => createCustomChart(input, '', 'C')).toThrow();
@@ -105,5 +106,63 @@ describe('iReal editor compatibility', () => {
     expect(resolveIreal(updated.metadata.score.blocks).events).toHaveLength(3);
     const imported = { ...stored, customText: undefined };
     expect(refreshCustomChart(imported)).toBe(imported);
+  });
+});
+
+describe('chart notation', () => {
+  const blues = `title: Example Blues
+key: C
+style: Medium Swing
+tempo: 120
+
+[A] 4/4
+|: C7 | F7 | C7 % | C7 |
+| F7 | F7 | C7 | C7 |
+| G7 | F7 | 1. C7 | G7 :|
+| 2. C7 <Fine> | G7 |]
+
+[B]
+| Dm7 (Db7) G7 | C^7 | %% | | NC | coda Em7 A7 |`;
+  it('compiles bars, repeats, endings, sections, comments and alternates to iReal notation', () => {
+    const song = createCustomChart(blues, 'Ignored', 'A', 'custom-blues');
+    expect(song.title).toBe('Example Blues');
+    expect(song.originalKey).toBe('C');
+    expect(song.metadata.score.fields).toEqual([
+      { label: 'Title', value: 'Example Blues' }, { label: 'Style', value: 'Medium Swing' }, { label: 'Original key', value: 'C' }, { label: 'Tempo (BPM)', value: '120' },
+    ]);
+    const raw = song.metadata.score.blocks.flat().map(token => token.raw).join('');
+    expect(raw).toBe('*A{T44C7  |F7   |C7 x  |C7   |F7   |F7   |C7   |C7   |G7   |F7   |N1C7   |G7   }N2C7       <Fine>|G7       ZY*B|D-7(Db7)G7 |C^7 |r  |  |n |QE-7 A7 |');
+    expect(song.chords).toEqual(['C7', 'F7', 'C7', 'C7', 'F7', 'F7', 'C7', 'C7', 'G7', 'F7', 'C7', 'G7', 'C7', 'G7', 'D-7', 'Db7', 'G7', 'C^7', 'N.C.', 'E-7', 'A7']);
+    expect(song.metadata.annotations).toEqual([
+      { chordIndex: 0, section: 'A', comments: [] }, { chordIndex: 12, comments: ['Fine'] }, { chordIndex: 14, section: 'B', comments: [] },
+    ]);
+    const { rows, events } = resolveIreal(song.metadata.score.blocks);
+    expect(rows).toHaveLength(5);
+    expect(rows[2].endings.map(ending => ending.label)).toEqual(['1']);
+    // Practice plays the repeat signs: % repeats C7, %% repeats the two bars before it.
+    expect(events.map(event => song.chords[event.chordIndex]).slice(15)).toEqual(['D-7', 'Db7', 'G7', 'C^7', 'D-7', 'G7', 'C^7', 'N.C.', 'E-7', 'A7']);
+    expect(events.filter(event => event.section === 'B')).toHaveLength(10);
+    // The compiled chart goes out as an iReal link and comes back the same.
+    const link = exportIrealLink([song]);
+    const imported = extractIrealPlaylist(link).songs[0];
+    expect(imported.title).toBe('Example Blues');
+    expect(imported.score.blocks.flat().map(token => token.raw).join('')).toBe(raw);
+  });
+  it('reads a minor key and a section on its own line', () => {
+    const song = createCustomChart('key: F#m\n[Intro]\nF#m7 B7', '', 'C');
+    expect(song.originalKey).toBe('F#');
+    expect(song.metadata.score.fields).toContainEqual({ label: 'Original key', value: 'F#-' });
+    expect(song.metadata.score.blocks.flat().map(token => token.raw).join('')).toBe('*i[F#-7       |B7       |');
+  });
+  it.each(['| A7 | | D7 |', '| A7 | wrong |', '[A] 4/4 | A7 | 3. D7 x |'])('rejects %s', input => {
+    expect(() => createCustomChart(input, '', 'C')).toThrow();
+  });
+});
+
+describe('chart notation errors', () => {
+  it.each([
+    ['A7 wrong', 'Line 1, bar 2'], ['| A7 | wrong |', 'Line 1, bar 2'], ['A7 | wrong', 'Line 1, bar 2'], ['| wrong', 'Line 1, bar 1'], ['\n[A]\n| A7 | D7 | wrong', 'Line 3, bar 3'],
+  ])('names the bar of %s', (input, where) => {
+    expect(() => createCustomChart(input, '', 'C')).toThrow(where);
   });
 });

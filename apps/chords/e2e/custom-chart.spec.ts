@@ -6,7 +6,7 @@ import { openLibrary } from './helpers';
 // A chord list is typed into the chart editor under its own notation.
 async function openListEditor(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Add chart', exact: true }).click();
-  await page.getByRole('radio', { name: 'Chord list' }).check();
+  await page.getByRole('radio', { name: 'Chord chart' }).check();
   return page.getByRole('dialog', { name: 'Add chart', exact: true });
 }
 
@@ -150,4 +150,43 @@ test('uses iReal rewrites in previews and reloads legacy custom charts without l
   await page.getByRole('button', { name: 'Chord practice settings' }).click();
   await page.getByRole('button', { name: 'Edit current chart', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Edit chart', exact: true }).getByLabel('Chord progression')).toHaveValue(input);
+});
+
+test('writes a lead sheet with repeats, endings, sections and notes, and exports it for iReal Pro', async ({ page }, info) => {
+  await page.goto('/');
+  await openLibrary(page);
+  const editor = await openListEditor(page);
+  const chart = `title: Example Blues
+key: C
+
+[A] 4/4
+|: C7 | F7 | C7 % | C7 |
+| F7 | F7 | C7 | C7 |
+| G7 | F7 | 1. C7 | G7 :|
+| 2. C7 <Fine> | G7 |]
+
+[B]
+| Dm7 (Db7) G7 | C^7 | %% | | NC | coda Em7 A7 |`;
+  await editor.getByLabel('Chord progression').fill(chart);
+  await expect(editor.getByRole('alert')).toHaveCount(0);
+  await expect(editor.getByLabel('Chart preview')).toContainText('Example Blues · Key C · 21 chords');
+  const preview = editor.locator('.ireal-row');
+  await expect(preview).toHaveCount(5);
+  await expect(preview.nth(0).locator('.section')).toHaveText('A');
+  await expect(preview.nth(0).locator('.meter')).toHaveText('44');
+  await expect(preview.nth(2).locator('.ending')).toHaveCount(1);
+  await expect(preview.nth(3)).toContainText('Fine');
+  await page.screenshot({ path: info.outputPath('lead-sheet-preview.png') });
+  await editor.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.locator('.song-title')).toHaveText('Example Blues');
+  await expect(page.getByLabel('Song key', { exact: true })).toHaveValue('C');
+  // % and %% are played: the card's count includes the repeated bars.
+  await expect(page.locator('.progress')).toContainText('/ 25');
+  await page.getByRole('button', { name: 'By section', exact: true }).click();
+  await expect(page.locator('.chord-list li .section').first()).toHaveText('Section A');
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await page.getByRole('button', { name: 'Export current chart', exact: true }).click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: /^Export song for iReal Pro/ }).click();
+  expect((await download).suggestedFilename()).toBe('Example Blues.html');
 });

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { irealScore } from "./score.js";
-export { IREAL_HEADER_LABELS, IREAL_PLAYBACK_LABELS } from "./score.js";
+export { IREAL_HEADER_LABELS, IREAL_PLAYBACK_LABELS, irealScore } from "./score.js";
 
 // Marks the music field of a song entry.
 export const IREAL_MUSIC_PREFIX = "1r34LbKcu7";

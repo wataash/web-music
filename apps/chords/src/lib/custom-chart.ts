@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 import type { ImportedSong } from './chord-import';
-import type { ScoreToken } from './chord-metadata';
+import { irealScore } from '@web-music/ireal';
 import { formatNote, parseChordSymbol, parseNote, qualityIntervals, SUPPORTED_CHORD_QUALITIES } from './chords';
 
 const PREFIX_FAMILIES = [
@@ -104,40 +104,139 @@ export function refreshCustomChart(song: ImportedSong): ImportedSong {
   catch { return song; }
 }
 
+// A chart typed by hand, in a notation that compiles to iReal's: the bars,
+// repeats, endings, sections, time signatures and comments are written the
+// way a lead sheet shows them, and the result is an iReal music string, so
+// the chart is laid out, practised and exported like an imported one.
+//
+//   title: Example Blues        ← optional header lines: title, key, artist,
+//   key: C                        style, tempo
+//   [A] 4/4                     ← section; time signature
+//   |: C7 | F7 | C7 % | C7 |    ← |: :| repeat, % previous bar, %% previous two
+//   | G7 | F7 | 1. C7 | G7 :|   ← 1. 2. endings
+//   | 2. C7 <Fine> | G7 |]      ← <comment>, |] final bar
+//   | Dm7 (Db7) G7 | NC |       ← (alternate chord), NC
+//
+// A line without barlines puts each chord in its own bar; either way each
+// line is one row of the chart, its 16 cells shared out among its bars.
+const HEADERS: Readonly<Record<string, 'title' | 'artist' | 'key' | 'style' | 'tempo'>> = {
+  title: 'title', artist: 'artist', composer: 'artist', key: 'key', style: 'style', tempo: 'tempo', bpm: 'tempo',
+};
+const BARS: Readonly<Record<string, string>> = { '|]': 'Z', '|:': '{', ':|': '}', '||': '[', '|': '|' };
+const WORDS: Readonly<Record<string, string>> = {
+  '%': 'x', '%%': 'r', '/': 'p', segno: 'S', coda: 'Q', fermata: 'f', fine: '<Fine>', 'd.s.': '<D.S.>', 'd.c.': '<D.C.>',
+};
+type ChartToken = { kind: 'bar' | 'cell' | 'mark'; raw: string; chord?: string; alternate?: string };
+const TOKEN = /\|\]|\|:|:\||\|\||\||\[[^\]]+\]|<[^>]*>|\([^()\s]+\)|\d{1,2}\/\d{1,2}|\d\.|%%|[^\s(]\S*/g;
+
+function chartToken(text: string): ChartToken {
+  const word = WORDS[text.toLowerCase()];
+  if (BARS[text]) return { kind: 'bar', raw: BARS[text] };
+  if (word) return 'xrp'.includes(word) ? { kind: 'cell', raw: word } : { kind: 'mark', raw: word };
+  if (/^(n|nc|n\.c\.)$/i.test(text)) return { kind: 'cell', raw: 'n', chord: 'N.C.' };
+  if (text.startsWith('<')) return { kind: 'mark', raw: text };
+  // iReal names a section by one letter, i for an intro; the text keeps the word.
+  if (text.startsWith('[')) return { kind: 'mark', raw: '*' + (/^\[i/i.test(text) ? 'i' : text[1].toUpperCase()) };
+  const time = /^(\d{1,2})\/(\d{1,2})$/.exec(text);
+  if (time) return { kind: 'mark', raw: 'T' + (time[1] === '12' && time[2] === '8' ? '12' : time[1] + time[2]) };
+  if (/^\d\.$/.test(text)) return { kind: 'mark', raw: 'N' + text[0] };
+  if (text.startsWith('(')) return { kind: 'mark', raw: '', alternate: normalizeInputChord(text.slice(1, -1)) };
+  return { kind: 'cell', raw: '', chord: normalizeInputChord(text) };
+}
+
 export function createCustomChart(text: string, title: string, key: string, id = 'custom-' + crypto.randomUUID()): ImportedSong {
-  parseNote(key);
-  title = title.trim() || 'Untitled';
+  const header: Partial<Record<'title' | 'artist' | 'key' | 'style' | 'tempo', string>> = {};
   const chords: string[] = [];
-  const blocks: ScoreToken[][] = [];
+  const positions: { start: number; end: number; chordIndex: number }[] = [];
+  const annotations: ImportedSong['metadata']['annotations'] = [];
+  let raw = '';
+  let chordInMeasure: number | undefined;
+  // iReal writes the time signature after the bar that opens the row.
+  let pendingTime = '';
+  const emit = (token: ChartToken) => {
+    if (token.kind === 'mark' && token.raw.startsWith('T')) { pendingTime = token.raw; return; }
+    if (token.kind !== 'bar') { raw += pendingTime; pendingTime = ''; }
+    if (token.chord !== undefined) {
+      const spelled = token.raw || token.chord;
+      positions.push({ start: raw.length, end: raw.length + spelled.length, chordIndex: chords.length });
+      chordInMeasure = chords.length;
+      chords.push(token.chord);
+      raw += spelled;
+    } else if (token.alternate !== undefined) {
+      positions.push({ start: raw.length + 1, end: raw.length + 1 + token.alternate.length, chordIndex: chords.length });
+      chords.push(token.alternate);
+      raw += `(${token.alternate})`;
+    } else {
+      if (token.kind === 'bar') chordInMeasure = undefined;
+      else if (token.raw.startsWith('*')) annotations.push({ chordIndex: chords.length, section: token.raw.slice(1), comments: [] });
+      else if (token.raw.startsWith('<')) annotations.push({ chordIndex: chordInMeasure ?? chords.length, comments: [token.raw.slice(1, -1)] });
+      raw += token.raw + pendingTime;
+      pendingTime = '';
+    }
+  };
+  let inHeader = true;
   for (const [lineIndex, source] of text.split(/\r?\n/).entries()) {
     const line = source.trim();
-    if (!line) continue;
-    const measures = line.includes('|') ? line.replace(/^\|/, '').replace(/\|$/, '').split('|').map(bar => bar.trim().split(/\s+/)) : line.split(/\s+/).map(chord => [chord]);
-    const count = measures.reduce((sum, bar) => sum + bar.length, 0);
-    if (count > 16) throw new Error(`Line ${lineIndex + 1}: use at most 16 chords per line; add a line break.`);
-    let column = 0;
-    const row: ScoreToken[] = [{ kind: 'bar', raw: '[', text: '║', label: 'Opening double barline' }];
-    // Allocate all 16 cells to this input line, keeping each measure at least
-    // wide enough for its chords. Input line breaks then survive every view.
-    const spare = 16 - count;
-    for (const [barIndex, bar] of measures.entries()) {
-      const width = bar.length + Math.floor((barIndex + 1) * spare / measures.length) - Math.floor(barIndex * spare / measures.length);
-      const start = column;
-      for (const [offset, input] of bar.entries()) {
-        let symbol: string;
-        try { symbol = normalizeInputChord(input); }
-        catch { throw new Error(`Line ${lineIndex + 1}, bar ${barIndex + 1}: unrecognized chord “${input}”.`); }
-        row.push({ kind: 'chord', raw: symbol, chordIndex: chords.length });
-        chords.push(symbol);
-        column++;
-        const end = start + Math.floor((offset + 1) * width / bar.length);
-        while (column < end) { row.push({ kind: 'space', raw: ' ', text: ' ' }); column++; }
+    const directive = /^([a-z]+)\s*:\s*(.*)$/i.exec(line);
+    if (inHeader && directive && HEADERS[directive[1].toLowerCase()]) { header[HEADERS[directive[1].toLowerCase()]] = directive[2].trim(); continue; }
+    if (!line) { if (!inHeader) raw += 'Y'; continue; }
+    inHeader = false;
+    const words = [...line.matchAll(TOKEN)].map(([word]) => word);
+    const barred = words.some(word => BARS[word]);
+    const tokens: ChartToken[] = [];
+    for (const word of words) {
+      try { tokens.push(chartToken(word)); }
+      catch {
+        const bar = 1 + tokens.filter(token => token.kind === (barred ? 'bar' : 'cell')).length - (barred && tokens[0]?.kind === 'bar' ? 1 : 0);
+        throw new Error(`Line ${lineIndex + 1}, bar ${bar}: unrecognized chord “${word}”.`);
       }
-      row.push({ kind: 'bar', raw: '|', text: '│', label: 'Barline' });
     }
-    blocks.push(row);
+    if (!tokens.some(token => token.kind === 'bar')) {
+      // Each chord in a bar of its own, as a list of bars.
+      if (tokens.some(token => token.kind === 'cell')) tokens.unshift({ kind: 'bar', raw: '[' });
+      for (let i = tokens.length - 1; i > 0; i--) if (tokens[i].kind === 'cell') tokens.splice(i + 1, 0, { kind: 'bar', raw: '|' });
+    } else {
+      const first = tokens.findIndex(token => token.kind === 'bar');
+      const last = tokens.findLastIndex(token => token.kind === 'bar');
+      if (tokens.slice(0, first).some(token => token.kind === 'cell')) tokens.unshift({ kind: 'bar', raw: '|' });
+      if (tokens.slice(last + 1).some(token => token.kind === 'cell')) tokens.push({ kind: 'bar', raw: '|' });
+    }
+    // A row's leading barline is the bar that closed the row before it.
+    if (tokens[0]?.raw === '|' && /[|\]{}Z]$/.test(raw)) tokens.shift();
+    // Every row is 16 cells wide: the spare cells go to the bars in turn, and
+    // within a bar to its chords, so what is typed as one line stays one row.
+    // A two-bar repeat sign spans the bar after it, which is left empty and
+    // takes a cell of its own.
+    const measures: { tokens: ChartToken[]; width: number }[] = [{ tokens: [], width: 0 }];
+    for (const token of tokens) { measures.at(-1)!.tokens.push(token); if (token.kind === 'bar') measures.push({ tokens: [], width: 0 }); }
+    for (const [index, measure] of measures.entries()) {
+      measure.width = measure.tokens.filter(token => token.kind === 'cell').length;
+      const before = measures[index - 1];
+      if (measure.width || !before || index === measures.length - 1 || before.tokens.at(-1)!.raw !== '|' || measure.tokens.at(-1)!.raw !== '|') continue;
+      if (before.tokens.some(token => token.raw === 'r')) measure.width = 1;
+      else throw new Error(`Line ${lineIndex + 1}: an empty bar between barlines.`);
+    }
+    const total = measures.reduce((sum, measure) => sum + measure.width, 0);
+    if (total > 16) throw new Error(`Line ${lineIndex + 1}: use at most 16 chords per line; add a line break.`);
+    const filled = measures.filter(measure => measure.width);
+    for (const measure of measures) {
+      const index = filled.indexOf(measure);
+      const span = measure.width && measure.width + Math.floor((index + 1) * (16 - total) / filled.length) - Math.floor(index * (16 - total) / filled.length);
+      let cell = 0;
+      if (measure.width && !measure.tokens.some(token => token.kind === 'cell')) raw += ' '.repeat(span);
+      for (const token of measure.tokens) {
+        emit(token);
+        if (token.kind !== 'cell') continue;
+        cell++;
+        raw += ' '.repeat(Math.floor(cell * span / measure.width) - Math.floor((cell - 1) * span / measure.width) - 1);
+      }
+    }
   }
   if (!chords.length) throw new Error('Enter at least one chord.');
-  return { id, title, artist: '', originalKey: key, chords, playlist: 'My charts', customText: text,
-    metadata: { comments: [], annotations: [], score: { format: 'ireal', fields: [{ label: 'Title', value: title }, { label: 'Original key', value: key }], blocks } } };
+  title = (header.title ?? title).trim() || 'Untitled';
+  const written = (header.key ?? key).replaceAll('♭', 'b').replaceAll('♯', '#').replace(/m$/, '-');
+  const originalKey = formatNote(parseNote(written.replace(/-$/, '')));
+  const fields = [title, header.artist ?? '', '', header.style ?? '', written, '', raw, '', header.tempo ?? '', ''];
+  return { id, title, artist: header.artist ?? '', originalKey, chords, playlist: 'My charts', customText: text,
+    metadata: { comments: [], annotations, score: irealScore(raw, positions, fields, 6) } };
 }

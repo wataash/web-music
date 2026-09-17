@@ -15,3 +15,7 @@ export const IREAL_MUSIC_PREFIX: string;
 export function scramble(encoded: string): string;
 export function extractIreal(text: string): IrealSong;
 export function extractIrealPlaylist(text: string): { name: string; songs: IrealSong[]; errors: { title: string; message: string }[] };
+// The score of a music string whose chords are already located: `positions`
+// give each chord's span in `raw` and its index, and `fields` are the song
+// entry's fields with the music at `musicIndex`.
+export function irealScore(raw: string, positions: readonly { start: number; end: number; chordIndex: number }[], fields: readonly string[], musicIndex: number): IrealSong["score"];
