@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { DEFAULT_TUNING } from "./tuning";
-import type { ChordDescription } from "./chords";
+import type { ChordDescription, ChordTone } from "./chords";
 
 export const DEFAULT_FRET_COUNT = 24;
 export const MAX_FRET_COUNT = 24;
@@ -16,7 +16,7 @@ export type FretboardMarker = Readonly<{
   string: number;
   fret: number;
   label: string;
-  role: "root" | "tone" | "bass";
+  role: "root" | "tone" | "bass" | "scale";
 }>;
 
 export function clampFretCount(value: unknown): number {
@@ -31,6 +31,8 @@ export function fretboardMarkers(
   fretCount = DEFAULT_FRET_COUNT,
   bassStrings: readonly number[] = DEFAULT_BASS_STRINGS,
   tuning: readonly number[] = DEFAULT_TUNING,
+  // Scale notes beyond the chord's own, drawn lighter.
+  extra: readonly ChordTone[] = [],
 ): readonly FretboardMarker[] {
   const visibleFretCount = clampFretCount(fretCount);
   const labels = new Map<
@@ -42,6 +44,9 @@ export function fretboardMarkers(
       label: tone.interval,
       role: tone.interval === "R" ? "root" : "tone",
     });
+  }
+  for (const tone of extra) {
+    if (!labels.has(tone.pitchClass)) labels.set(tone.pitchClass, { label: tone.interval, role: "scale" });
   }
   return tuning.flatMap((openPitch, stringIndex) =>
     Array.from({ length: visibleFretCount + 1 }, (_, fret) => {

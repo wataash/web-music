@@ -33,6 +33,8 @@ SPDX-License-Identifier: Apache-2.0
     heading = (symbol: string) => headingChord(symbol, minorNotation()),
     subheading = () => undefined,
     sublabels,
+    scaleFor = () => "",
+    onscale = () => {},
     onplay,
     onplayfret,
   }: {
@@ -51,6 +53,9 @@ SPDX-License-Identifier: Apache-2.0
     heading?: (symbol: string) => string;
     subheading?: (symbol: string) => string | undefined;
     sublabels?: string[];
+    // The scale laid over a chord, read and changed from its card.
+    scaleFor?: (chord: AnnotatedChord) => string;
+    onscale?: (chord: AnnotatedChord, id: string) => void;
     onplay: (chord: ChordDescription) => void;
     onplayfret: (string: number, fret: number) => void;
   } = $props();
@@ -130,13 +135,13 @@ SPDX-License-Identifier: Apache-2.0
           </div>
           <div data-list-board={index} class="list-board" class:loaded={loaded.has(index)} style:aspect-ratio={loaded.has(index) ? undefined : `${CHORD_BOARD_NUT_X + fretCount * CHORD_BOARD_FRET_WIDTH} / ${chordBoardHeight(tuning.length)}`}>
             {#if loaded.has(index)}
-              <ChordFretboard {tuning} {chord} {fretCount} {bassStrings} bind:scale={boardScale} onplay={onplayfret} />
+              <ChordFretboard {tuning} {chord} {fretCount} {bassStrings} bind:scale={boardScale} bind:chordScale={() => scaleFor(chord), (id) => onscale(chord, id)} onplay={onplayfret} />
             {/if}
           </div>
           {#if chord.noChord}
             <p>No chord tones</p>
           {:else}
-            <div class="chord-tones"><ChordTones {chord} /></div>
+            <div class="chord-tones"><ChordTones {chord} scaleId={scaleFor(chord)} /></div>
           {/if}
         </li>
       {/each}

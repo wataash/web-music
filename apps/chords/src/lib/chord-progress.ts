@@ -6,6 +6,7 @@ import { DEFAULT_TUNING, normalizeTuning, matchingPreset } from "./tuning";
 import { CHORD_SONGS, type ChordSong } from "./chord-songs";
 import { PRACTICE_KEYS } from "./chords";
 import { clampFretCount, DEFAULT_BASS_STRINGS, DEFAULT_FRET_COUNT } from "./chord-fretboard";
+import { chordScale } from "./chord-scales";
 
 export type ChordView = { open?: boolean; x?: number; y?: number };
 // How a chord is called: by its name, by its degree in the key, or both.
@@ -17,7 +18,9 @@ export function defaultChordProgress() {
   return { minorNotation: '-' as '-' | 'm', highlightAnnotations: false, chordNames: 'names' as ChordNaming, chartZoom: 1, sequenceVersion: 1, songId: CHORD_SONGS[0].id, positions: {} as Record<string, number>,
     listMode: false, uniqueBySection: false,
     tuning: [...DEFAULT_TUNING], tuningPreset: 'guitar-6', bassStrings: [...DEFAULT_BASS_STRINGS], fretCount: DEFAULT_FRET_COUNT,
-    keys: {} as Record<string, string>, views: {} as Record<string, ChordView> };
+    keys: {} as Record<string, string>, views: {} as Record<string, ChordView>,
+    // The scale laid over a chord, by "<song id>:<chord as the chart writes it>".
+    scales: {} as Record<string, string> };
 }
 
 export function loadChordProgress(songs: readonly ChordSong[] = CHORD_SONGS): ReturnType<typeof defaultChordProgress> {
@@ -52,6 +55,9 @@ export function loadChordProgress(songs: readonly ChordSong[] = CHORD_SONGS): Re
         if (typeof value === "number" && Number.isFinite(value) && value >= 0) valid[axis] = value;
       }
       progress.views[key] = valid;
+    }
+    for (const [key, id] of Object.entries(stored.scales ?? {})) {
+      if (chordScale(id as string)) progress.scales[key] = id as string;
     }
     for (const key of ["listMode", "uniqueBySection"] as const) {
       if (typeof stored[key] === "boolean") progress[key] = stored[key];

@@ -17,6 +17,7 @@ SPDX-License-Identifier: Apache-2.0
   } from "../lib/chord-fretboard";
   import { SCREEN_WIDTH, type CardScale } from "@web-music/practice-ui/card-scale";
   import { omittedChordIntervals, type ChordDescription } from "../lib/chords";
+  import { CHORD_SCALES, chordScale, outsideScale, scaleFormula, scaleTones, suggestedScales } from "../lib/chord-scales";
 
   let {
     chord,
@@ -24,6 +25,8 @@ SPDX-License-Identifier: Apache-2.0
     bassStrings = DEFAULT_BASS_STRINGS,
     tuning = DEFAULT_TUNING,
     scale = $bindable<CardScale>(1),
+    // The scale laid over the chord, by id; none by default.
+    chordScale: chordScaleId = $bindable(""),
     interactive = true,
     onplay,
   }: {
@@ -32,6 +35,7 @@ SPDX-License-Identifier: Apache-2.0
     bassStrings?: readonly number[];
     tuning?: readonly number[];
     scale?: CardScale;
+    chordScale?: string;
     interactive?: boolean;
     onplay?: (string: number, fret: number) => void;
   } = $props();
@@ -59,9 +63,19 @@ SPDX-License-Identifier: Apache-2.0
       (fret) => fret <= visibleFretCount,
     ),
   );
-  const markers = $derived(fretboardMarkers(chord, visibleFretCount, bassStrings, tuning));
+  const suggested = $derived(suggestedScales(chord));
+  const otherScales = $derived(CHORD_SCALES.filter(candidate => !suggested.includes(candidate)));
+  const overlay = $derived(chordScale(chordScaleId));
+  const extraTones = $derived(overlay ? scaleTones(chord, overlay) : []);
+  // With a scale on, the board shows the scale: chord tones outside it go.
+  const shown = $derived.by(() => {
+    if (!overlay) return chord;
+    const outside = outsideScale(chord, overlay);
+    return { ...chord, tones: chord.tones.filter(tone => !outside.has(tone.interval)) };
+  });
+  const markers = $derived(fretboardMarkers(shown, visibleFretCount, bassStrings, tuning, extraTones));
   const markerDescription = $derived(
-    chord.tones.map(({ interval, note }) => `${interval} ${note}`).join(", "),
+    [...shown.tones, ...extraTones].map(({ interval, note }) => `${interval} ${note}`).join(", "),
   );
 
   function fretCenter(fret: number): number {
@@ -106,6 +120,15 @@ SPDX-License-Identifier: Apache-2.0
   <button aria-pressed={scale === SCREEN_WIDTH} disabled={!interactive} onclick={() => scale = SCREEN_WIDTH}>Fit</button>
   <button aria-pressed={scale !== SCREEN_WIDTH} disabled={!interactive} onclick={() => scale = 1}>Zoom</button>
   {#if scale !== SCREEN_WIDTH && viewportWidth < boardRight * scale}<span>Scroll horizontally ↔</span>{/if}
+  {#if !chord.noChord && !chord.unsupported}
+    <label class="scale-picker">Scale
+      <select aria-label="Scale" bind:value={chordScaleId} disabled={!interactive}>
+        <option value="">None</option>
+        {#if suggested.length}<optgroup label={`Suggested for ${chord.symbol}`}>{#each suggested as candidate}<option value={candidate.id}>{candidate.name} · {scaleFormula(candidate)}</option>{/each}</optgroup>{/if}
+        <optgroup label="All scales">{#each otherScales as candidate}<option value={candidate.id}>{candidate.name} · {scaleFormula(candidate)}</option>{/each}</optgroup>
+      </select>
+    </label>
+  {/if}
 </div>
 <div class="board-frame">
   <div class="open-strings" aria-label="Open string pitches" style:height={renderedHeight + 'px'}>
@@ -186,6 +209,7 @@ SPDX-License-Identifier: Apache-2.0
         class:root={marker.role === "root"}
         class:tone={marker.role === "tone"}
         class:bass={marker.role === "bass"}
+        class:scale={marker.role === "scale"}
         class:omitted={omitted.has(marker.label)}
         data-marker
         data-interval={marker.label}
@@ -195,7 +219,7 @@ SPDX-License-Identifier: Apache-2.0
         <circle
           cx={fretCenter(marker.fret)}
           cy={stringY(marker.string)}
-          r="15"
+          r={marker.role === "scale" ? 12 : 15}
         />
         <text x={fretCenter(marker.fret)} y={stringY(marker.string)}>
           {marker.label}
@@ -242,6 +266,8 @@ SPDX-License-Identifier: Apache-2.0
   .board-tools button { padding: 5px 10px; min-height: 32px; border: 0; border-radius: 6px; color: var(--on-surface-muted); background: transparent; font: inherit; cursor: pointer; }
   .board-tools button[aria-pressed="true"] { color: var(--text-accent); background: color-mix(in srgb, var(--text-accent) 8%, transparent); }
   .board-tools span { margin-left: 8px; color: var(--on-surface-muted); }
+  .scale-picker { display: flex; align-items: center; gap: 6px; margin-left: auto; color: var(--on-surface-muted); }
+  .scale-picker select { max-width: 200px; padding: 5px 6px; border: 1px solid var(--divider); border-radius: 6px; background: var(--surface); color: var(--on-surface); font: inherit; }
   .board-frame {
     display: flex;
     overflow: hidden;
@@ -316,5 +342,16 @@ SPDX-License-Identifier: Apache-2.0
   .bass circle {
     fill: #fca5a5;
     stroke: #991b1b;
+  }
+
+  /* Scale notes sit behind the chord tones: hollow, smaller, lighter. */
+  .scale circle {
+    fill: #1f2937;
+    stroke: #9ca3af;
+  }
+
+  .scale text {
+    fill: #d1d5db;
+    font-weight: 600;
   }
 </style>

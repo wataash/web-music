@@ -209,6 +209,17 @@ export function describeChord(
   return { symbol: transposedSymbol, tones, bass, noChord: false };
 }
 
+// The notes named by interval labels above a chord's root, spelled from it
+// the way its own tones are: what a scale played over the chord lands on.
+export function tonesAbove(symbol: string, labels: readonly string[]): readonly ChordTone[] {
+  const root = parseChordSymbol(symbol, true)?.root;
+  if (!root) return [];
+  return labels.map(label => {
+    const note = noteAtInterval(root, label === "R" ? { label, semitones: 0, letterSteps: 0 } : degreeInterval(label));
+    return { interval: label, note: formatNote(note), pitchClass: notePitchClass(note) };
+  });
+}
+
 // Count distinct pitches, not the repeated positions across the fretboard.
 export function omittedChordIntervals(chord: ChordDescription): ReadonlySet<string> {
   if (chord.unsupported) return new Set();

@@ -6,7 +6,7 @@ import type { ChordDescription } from "./chords";
 import type { IrealSong } from "@web-music/ireal";
 
 export type ChordAnnotation = Readonly<{ section?: string; comments: readonly string[] }>;
-export type AnnotatedChord = ChordDescription & { annotation?: ChordAnnotation; sourceIndices?: number[] };
+export type AnnotatedChord = ChordDescription & { annotation?: ChordAnnotation; sourceIndices?: number[]; sourceSymbol?: string };
 export type SourceScore = IrealSong["score"];
 export type ScoreToken = SourceScore["blocks"][number][number];
 export type SongMetadata = Pick<IrealSong, "comments" | "annotations" | "score">;

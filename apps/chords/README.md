@@ -42,6 +42,10 @@ An independent Svelte app / PWA for practicing guitar and bass chord tones with 
   source occurrences under each chord, with later rows and annotations expandable.
   Full scores and later occurrences render only when opened.
 
+## Scales over a chord
+
+**Scale**, beside Fit and Zoom above each fretboard, lays a scale over the chord: its notes beyond the chord tones appear as smaller hollow markers and as dimmed badges after the chord tones, named as tensions (b9, #11, 13) the way chord tones are, and a chord tone the scale leaves out — the fifth under Altered — leaves the board and dims in the badges. The list opens with the scales usual for that kind of chord — Mixolydian, Altered, Lydian dominant and so on for a dominant seventh — followed by every other scale, each with its degrees. The choice is kept per song and chord as the chart writes it, so it follows the chord through every key and into the List and By section views, survives reloads, and is cleared by “Reset settings and position”.
+
 ## Instruments and tuning
 
 **Instrument and tuning** in the ⋮ settings menu, which names the current instrument, opens a dedicated tuning dialog with guitar (6–9 strings), bass (4–8 strings), Chapman Stick (10/12-string Classic), violin (4/5 strings), viola, cello, double bass, ukulele (high G, low G, baritone), mandolin, mandola, octave mandolin, and tenor banjo (CGDA / Irish GDAE) presets. Custom setups support 2–12 strings. Each string's

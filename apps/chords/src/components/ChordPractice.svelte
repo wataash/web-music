@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
   import ChordMetadata from "./ChordMetadata.svelte";
   import { headingChord } from "../lib/ireal-layout";
   import { chordDegree } from "../lib/chord-degree";
-  import { practiceAnnotation, practiceEntries, chordLyric, sectionStarts, uniqueAnnotatedChords, setImportedMetadata, songScore } from "../lib/chord-metadata";
+  import { type AnnotatedChord, practiceAnnotation, practiceEntries, chordLyric, sectionStarts, uniqueAnnotatedChords, setImportedMetadata, songScore } from "../lib/chord-metadata";
   import { irealLabel } from "../lib/ireal-labels";
   import { prepareChartPrint } from "../lib/chart-print";
   import SongPicker from "./SongPicker.svelte";
@@ -190,12 +190,20 @@ SPDX-License-Identifier: Apache-2.0
   const isFavorite = $derived(favoriteIds.includes(selectedSong.id));
   const settingsId = $derived(`Chord positions: ${selectedSong.id}`);
   let targetKey = $state<string>(untrack(() => savedProgress.keys[songId] ?? selectedSong.originalKey));
+  // The scale over each chord, kept by the chart's own spelling so it
+  // follows the chord through every key.
+  let chordScales = $state<Record<string, string>>(savedProgress.scales);
+  const scaleKey = (chord: AnnotatedChord) => `${songId}:${chord.sourceSymbol ?? chord.symbol}`;
+  const scaleFor = (chord: AnnotatedChord) => chordScales[scaleKey(chord)] ?? "";
+  function setChordScale(chord: AnnotatedChord, id: string) {
+    if (id) chordScales[scaleKey(chord)] = id; else delete chordScales[scaleKey(chord)];
+  }
   $effect(() => {
     if (!libraryReady) return;
     savedProgress.positions[songId] = index;
     savedProgress.keys[songId] = targetKey;
     Object.assign(savedProgress, { songId, listMode, uniqueBySection, minorNotation, highlightAnnotations, chordNames, chartZoom,
-      bassStrings: [...bassStrings], tuning: [...tuning], tuningPreset, fretCount });
+      bassStrings: [...bassStrings], tuning: [...tuning], tuningPreset, fretCount, scales: { ...chordScales } });
     saveChordProgress(savedProgress);
   });
 
@@ -213,6 +221,7 @@ SPDX-License-Identifier: Apache-2.0
     tuning = [...defaults.tuning];
     tuningPreset = defaults.tuningPreset;
     fretCount = defaults.fretCount;
+    chordScales = defaults.scales;
     cardScales = { ...cardScales, board: DEFAULT_CARD_SCALES.board, answer: DEFAULT_CARD_SCALES.answer,
       minimalAppBar: DEFAULT_CARD_SCALES.minimalAppBar };
     saveCardScales(cardScales);
@@ -236,6 +245,7 @@ SPDX-License-Identifier: Apache-2.0
       ...sourceChords[entry.chordIndex],
       annotation: practiceAnnotation(selectedSong.id, index),
       sourceIndices: [index],
+      sourceSymbol: selectedSong.chords[entry.chordIndex],
     })),
   );
   const sourceSymbols = $derived(sourceChords.map(chord => chord.symbol));
@@ -482,6 +492,8 @@ SPDX-License-Identifier: Apache-2.0
         {fretCount}
         {tuning}
         bind:bassStrings
+        {scaleFor}
+        onscale={setChordScale}
         soundEnabled={cardSettings.sound}
         shortcutsEnabled={!actionsOpen && !libraryOpen && !importOpen && !instrumentOpen}
         onplay={(chord) => sound(chordSemitones(chord))}
@@ -517,6 +529,7 @@ SPDX-License-Identifier: Apache-2.0
         {bassStrings}
         {tuning}
         bind:scale={() => cardScales.board, value => setScale("board", value)}
+        bind:chordScale={() => scaleFor(current), (id) => setChordScale(current, id)}
         onplay={playFret}
       />
 
@@ -524,7 +537,7 @@ SPDX-License-Identifier: Apache-2.0
         {#if current.noChord}
           <p class="no-chord">No chord tones</p>
         {:else}
-          <ChordTones chord={current} />
+          <ChordTones chord={current} scaleId={scaleFor(current)} />
         {/if}
         <p class="next-chord">
           {#if nextChord}
