@@ -83,8 +83,6 @@ SPDX-License-Identifier: Apache-2.0
       (song.title + " " + song.artist).toLocaleLowerCase().includes(searchText);
   }
   let favoriteIds = $state(loadChordFavorites());
-  let favoritesOnly = $state(false);
-  const favoriteSongs = $derived(songs.filter(song => favoriteIds.includes(song.id)));
   const titleCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
   const artistCollator = new Intl.Collator('en', { sensitivity: 'base' });
   // Sorted once per sort key; the filters below keep that order.
@@ -94,26 +92,14 @@ SPDX-License-Identifier: Apache-2.0
     if (songSort === 'import') return (importedById.get(a.id)?.importedAt ?? 0) - (importedById.get(b.id)?.importedAt ?? 0) || titleOrder;
     return titleOrder;
   }));
-  const matchingSongs = $derived(sortedSongs.filter(song => (!favoritesOnly || favoriteIds.includes(song.id)) && matchesLibrary(song)));
+  const matchingSongs = $derived(sortedSongs.filter(matchesLibrary));
 
   function toggleFavorite() {
     const next = isFavorite ? favoriteIds.filter(id => id !== selectedSong.id) : [...favoriteIds, selectedSong.id];
     try {
       saveChordFavorites(next);
       favoriteIds = next;
-      if (favoritesOnly && !next.includes(selectedSong.id)) {
-        const first = songs.find(song => next.includes(song.id) && matchesLibrary(song));
-        if (first) selectSong(first);
-      }
     } catch { libraryError = "Could not save favorites. Check your browser storage settings."; }
-  }
-
-  function toggleFavoritesOnly() {
-    favoritesOnly = !favoritesOnly;
-    if (favoritesOnly && !isFavorite && favoriteSongs.length) {
-      const first = favoriteSongs.find(matchesLibrary);
-      if (first) selectSong(first);
-    }
   }
 
   onMount(() => {
@@ -143,7 +129,6 @@ SPDX-License-Identifier: Apache-2.0
     setLibrary(await loadImportedSongs());
     songSearch = "";
     playlistFilter = "";
-    favoritesOnly = false;
     selectSong(incoming[0]);
   }
 
@@ -152,7 +137,7 @@ SPDX-License-Identifier: Apache-2.0
     try {
       await deleteImportedSong(removedId);
       const available = setLibrary(importedSongs.filter(song => song.id !== removedId));
-      if (songId === removedId) selectSong(available.find(song => !favoritesOnly || favoriteIds.includes(song.id)) ?? CHORD_SONGS[0]);
+      if (songId === removedId) selectSong(available[0] ?? CHORD_SONGS[0]);
     } catch { libraryError = "Could not delete the chart."; }
   }
 
@@ -215,7 +200,6 @@ SPDX-License-Identifier: Apache-2.0
   });
 
   function resetProgress(): void {
-    favoritesOnly = false;
     songSearch = "";
     playlistFilter = "";
     const defaults = defaultChordProgress();
@@ -424,7 +408,7 @@ SPDX-License-Identifier: Apache-2.0
     <div class="library-heading"><h2 id="library-title">Choose song</h2><button aria-label="Close song library" onclick={() => libraryOpen = false}>×</button></div>
     <div class="library-controls">
       <input class="song-search" aria-label="Search songs" placeholder="Search songs" type="search" bind:value={songSearch} />
-      <SongPicker songs={matchingSongs} selected={selectedSong} onselect={(song) => { selectSong(song); libraryOpen = false; }} />
+      <SongPicker songs={matchingSongs} {favoriteIds} selected={selectedSong} onselect={(song) => { selectSong(song); libraryOpen = false; }} />
 
 
     </div>
@@ -441,11 +425,8 @@ SPDX-License-Identifier: Apache-2.0
       </select>
     </div>
     <div class="library-secondary">
-      <button aria-pressed={favoritesOnly} onclick={toggleFavoritesOnly}>Favorites only ({favoriteSongs.length})</button>
-      <span class="song-count">{matchingSongs.length} songs</span>
-      {#if !matchingSongs.length && (!favoritesOnly || favoriteSongs.length)}<span role="status">No matching songs.</span><button onclick={() => { songSearch = ''; playlistFilter = ''; favoritesOnly = false; }}><span class="icon" aria-hidden="true">×</span>Clear filters</button>{/if}
+      {#if !matchingSongs.length}<span role="status">No matching songs.</span><button onclick={() => { songSearch = ''; playlistFilter = ''; }}><span class="icon" aria-hidden="true">×</span>Clear filters</button>{/if}
       <button class="library-action" onclick={() => chartEditor?.startNew()}><span class="icon" aria-hidden="true">＋</span>Add chart</button>
-      {#if favoritesOnly && !favoriteSongs.length}<span role="status">No favorites yet.</span>{/if}
     </div>
     </dialog>
   {/if}
@@ -619,15 +600,12 @@ SPDX-License-Identifier: Apache-2.0
   .library-filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
   .library-sort { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--on-surface-muted); }
   .library-filters select { max-width: 100%; min-width: 0; padding: 6px; border: 1px solid var(--divider); border-radius: 6px; background: var(--surface); color: var(--on-surface); font: inherit; }
-  /* The favorites filter and Add chart are buttons like the view switch; the
-     filter shows its state the same way, and Add chart stands out as the one
-     that leads somewhere. */
+  /* Clear filters and Add chart are buttons like the view switch; Add chart
+     stands out as the one that leads somewhere. */
   .library-secondary button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--divider); border-radius: 6px; background: transparent; color: var(--on-surface-muted); font: inherit; font-size: 14px; cursor: pointer; }
   .library-secondary button:hover { background: color-mix(in srgb, var(--on-surface) 6%, var(--surface)); }
-  .library-secondary button[aria-pressed="true"] { border-color: transparent; color: var(--text-accent); background: color-mix(in srgb, var(--text-accent) 8%, transparent); }
   .library-secondary .library-action { margin-left: auto; color: var(--text-accent); font-weight: 600; }
   .library-secondary .icon { margin-right: 4px; }
-  .song-count { color: var(--on-surface-muted); }
   .favorite { min-height: 40px; padding: 8px 0; border: 0; background: transparent; color: var(--on-surface-muted); font-size: 26px; cursor: pointer; }
   .favorite[aria-pressed="true"] { color: #d79513; }
   .song-meta { margin: 4px 0 0; font-size: 12px; color: var(--on-surface-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -84,12 +84,12 @@ test("combines playlist, style, search and favorites", async ({ page }, info) =>
   await expect(page.getByRole('dialog', { name: 'Choose song', exact: true })).not.toBeVisible();
   await page.getByRole('button', { name: 'Add to favorites', exact: true }).click();
   await openLibrary(page);
-  await page.getByRole('button', { name: /^Favorites only/ }).click();
-  await expect(results).toHaveCount(1);
+  await expect(picker.getByRole('heading', { name: '★ Favorites (1)' })).toBeVisible();
+  await expect(results).toHaveCount(3);
   await page.getByLabel('Search songs').fill('missing');
   await expect(results).toHaveCount(0);
   await expect(page.getByRole('status').filter({ hasText: 'No matching songs' })).toBeVisible();
-  await expect(page.locator('.song-count')).toHaveText('0 songs');
+  await expect(picker.getByRole('heading', { name: 'All songs (0)' })).toBeVisible();
   expect(await page.locator('[data-chord-practice]').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(2);
   await page.screenshot({ path: info.outputPath(`filters-${width}.png`) });
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();

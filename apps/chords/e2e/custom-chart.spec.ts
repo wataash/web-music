@@ -49,7 +49,7 @@ for (const width of [360, 1000]) test(`create, preview, transpose and edit a cus
   await page.getByRole('button', { name: 'List', exact: true }).click();
   await openLibrary(page);
   await page.getByLabel('Search songs').fill('My blues');
-  await expect(page.locator('.song-count')).toHaveText('1 songs');
+  await expect(page.getByRole('heading', { name: 'All songs (1)' })).toBeVisible();
   await page.getByRole('button', { name: 'Close song library' }).click();
   await page.getByRole('button', { name: 'Chord practice settings' }).click();
   await page.getByRole('button', { name: 'Export current chart', exact: true }).click();
