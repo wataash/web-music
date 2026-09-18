@@ -65,7 +65,6 @@ SPDX-License-Identifier: Apache-2.0
   let songSearch = $state("");
   let songSort = $state("title");
   let playlistFilter = $state("");
-  let styleFilter = $state("");
   const importedById = $derived(new Map(importedSongs.map(song => [song.id, song])));
   // Playlists in the filter: the charts written here, then ChordWiki, then
   // iReal playlists by name, with iReal songs that came without one last.
@@ -74,12 +73,13 @@ SPDX-License-Identifier: Apache-2.0
   }
   const playlists = $derived([...new Set(importedSongs.map(song => song.playlist))].sort((a, b) => playlistRank(a) - playlistRank(b) || a.localeCompare(b)));
   const songStyles = $derived(new Map(importedSongs.map(song => [song.id, song.metadata.score.fields.find(field => irealLabel(field.label) === 'Style')?.value ?? ""])));
-  const styles = $derived([...new Set(songStyles.values())].filter(Boolean).sort());
+  // How many songs each playlist holds, shown in its option; the counts
+  // ignore the other filters.
+  const playlistCounts = $derived(new Map(playlists.map(playlist => [playlist, importedSongs.filter(song => song.playlist === playlist).length])));
   const searchText = $derived(songSearch.toLocaleLowerCase());
   function matchesLibrary(song: ChordSong): boolean {
     const imported = importedById.get(song.id);
     return (!playlistFilter || (playlistFilter === 'examples' ? !imported : !!imported && 'playlist:' + imported.playlist === playlistFilter)) &&
-      (!styleFilter || songStyles.get(song.id) === styleFilter) &&
       (song.title + " " + song.artist).toLocaleLowerCase().includes(searchText);
   }
   let favoriteIds = $state(loadChordFavorites());
@@ -142,7 +142,7 @@ SPDX-License-Identifier: Apache-2.0
     await saveImportedSongs(incoming);
     setLibrary(await loadImportedSongs());
     songSearch = "";
-    playlistFilter = ""; styleFilter = "";
+    playlistFilter = "";
     favoritesOnly = false;
     selectSong(incoming[0]);
   }
@@ -217,7 +217,7 @@ SPDX-License-Identifier: Apache-2.0
   function resetProgress(): void {
     favoritesOnly = false;
     songSearch = "";
-    playlistFilter = ""; styleFilter = "";
+    playlistFilter = "";
     const defaults = defaultChordProgress();
     Object.assign(savedProgress, defaults);
     songId = defaults.songId;
@@ -435,20 +435,15 @@ SPDX-License-Identifier: Apache-2.0
       </select>
       </label>
       <select aria-label="Playlist" bind:value={playlistFilter}>
-        <option value="">All playlists</option>
-        {#each playlists as playlist}<option value={'playlist:' + playlist}>{playlist || 'Unlisted imports'}</option>{/each}
-        <option value="examples">Built-in examples</option>
-      </select>
-      <select aria-label="Style" bind:value={styleFilter}>
-        <option value="">All styles</option>
-        {#each styles as style}<option value={style}>{style}</option>{/each}
+        <option value="">All playlists ({songs.length})</option>
+        {#each playlists as playlist}<option value={'playlist:' + playlist}>{playlist || 'Unlisted imports'} ({playlistCounts.get(playlist)})</option>{/each}
+        <option value="examples">Built-in examples ({CHORD_SONGS.length})</option>
       </select>
     </div>
     <div class="library-secondary">
       <button aria-pressed={favoritesOnly} onclick={toggleFavoritesOnly}>Favorites only ({favoriteSongs.length})</button>
       <span class="song-count">{matchingSongs.length} songs</span>
-      {#if songSearch || playlistFilter || styleFilter || favoritesOnly}<button onclick={() => { songSearch = ''; playlistFilter = ''; styleFilter = ''; favoritesOnly = false; }}>Clear filters</button>{/if}
-      {#if !matchingSongs.length && (!favoritesOnly || favoriteSongs.length)}<span role="status">No matching songs.</span>{/if}
+      {#if !matchingSongs.length && (!favoritesOnly || favoriteSongs.length)}<span role="status">No matching songs.</span><button onclick={() => { songSearch = ''; playlistFilter = ''; favoritesOnly = false; }}><span class="icon" aria-hidden="true">×</span>Clear filters</button>{/if}
       <button class="library-action" onclick={() => chartEditor?.startNew()}><span class="icon" aria-hidden="true">＋</span>Add chart</button>
       {#if favoritesOnly && !favoriteSongs.length}<span role="status">No favorites yet.</span>{/if}
     </div>
@@ -621,15 +616,19 @@ SPDX-License-Identifier: Apache-2.0
   .library-controls { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 8px; }
   .library-controls input { box-sizing: border-box; width: 100%; min-width: 0; height: 40px; padding: 8px; border: 1px solid var(--divider); border-radius: 6px; background: var(--surface); color: var(--on-surface); font: inherit; font-size: 14px; }
   .library-secondary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 6px; font-size: 12px; }
-  .library-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
-  .library-sort { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--on-surface-muted); }
+  .library-filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+  .library-sort { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--on-surface-muted); }
   .library-filters select { max-width: 100%; min-width: 0; padding: 6px; border: 1px solid var(--divider); border-radius: 6px; background: var(--surface); color: var(--on-surface); font: inherit; }
-  .library-secondary button, .favorite { border: 0; background: transparent; color: var(--on-surface-muted); cursor: pointer; padding: 8px 0; }
-  .library-secondary button[aria-pressed="true"] { color: var(--text-accent); }
-  .library-secondary .library-action { color: var(--text-accent); }
+  /* The favorites filter and Add chart are buttons like the view switch; the
+     filter shows its state the same way, and Add chart stands out as the one
+     that leads somewhere. */
+  .library-secondary button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--divider); border-radius: 6px; background: transparent; color: var(--on-surface-muted); font: inherit; font-size: 14px; cursor: pointer; }
+  .library-secondary button:hover { background: color-mix(in srgb, var(--on-surface) 6%, var(--surface)); }
+  .library-secondary button[aria-pressed="true"] { border-color: transparent; color: var(--text-accent); background: color-mix(in srgb, var(--text-accent) 8%, transparent); }
+  .library-secondary .library-action { margin-left: auto; color: var(--text-accent); font-weight: 600; }
   .library-secondary .icon { margin-right: 4px; }
   .song-count { color: var(--on-surface-muted); }
-  .favorite { min-height: 40px; font-size: 26px; }
+  .favorite { min-height: 40px; padding: 8px 0; border: 0; background: transparent; color: var(--on-surface-muted); font-size: 26px; cursor: pointer; }
   .favorite[aria-pressed="true"] { color: #d79513; }
   .song-meta { margin: 4px 0 0; font-size: 12px; color: var(--on-surface-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Key, instrument and view in a row; the view switch drops to a row of

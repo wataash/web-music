@@ -77,11 +77,9 @@ test("combines playlist, style, search and favorites", async ({ page }, info) =>
   }
   const picker = page.getByLabel('Song', { exact: true });
   const results = picker.locator('button:not(:disabled)');
-  await page.getByLabel('Playlist', { exact: true }).selectOption({ label: 'Set A' });
+  await page.getByLabel('Playlist', { exact: true }).selectOption('playlist:Set A');
   await expect(results).toHaveCount(2);
   await expect(page.locator('.song-title')).toHaveText('Red Example');
-  await page.getByLabel('Style', { exact: true }).selectOption('Swing');
-  await expect.poll(() => results.evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(['Blue Example · Example']);
   await picker.getByRole('button', { name: 'Blue Example · Example', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Choose song', exact: true })).not.toBeVisible();
   await page.getByRole('button', { name: 'Add to favorites', exact: true }).click();
@@ -96,7 +94,6 @@ test("combines playlist, style, search and favorites", async ({ page }, info) =>
   await page.screenshot({ path: info.outputPath(`filters-${width}.png`) });
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
   await expect(page.getByLabel('Playlist', { exact: true })).toHaveValue('');
-  await expect(page.getByLabel('Style', { exact: true })).toHaveValue('');
   await expect.poll(() => results.evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')))).toEqual(expect.arrayContaining(['Blue Example · Example', 'Quiet Example · Example', 'Red Example · Example']));
 });
 
