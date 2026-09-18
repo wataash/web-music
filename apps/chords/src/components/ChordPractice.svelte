@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
   import {
     clampFretCount,
   } from "../lib/chord-fretboard";
-  import { describeChord, PRACTICE_KEYS } from "../lib/chords";
+  import { describeChord, PRACTICE_KEYS, transposeChordSymbol } from "../lib/chords";
   import {
     deckActionsFromHistoryState,
     historyStateForDeckActions,
@@ -163,7 +163,7 @@ SPDX-License-Identifier: Apache-2.0
   function beforePrint() {
     afterPrint();
     const score = songScore(songId);
-    if (score) clearPrint = prepareChartPrint(score, displaySymbols, selectedSong.title, songMeta, printContext, displaySublabels);
+    if (score) clearPrint = prepareChartPrint(score, displaySymbols, selectedSong.title, songMeta, printContext, displaySublabels, selectedSong.originalKey, targetKey);
   }
   function afterPrint() { clearPrint(); clearPrint = () => {}; }
   onDestroy(afterPrint);
@@ -236,7 +236,11 @@ SPDX-License-Identifier: Apache-2.0
     viewRevision++;
     saveChordProgress(defaults);
   }
-  const sourceChords = $derived(selectedSong.chords.map(chord => describeChord(chord, selectedSong.originalKey, targetKey, /^(ireal|chordwiki)-/.test(selectedSong.id))));
+  const sourceChords = $derived(selectedSong.chords.map((chord, chordIndex) => {
+    const sourceKey = selectedSong.chordKeys?.[chordIndex] ?? selectedSong.originalKey;
+    const chordTargetKey = transposeChordSymbol(sourceKey, selectedSong.originalKey, targetKey);
+    return describeChord(chord, sourceKey, chordTargetKey, /^(ireal|chordwiki)-/.test(selectedSong.id));
+  }));
   const entries = $derived(practiceEntries(selectedSong.id, selectedSong.chords.length));
   // Under the chord's name, the words it is sung on, when the chart has them.
   const lyric = $derived(chordLyric(selectedSong.id, index));
@@ -489,6 +493,8 @@ SPDX-License-Identifier: Apache-2.0
         bind:sourceIndex={() => index, (value) => { index = value; }}
         {uniqueBySection}
         editable={editableChart}
+        originalKey={selectedSong.originalKey}
+        {targetKey}
         {fretCount}
         {tuning}
         bind:bassStrings
@@ -503,9 +509,9 @@ SPDX-License-Identifier: Apache-2.0
   {:else}
   <main class="card-area">
     <div class="practice-content" use:remember={viewKey("practice-scroll")}>
-      <SongSource {songId} symbols={displaySymbols} sublabels={displaySublabels} bind:open={fullChartOpen} onselect={selectScore} selected={[index]} editable={editableChart} />
+      <SongSource {songId} symbols={displaySymbols} sublabels={displaySublabels} bind:open={fullChartOpen} onselect={selectScore} selected={[index]} editable={editableChart} originalKey={selectedSong.originalKey} {targetKey} />
       <ChordMetadata annotation={current.annotation} />
-      {#if !fullChartOpen}<ChordSource {songId} onselect={selectScore} indices={[index]} symbols={displaySymbols} sublabels={displaySublabels} />{/if}
+      {#if !fullChartOpen}<ChordSource {songId} onselect={selectScore} indices={[index]} symbols={displaySymbols} sublabels={displaySublabels} originalKey={selectedSong.originalKey} {targetKey} />{/if}
       <div class="question-heading">
         <h2>{heading(current.symbol)}{#if subheading(current.symbol)}<span class="chord-name">{subheading(current.symbol)}</span>{/if}</h2>
         {#if lyric}<p class="lyric" aria-label="Lyrics">{lyric}</p>{/if}

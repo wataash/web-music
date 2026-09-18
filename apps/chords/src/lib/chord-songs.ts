@@ -7,6 +7,9 @@ export type ChordSong = Readonly<{
   artist: string;
   originalKey: string;
   chords: readonly string[];
+  // A custom chart can change key partway through. Each entry names the
+  // written key of the chord at the same index; absent means originalKey.
+  chordKeys?: readonly string[];
 }>;
 
 // Short practice examples, independent of external song sources.

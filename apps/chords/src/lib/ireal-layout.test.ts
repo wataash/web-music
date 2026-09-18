@@ -79,6 +79,16 @@ it('leaves leading blank cells empty and decodes annotation spacing without muta
   expect(JSON.stringify(blocks)).toBe(before);
 });
 
+it('starts a new row for a key change after a full row', () => {
+  const blocks = score('[C7   |F7   |G7   |C7   |<C>*B[D-7  |G7   |C^7  |A-7  |');
+  blocks.flat().find(token => token.kind === 'comment')!.name = 'key-change';
+  const rows = layoutIreal(blocks);
+  expect(rows).toHaveLength(2);
+  expect(rows[0].items.some(item => item.token.name === 'key-change')).toBe(false);
+  expect(rows[1].items.find(item => item.token.name === 'key-change')?.column).toBe(0);
+  expect(rows[1].items.find(item => item.token.kind === 'section')?.column).toBe(0);
+});
+
 it.skipIf(!process.env.IREAL_PLAYLIST_PATH)('retains every written chord while resolving the local playlist', async () => {
   const { readFileSync } = await import('node:fs');
   const { extractIrealPlaylist } = await import('@web-music/ireal');

@@ -7,6 +7,7 @@ import { describeChord } from './chords';
 import { exportIrealLink } from './chord-export';
 import { extractIrealPlaylist } from '@web-music/ireal';
 import { QUALITY_INTERVALS } from '@web-music/ireal/intervals';
+import { chordLyric, setImportedMetadata } from './chord-metadata';
 
 const blues = 'A7 D7 A7 A7\nD7 D7 A7 A7\nE7 D7 A7 A7';
 describe('custom charts', () => {
@@ -49,6 +50,20 @@ describe('custom charts', () => {
     expect(rows[0].items.filter(item => item.token.kind === 'bar').map(item => item.column)).toEqual([0, 8, 16]);
     expect(song.title).toBe('Untitled');
   });
+  it('draws lyrics and free-form annotations after their chords', () => {
+    const song = createCustomChart('| C {きらきら ひかる} <quietly, with space> | G {お空の 星よ} |', '', 'C');
+    const comments = song.metadata.score.blocks.flat().filter(token => token.kind === 'comment');
+    expect(comments.map(token => ({ text: token.text, name: token.name }))).toEqual([
+      { text: 'きらきら ひかる', name: 'lyrics' },
+      { text: 'quietly, with space', name: undefined },
+      { text: 'お空の 星よ', name: 'lyrics' },
+    ]);
+    expect(song.metadata.annotations).toEqual([{ chordIndex: 0, comments: ['quietly, with space'] }]);
+    expect(resolveIreal(song.metadata.score.blocks).events.map(event => event.comments)).toEqual([['quietly, with space'], []]);
+    setImportedMetadata([song]);
+    expect(chordLyric(song.id, 0)).toBe('きらきら ひかる');
+    expect(chordLyric(song.id, 1)).toBe('お空の 星よ');
+  });
   it('preserves editable source and identity while replacing content', () => {
     const original = createCustomChart(blues, 'Blues', 'A');
     const edited = createCustomChart('Dm7 G7', 'Exercise', 'C', original.id);
@@ -57,7 +72,7 @@ describe('custom charts', () => {
     expect(edited.chords).toEqual(['D-7', 'G7']);
     expect(extractIrealPlaylist(exportIrealLink([edited])).songs[0].chords).toEqual(['Dm7', 'G7']);
   });
-  it.each(['', 'A7 | | D7', 'A7 nonsense', 'Cwat', 'Amaj123', 'Aø13', 'Adimwat', 'A7sus44', 'C '.repeat(17)])('rejects invalid input: %s', input => {
+  it.each(['', 'A7 | | D7', 'A7 nonsense', '{lyrics} A7', '| {lyrics} A7 |', 'Cwat', 'Amaj123', 'Aø13', 'Adimwat', 'A7sus44', 'C '.repeat(17)])('rejects invalid input: %s', input => {
     expect(() => createCustomChart(input, '', 'C')).toThrow();
   });
 });
@@ -115,13 +130,13 @@ key: C
 style: Medium Swing
 tempo: 120
 
-[A] 4/4
+[Aメロ] 4/4
 |: C7 | F7 | C7 % | C7 |
 | F7 | F7 | C7 | C7 |
 | G7 | F7 | 1. C7 | G7 :|
 | 2. C7 <Fine> | G7 |]
 
-[B]
+[Bメロ]
 | Dm7 (Db7) G7 | C^7 | %% | | NC | coda Em7 A7 |`;
   it('compiles bars, repeats, endings, sections, comments and alternates to iReal notation', () => {
     const song = createCustomChart(blues, 'Ignored', 'A', 'custom-blues');
@@ -134,14 +149,14 @@ tempo: 120
     expect(raw).toBe('*A{T44C7  |F7   |C7 x  |C7   |F7   |F7   |C7   |C7   |G7   |F7   |N1C7   |G7   }N2C7       <Fine>|G7       ZY*B|D-7(Db7)G7 |C^7 |r  |  |n |QE-7 A7 |');
     expect(song.chords).toEqual(['C7', 'F7', 'C7', 'C7', 'F7', 'F7', 'C7', 'C7', 'G7', 'F7', 'C7', 'G7', 'C7', 'G7', 'D-7', 'Db7', 'G7', 'C^7', 'N.C.', 'E-7', 'A7']);
     expect(song.metadata.annotations).toEqual([
-      { chordIndex: 0, section: 'A', comments: [] }, { chordIndex: 12, comments: ['Fine'] }, { chordIndex: 14, section: 'B', comments: [] },
+      { chordIndex: 0, section: 'Aメロ', comments: [] }, { chordIndex: 12, comments: ['Fine'] }, { chordIndex: 14, section: 'Bメロ', comments: [] },
     ]);
     const { rows, events } = resolveIreal(song.metadata.score.blocks);
     expect(rows).toHaveLength(5);
     expect(rows[2].endings.map(ending => ending.label)).toEqual(['1']);
     // Practice plays the repeat signs: % repeats C7, %% repeats the two bars before it.
     expect(events.map(event => song.chords[event.chordIndex]).slice(15)).toEqual(['D-7', 'Db7', 'G7', 'C^7', 'D-7', 'G7', 'C^7', 'N.C.', 'E-7', 'A7']);
-    expect(events.filter(event => event.section === 'B')).toHaveLength(10);
+    expect(events.filter(event => event.section === 'Bメロ')).toHaveLength(10);
     // The compiled chart goes out as an iReal link and comes back the same.
     const link = exportIrealLink([song]);
     const imported = extractIrealPlaylist(link).songs[0];
@@ -153,6 +168,36 @@ tempo: 120
     expect(song.originalKey).toBe('F#');
     expect(song.metadata.score.fields).toContainEqual({ label: 'Original key', value: 'F#-' });
     expect(song.metadata.score.blocks.flat().map(token => token.raw).join('')).toBe('*i[F#-7       |B7       |');
+  });
+  it('keeps a section name that has no iReal rehearsal letter', () => {
+    const song = createCustomChart('[サビ]\nC G', '', 'C');
+    const section = song.metadata.score.blocks.flat().find(token => token.kind === 'section');
+    expect(section).toMatchObject({ raw: '*A', text: 'サビ' });
+    expect(song.metadata.annotations).toContainEqual({ chordIndex: 0, section: 'サビ', comments: [] });
+  });
+  it('keeps ASCII arrows in lyrics and transposable key changes', () => {
+    const text = `key: Bb
+[A]
+| C7 {left -> right} | F7 |
+
+key: C
+[B]
+| D-7 G7 | C^7 | A-7 |`;
+    const song = createCustomChart(text, '', 'C');
+    expect(song.originalKey).toBe('Bb');
+    expect(song.chordKeys).toEqual(['Bb', 'Bb', 'C', 'C', 'C', 'C']);
+    expect(song.metadata.score.blocks.flat()).toContainEqual(expect.objectContaining({ kind: 'comment', name: 'lyrics', text: 'left -> right' }));
+    expect(song.metadata.score.blocks.flat()).toContainEqual(expect.objectContaining({ kind: 'comment', name: 'key-change', text: 'C' }));
+    expect(song.metadata.score.blocks.flat().map(token => token.raw).join('')).toContain('<left → right>');
+    expect(resolveIreal(song.metadata.score.blocks).events.every(event => !event.comments.some(comment => comment.startsWith('Key:')))).toBe(true);
+  });
+  it('keeps ASCII arrows in free-form annotations', () => {
+    const song = createCustomChart('| C <repeat D/F# -> G> |', '', 'C');
+    expect(song.metadata.annotations).toEqual([{ chordIndex: 0, comments: ['repeat D/F# -> G'] }]);
+    expect(song.metadata.score.blocks.flat()).toContainEqual(expect.objectContaining({ kind: 'comment', text: 'repeat D/F# -> G' }));
+    const raw = song.metadata.score.blocks.flat().map(token => token.raw).join('');
+    expect(raw).toContain('<repeat D/F# → G>');
+    expect(raw).not.toContain('->');
   });
   it.each(['| A7 | | D7 |', '| A7 | wrong |', '[A] 4/4 | A7 | 3. D7 x |'])('rejects %s', input => {
     expect(() => createCustomChart(input, '', 'C')).toThrow();

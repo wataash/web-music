@@ -30,7 +30,7 @@ export function resolveIreal(blocks: ScoreToken[][]): { rows: IrealRow[]; events
       continue;
     }
     const closingBar = token.kind === 'bar' && !['[', '{'].includes(token.raw);
-    if (column >= 16 && !closingBar && !alternate && token.kind !== 'comment') nextRow();
+    if (column >= 16 && !closingBar && !alternate && (token.kind !== 'comment' || token.name === 'key-change')) nextRow();
     if (token.kind === 'space') { column++; continue; }
     const cell = token.kind === 'chord' || isRepeatToken(token);
     if (token.kind === 'section') section = token.text;
@@ -81,7 +81,7 @@ export function resolveIreal(blocks: ScoreToken[][]): { rows: IrealRow[]; events
     const measure: number[] = [];
     const append = (chordIndex: number, owner: IrealItem) => {
       owner.indices.push(events.length);
-      events.push({ chordIndex, repeated: isRepeat(owner), section: owner.section, comments: cells.filter(({ item }) => item.token.kind === 'comment').map(({ item }) => commentText(item.token.text ?? '')) });
+      events.push({ chordIndex, repeated: isRepeat(owner), section: owner.section, comments: cells.filter(({ item }) => item.token.kind === 'comment' && !['lyrics', 'key-change'].includes(item.token.name ?? '')).map(({ item }) => commentText(item.token.text ?? '')) });
       if (!owner.alternate) measure.push(chordIndex);
     };
     if (continuation) {

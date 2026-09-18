@@ -3,6 +3,7 @@
 import type { ImportedSong } from './chord-import';
 import { irealScore } from '@web-music/ireal';
 import { formatNote, parseChordSymbol, parseNote, qualityIntervals, SUPPORTED_CHORD_QUALITIES } from './chords';
+import { parseCustomChartSource, type ChartHeaderName, type ChartLexeme } from './custom-chart-parser';
 
 const PREFIX_FAMILIES = [
   { pattern: /^(maj|M|△|Δ|\^)/, spellings: ['M', '^', 'maj', '△', 'Δ'] },
@@ -117,81 +118,117 @@ export function refreshCustomChart(song: ImportedSong): ImportedSong {
 //   [A] 4/4                     ← section; time signature
 //   |: C7 | F7 | C7 % | C7 |    ← |: :| repeat, % previous bar, %% previous two
 //   | G7 | F7 | 1. C7 | G7 :|   ← 1. 2. endings
-//   | 2. C7 <Fine> | G7 |]      ← <comment>, |] final bar
+//   | 2. C7 {last time} <Fine> | G7 |] ← {lyrics}, <note>, |] final bar
 //   | Dm7 (Db7) G7 | NC |       ← (alternate chord), NC
 //
 // A line without barlines puts each chord in its own bar; either way each
 // line is one row of the chart, its 16 cells shared out among its bars.
-const HEADERS: Readonly<Record<string, 'title' | 'artist' | 'key' | 'style' | 'tempo'>> = {
-  title: 'title', artist: 'artist', composer: 'artist', key: 'key', style: 'style', tempo: 'tempo', bpm: 'tempo',
-};
 const BARS: Readonly<Record<string, string>> = { '|]': 'Z', '|:': '{', ':|': '}', '||': '[', '|': '|' };
 const WORDS: Readonly<Record<string, string>> = {
   '%': 'x', '%%': 'r', '/': 'p', segno: 'S', coda: 'Q', fermata: 'f', fine: '<Fine>', 'd.s.': '<D.S.>', 'd.c.': '<D.C.>',
 };
-type ChartToken = { kind: 'bar' | 'cell' | 'mark'; raw: string; chord?: string; alternate?: string };
-const TOKEN = /\|\]|\|:|:\||\|\||\||\[[^\]]+\]|<[^>]*>|\([^()\s]+\)|\d{1,2}\/\d{1,2}|\d\.|%%|[^\s(]\S*/g;
+type ChartToken = { kind: 'bar' | 'cell' | 'mark' | 'lyrics'; raw: string; chord?: string; alternate?: string; section?: string; lyric?: string; annotation?: string };
+const irealComment = (text: string) => `<${text.replaceAll('->', '→').replaceAll('>', '＞')}>`;
 
-function chartToken(text: string): ChartToken {
+function chartToken(token: ChartLexeme): ChartToken {
+  const text = token.raw;
   const word = WORDS[text.toLowerCase()];
-  if (BARS[text]) return { kind: 'bar', raw: BARS[text] };
+  if (token.kind === 'bar') return { kind: 'bar', raw: BARS[text] };
   if (word) return 'xrp'.includes(word) ? { kind: 'cell', raw: word } : { kind: 'mark', raw: word };
   if (/^(n|nc|n\.c\.)$/i.test(text)) return { kind: 'cell', raw: 'n', chord: 'N.C.' };
-  if (text.startsWith('<')) return { kind: 'mark', raw: text };
-  // iReal names a section by one letter, i for an intro; the text keeps the word.
-  if (text.startsWith('[')) return { kind: 'mark', raw: '*' + (/^\[i/i.test(text) ? 'i' : text[1].toUpperCase()) };
+  if (token.kind === 'lyrics') {
+    const lyric = token.value;
+    // An ASCII arrow contains iReal's closing comment delimiter. Keep the
+    // exact editor text locally and use a safe glyph in exported iReal data.
+    return { kind: 'lyrics', raw: irealComment(lyric), lyric };
+  }
+  if (token.kind === 'annotation') {
+    const annotation = token.value;
+    return { kind: 'mark', raw: irealComment(annotation), annotation };
+  }
+  // iReal stores a rehearsal mark, while the custom chart keeps and displays
+  // the whole section name (for example Aメロ or サビ).
+  if (token.kind === 'section') {
+    const section = token.value.trim();
+    if (!section) throw new Error('Enter a section name between [ and ].');
+    const marker = /^intro$/i.test(section) ? 'i' : /^[A-Za-z]/.test(section) ? section[0].toUpperCase() : 'A';
+    return { kind: 'mark', raw: '*' + marker, section };
+  }
   const time = /^(\d{1,2})\/(\d{1,2})$/.exec(text);
   if (time) return { kind: 'mark', raw: 'T' + (time[1] === '12' && time[2] === '8' ? '12' : time[1] + time[2]) };
   if (/^\d\.$/.test(text)) return { kind: 'mark', raw: 'N' + text[0] };
-  if (text.startsWith('(')) return { kind: 'mark', raw: '', alternate: normalizeInputChord(text.slice(1, -1)) };
+  if (token.kind === 'alternate') return { kind: 'mark', raw: '', alternate: normalizeInputChord(token.value) };
   return { kind: 'cell', raw: '', chord: normalizeInputChord(text) };
 }
 
 export function createCustomChart(text: string, title: string, key: string, id = 'custom-' + crypto.randomUUID()): ImportedSong {
-  const header: Partial<Record<'title' | 'artist' | 'key' | 'style' | 'tempo', string>> = {};
+  const header: Partial<Record<ChartHeaderName, string>> = {};
   const chords: string[] = [];
+  const chordKeys: string[] = [];
   const positions: { start: number; end: number; chordIndex: number }[] = [];
   const annotations: ImportedSong['metadata']['annotations'] = [];
+  const tokenOverrides = new Map<number, { name?: string; text: string }>();
   let raw = '';
   let chordInMeasure: number | undefined;
+  const normalizedKey = (written: string) => formatNote(parseNote(written.trim().replaceAll('♭', 'b').replaceAll('♯', '#').replace(/[-m]$/, '')));
+  let currentKey = normalizedKey(key);
   // iReal writes the time signature after the bar that opens the row.
   let pendingTime = '';
   const emit = (token: ChartToken) => {
     if (token.kind === 'mark' && token.raw.startsWith('T')) { pendingTime = token.raw; return; }
     if (token.kind !== 'bar') { raw += pendingTime; pendingTime = ''; }
-    if (token.chord !== undefined) {
+    if (token.kind === 'lyrics') {
+      if (chordInMeasure === undefined) throw new Error('Write lyrics after a chord in the same bar.');
+      tokenOverrides.set(raw.length, { name: 'lyrics', text: token.lyric ?? '' });
+      raw += token.raw;
+    } else if (token.chord !== undefined) {
       const spelled = token.raw || token.chord;
       positions.push({ start: raw.length, end: raw.length + spelled.length, chordIndex: chords.length });
       chordInMeasure = chords.length;
       chords.push(token.chord);
+      chordKeys.push(currentKey);
       raw += spelled;
     } else if (token.alternate !== undefined) {
       positions.push({ start: raw.length + 1, end: raw.length + 1 + token.alternate.length, chordIndex: chords.length });
       chords.push(token.alternate);
+      chordKeys.push(currentKey);
       raw += `(${token.alternate})`;
     } else {
       if (token.kind === 'bar') chordInMeasure = undefined;
-      else if (token.raw.startsWith('*')) annotations.push({ chordIndex: chords.length, section: token.raw.slice(1), comments: [] });
-      else if (token.raw.startsWith('<')) annotations.push({ chordIndex: chordInMeasure ?? chords.length, comments: [token.raw.slice(1, -1)] });
+      else if (token.raw.startsWith('*')) {
+        const section = token.section ?? token.raw.slice(1);
+        tokenOverrides.set(raw.length, { text: section });
+        annotations.push({ chordIndex: chords.length, section, comments: [] });
+      }
+      else if (token.raw.startsWith('<')) {
+        const annotation = token.annotation ?? token.raw.slice(1, -1);
+        tokenOverrides.set(raw.length, { text: annotation });
+        annotations.push({ chordIndex: chordInMeasure ?? chords.length, comments: [annotation] });
+      }
       raw += token.raw + pendingTime;
       pendingTime = '';
     }
   };
-  let inHeader = true;
-  for (const [lineIndex, source] of text.split(/\r?\n/).entries()) {
-    const line = source.trim();
-    const directive = /^([a-z]+)\s*:\s*(.*)$/i.exec(line);
-    if (inHeader && directive && HEADERS[directive[1].toLowerCase()]) { header[HEADERS[directive[1].toLowerCase()]] = directive[2].trim(); continue; }
-    if (!line) { if (!inHeader) raw += 'Y'; continue; }
-    inHeader = false;
-    const words = [...line.matchAll(TOKEN)].map(([word]) => word);
-    const barred = words.some(word => BARS[word]);
+  for (const line of parseCustomChartSource(text)) {
+    if (line.kind === 'header') {
+      header[line.name] = line.value;
+      if (line.name === 'key') currentKey = normalizedKey(line.value);
+      continue;
+    }
+    if (line.kind === 'key-change') {
+      currentKey = normalizedKey(line.value);
+      tokenOverrides.set(raw.length, { name: 'key-change', text: currentKey });
+      raw += `<Key: ${currentKey}>`;
+      continue;
+    }
+    if (line.kind === 'blank') { raw += 'Y'; continue; }
+    const barred = line.tokens.some(token => token.kind === 'bar');
     const tokens: ChartToken[] = [];
-    for (const word of words) {
-      try { tokens.push(chartToken(word)); }
+    for (const token of line.tokens) {
+      try { tokens.push(chartToken(token)); }
       catch {
         const bar = 1 + tokens.filter(token => token.kind === (barred ? 'bar' : 'cell')).length - (barred && tokens[0]?.kind === 'bar' ? 1 : 0);
-        throw new Error(`Line ${lineIndex + 1}, bar ${bar}: unrecognized chord “${word}”.`);
+        throw new Error(`Line ${line.line}, bar ${bar}: unrecognized chord “${token.raw}”.`);
       }
     }
     if (!tokens.some(token => token.kind === 'bar')) {
@@ -217,10 +254,10 @@ export function createCustomChart(text: string, title: string, key: string, id =
       const before = measures[index - 1];
       if (measure.width || !before || index === measures.length - 1 || before.tokens.at(-1)!.raw !== '|' || measure.tokens.at(-1)!.raw !== '|') continue;
       if (before.tokens.some(token => token.raw === 'r')) measure.width = 1;
-      else throw new Error(`Line ${lineIndex + 1}: an empty bar between barlines.`);
+      else throw new Error(`Line ${line.line}: an empty bar between barlines.`);
     }
     const total = measures.reduce((sum, measure) => sum + measure.width, 0);
-    if (total > 16) throw new Error(`Line ${lineIndex + 1}: use at most 16 chords per line; add a line break.`);
+    if (total > 16) throw new Error(`Line ${line.line}: use at most 16 chords per line; add a line break.`);
     const filled = measures.filter(measure => measure.width);
     for (const measure of measures) {
       const index = filled.indexOf(measure);
@@ -240,6 +277,12 @@ export function createCustomChart(text: string, title: string, key: string, id =
   const written = (header.key ?? key).replaceAll('♭', 'b').replaceAll('♯', '#').replace(/m$/, '-');
   const originalKey = formatNote(parseNote(written.replace(/-$/, '')));
   const fields = [title, header.artist ?? '', '', header.style ?? '', written, '', raw, '', header.tempo ?? '', ''];
-  return { id, title, artist: header.artist ?? '', originalKey, chords, playlist: CUSTOM_PLAYLIST, customText: text,
-    metadata: { comments: [], annotations, score: irealScore(raw, positions, fields, 6) } };
+  const score = irealScore(raw, positions, fields, 6);
+  let offset = 0;
+  for (const token of score.blocks.flat()) {
+    Object.assign(token, tokenOverrides.get(offset));
+    offset += token.raw.length;
+  }
+  return { id, title, artist: header.artist ?? '', originalKey, chords, chordKeys, playlist: CUSTOM_PLAYLIST, customText: text,
+    metadata: { comments: [], annotations, score } };
 }

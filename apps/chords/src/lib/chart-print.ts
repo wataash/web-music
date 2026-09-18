@@ -6,7 +6,7 @@ import IrealScore from '../components/IrealScore.svelte';
 import type { SourceScore } from './chord-metadata';
 import './chart-print.css';
 
-export function prepareChartPrint(score: SourceScore, symbols: string[], title: string, subtitle: string, context: Map<unknown, unknown>, sublabels?: string[]): () => void {
+export function prepareChartPrint(score: SourceScore, symbols: string[], title: string, subtitle: string, context: Map<unknown, unknown>, sublabels?: string[], originalKey?: string, targetKey?: string): () => void {
   const output = document.createElement('article');
   output.className = 'chart-print';
   const heading = document.createElement('h1');
@@ -15,7 +15,7 @@ export function prepareChartPrint(score: SourceScore, symbols: string[], title: 
   credits.textContent = subtitle;
   output.append(heading, credits);
   document.body.append(output);
-  const chart = mount(score.format === "chordwiki" ? Score : IrealScore, { target: output, context, props: { blocks: score.blocks, format: score.format, symbols, sublabels } });
+  const chart = mount(score.format === "chordwiki" ? Score : IrealScore, { target: output, context, props: { blocks: score.blocks, format: score.format, symbols, sublabels, originalKey, targetKey } });
   flushSync();
   return () => { void unmount(chart); output.remove(); };
 }

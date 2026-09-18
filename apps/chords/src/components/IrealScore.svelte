@@ -7,9 +7,10 @@ SPDX-License-Identifier: Apache-2.0
   import { chordViewPersistence } from "../lib/chord-view";
   const { minorNotation, highlightAnnotations } = chordViewPersistence();
   import { irealLabel } from "../lib/ireal-labels";
+  import { transposeChordSymbol } from "../lib/chords";
   import type { ScoreToken } from '../lib/chord-metadata';
   import { layoutIreal, irealChordParts, commentText, type IrealItem } from '../lib/ireal-layout';
-  let { blocks, symbols, sublabels, selected = [], contextIndex, onselect }: { blocks: ScoreToken[][]; symbols: string[]; sublabels?: string[]; selected?: number[]; contextIndex?: number; onselect?: (index: number) => void } = $props();
+  let { blocks, symbols, sublabels, selected = [], contextIndex, onselect, originalKey, targetKey }: { blocks: ScoreToken[][]; symbols: string[]; sublabels?: string[]; selected?: number[]; contextIndex?: number; onselect?: (index: number) => void; originalKey?: string; targetKey?: string } = $props();
   const allRows = $derived(layoutIreal(blocks));
   const rows = $derived(allRows.filter(row => contextIndex === undefined || row.items.some(item => item.indices.includes(contextIndex))));
   const visibleItems = $derived(rows.flatMap(row => row.items).filter(item => item.indices.length));
@@ -56,11 +57,17 @@ SPDX-License-Identifier: Apache-2.0
     fit();
     return { update(value: number) { span = value; fit(); }, destroy() { observer.disconnect(); } };
   }
+  function displayedComment(token: ScoreToken): string {
+    if (token.name !== "key-change") return commentText(token.text ?? "");
+    const key = token.text ?? "";
+    try { return `Key: ${transposeChordSymbol(key, originalKey ?? key, targetKey ?? originalKey ?? key)}`; }
+    catch { return `Key: ${key}`; }
+  }
 </script>
 
 <div class="ireal-sheet" class:highlight-annotations={highlightAnnotations()} bind:this={sheet}>
   {#each rows as row}
-    <div class="ireal-row" class:compact={row.endings.length === 0 && !row.items.some(item => item.alternate || item.token.kind === "comment")} class:leading-bar={row.leadingBar} class:layered={row.endings.length > 0 && row.items.some(item => item.alternate)} style:--gap={row.gap} style:--note-space={row.items.some(item => item.token.kind === "comment" && !item.token.position) ? "14px" : "0px"}>
+    <div class="ireal-row" class:compact={row.endings.length === 0 && !row.items.some(item => item.alternate || item.token.kind === "comment")} class:leading-bar={row.leadingBar} class:layered={row.endings.length > 0 && row.items.some(item => item.alternate)} class:key-change-row={row.items.some(item => item.token.name === "key-change")} style:--gap={row.gap} style:--note-space={row.items.some(item => item.token.kind === "comment" && !["lyrics", "key-change"].includes(item.token.name ?? "") && !item.token.position) ? "14px" : "0px"} style:--lyric-space={row.items.some(item => item.token.name === "lyrics") ? "18px" : "0px"}>
       {#each row.endings as ending}
         <span class="ending" title={'Ending ' + ending.label} style:left={(ending.start / 16 * 100) + '%'} style:width={((ending.end - ending.start) / 16 * 100) + '%'}>
           <svg viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true"><path d={(ending.begins ? 'M0 12V1' : 'M0 1') + 'H100' + (ending.closes ? 'V12' : '')} /></svg>
@@ -72,7 +79,8 @@ SPDX-License-Identifier: Apache-2.0
         {@const musicSymbol = token.kind === 'symbol' && ['Q', 'S', 'f'].includes(token.raw)}
         {@const barRepeat = token.kind === 'symbol' && ['％', '𝄎'].includes(token.text ?? '')}
         {@const active = item.indices.some(index => selected.includes(index))}
-        <span class="item" title={musicSymbol ? irealLabel(token.label) : undefined} style:left={`${(barRepeat ? item.repeatColumn ?? item.column : item.column) / 16 * 100}%`} class:alternate={item.alternate} class:section-item={token.kind === 'section'} class:music-symbol={musicSymbol} class:beside-section={musicSymbol && row.items.some(other => other.column === item.column && other.token.kind === 'section')}>
+        {@const sections = token.kind === 'section' ? row.items.filter(candidate => candidate.column === item.column && candidate.token.kind === 'section') : []}
+        <span class="item" title={musicSymbol ? irealLabel(token.label) : undefined} style:left={`${(barRepeat ? item.repeatColumn ?? item.column : item.column) / 16 * 100}%`} class:alternate={item.alternate} class:section-item={token.kind === 'section'} class:key-change-item={token.name === 'key-change'} class:music-symbol={musicSymbol} class:beside-section={musicSymbol && row.items.some(other => other.column === item.column && other.token.kind === 'section')}>
           {#if token.chordIndex !== undefined}
             {@const symbol = symbols[token.chordIndex]}
             {@const parts = irealChordParts(symbol, minorNotation())}
@@ -84,11 +92,11 @@ SPDX-License-Identifier: Apache-2.0
               {#if ['{', '}'].includes(token.raw)}<span class="repeat">{token.text}</span>{/if}
             </span>
           {:else if token.kind === 'section'}
-            <span class="section">{token.text}</span>
+            {#if item === sections[0]}<span class="section">{sections.map(section => section.token.text).join(' · ')}</span>{/if}
           {:else if irealLabel(token.label) === 'Time signature'}
             <span class="meter">{#each (token.text ?? '').split('/') as digit}<span>{digit}</span>{/each}</span>
           {:else if token.kind === 'comment'}
-            <span class="comment" data-position={token.position} style:--raise={Math.min(74, Math.max(0, token.position ?? 0)) / 74}>{commentText(token.text ?? "")}</span>
+            <span class="comment" class:lyrics={token.name === "lyrics"} class:key-change={token.name === "key-change"} aria-label={token.name === "lyrics" ? "Lyrics" : token.name === "key-change" ? "Key change" : undefined} data-position={token.position} style:--raise={Math.min(74, Math.max(0, token.position ?? 0)) / 74}>{displayedComment(token)}</span>
           {:else if musicSymbol}
             <svg viewBox="0 0 32 32" role="img" aria-label={irealLabel(token.label)}><title>{irealLabel(token.label)}</title>
               {#if token.raw === 'Q'}
@@ -123,7 +131,7 @@ SPDX-License-Identifier: Apache-2.0
   .ireal-sheet { container-type: inline-size; width: 100%; color: var(--on-surface); }
   .highlight-annotations .comment, .highlight-annotations .ending, .highlight-annotations .music-symbol, .highlight-annotations .symbol:not(.selected) { color: var(--text-accent); }
   .highlight-annotations .comment { font-weight: 600; }
-  .ireal-row { position: relative; height: clamp(84px, 16cqw, 112px); margin-bottom: calc(var(--gap) * 8px + var(--note-space)); margin-left: 1.1em; margin-right: 0.6em; }
+  .ireal-row { position: relative; height: clamp(84px, 16cqw, 112px); margin-bottom: calc(var(--gap) * 8px + var(--note-space) + var(--lyric-space)); margin-left: 1.1em; margin-right: 0.6em; }
   .ireal-row.compact { height: clamp(68px, 13cqw, 92px); }
   .compact .item:not(.section-item):not(.music-symbol) { top: 30%; height: 62%; }
   .compact.ireal-row.leading-bar::before { top: 30%; height: 59%; }
@@ -155,16 +163,20 @@ SPDX-License-Identifier: Apache-2.0
   .bar.double { border-left: 4px double currentColor; }
   .bar.final { border-left: 4px double currentColor; border-right: 2px solid currentColor; width: 2px; }
   .repeat { position: absolute; transform: translateX(-50%); font-size: clamp(20px, 5cqw, 36px); line-height: 1; background: var(--surface); }
-  .section { position: absolute; top: 0; background: #cf3c2a; color: white; padding: 0 3px; font: 600 clamp(12px, 3cqw, 18px)/1.1 sans-serif; }
+  .section { position: relative; display: inline-block; white-space: nowrap; background: #cf3c2a; color: white; padding: 0 3px; font: 600 clamp(12px, 3cqw, 18px)/1.1 sans-serif; }
   .meter { position: absolute; right: 0.12em; top: 0; display: flex; flex-direction: column; color: #e15a46; font: 600 clamp(13px, 3cqw, 20px)/1 sans-serif; }
   .comment { white-space: pre; position: absolute; top: calc(100% - var(--raise) * 150%); font: italic clamp(10px, 2cqw, 15px)/1.2 sans-serif; }
+  .comment.lyrics { top: calc(100% + var(--note-space)); color: var(--on-surface); font-style: normal; font-weight: 400; }
+  .comment.key-change { position: relative; top: auto; color: var(--text-accent); font-style: normal; font-weight: 600; }
   .symbol { font-size: clamp(14px, 3cqw, 22px); white-space: nowrap; }
   .bar-repeat { position: absolute; top: 50%; width: 0.85em; height: 1em; font-size: clamp(18px, 4.8cqw, 32px); transform: translate(-50%, -50%); }
   .ending { position: absolute; top: 22%; height: 12%; font: 600 11px/1 sans-serif; }
   .ending svg { position: absolute; width: 100%; height: 100%; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1; }
   .ending path { vector-effect: non-scaling-stroke; }
   .ending > span { position: absolute; top: 3px; left: 3px; }
-  .item.section-item { top: 0; }
+  .item.section-item { top: 0; width: max-content; height: auto; }
+  .item.key-change-item { top: 0; width: max-content; height: auto; }
+  .key-change-row .item.section-item { top: clamp(15px, 3.5cqw, 23px); }
   .item.music-symbol { top: 0; height: 20%; }
   .music-symbol svg { width: clamp(16px, 3cqw, 24px); height: 100%; overflow: visible; fill: none; stroke: currentColor; stroke-width: 2.2; }
   .music-symbol .dot { fill: currentColor; stroke: none; }

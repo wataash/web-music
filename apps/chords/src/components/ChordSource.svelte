@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
   import SourceScore from "./SourceScore.svelte";
   import { chordViewPersistence } from "../lib/chord-view";
   const { remember, songKey } = chordViewPersistence();
-  let { songId, indices, symbols, sublabels, onselect }: { songId: string; indices: number[]; symbols: string[]; sublabels?: string[]; onselect?: (index: number) => void } = $props();
+  let { songId, indices, symbols, sublabels, onselect, originalKey, targetKey }: { songId: string; indices: number[]; symbols: string[]; sublabels?: string[]; onselect?: (index: number) => void; originalKey?: string; targetKey?: string } = $props();
   const score = $derived(songScore(songId));
   let open = $state(false);
 </script>
@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
   <div class="occurrence" aria-label={`Source chord ${index + 1}`}>
     {#if indices.length > 1}<div class="number">Source #{index + 1}</div>{/if}
     {#if additional}<ChordMetadata annotation={practiceAnnotation(songId, index)} />{/if}
-    <SourceScore blocks={score!.format === "ireal" ? score!.blocks : scoreContext(songId, index)} format={score!.format} {symbols} {sublabels} selected={indices} contextIndex={index} {onselect} storageId={`context:${indices[0]}:${index}`} />
+    <SourceScore blocks={score!.format === "ireal" ? score!.blocks : scoreContext(songId, index)} format={score!.format} {symbols} {sublabels} selected={indices} contextIndex={index} {onselect} {originalKey} {targetKey} storageId={`context:${indices[0]}:${index}`} />
   </div>
 {/snippet}
 

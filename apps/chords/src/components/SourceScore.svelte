@@ -9,11 +9,11 @@ SPDX-License-Identifier: Apache-2.0
   const { remember, viewKey, hasView, chartZoom, minorNotation } = chordViewPersistence();
   import { irealChordParts } from "../lib/ireal-layout";
   import type { ScoreToken } from "../lib/chord-metadata";
-  let { blocks, format = "ireal", symbols, sublabels, selected = [], storageId = "score", contextIndex, onselect }: {
+  let { blocks, format = "ireal", symbols, sublabels, selected = [], storageId = "score", contextIndex, onselect, originalKey, targetKey }: {
     blocks: ScoreToken[][]; format?: string; symbols: string[];
     // A second, smaller name under each chord, such as its degree.
     sublabels?: string[];
-    selected?: number[]; storageId?: string; contextIndex?: number; onselect?: (index: number) => void;
+    selected?: number[]; storageId?: string; contextIndex?: number; onselect?: (index: number) => void; originalKey?: string; targetKey?: string;
   } = $props();
   let element: HTMLDivElement;
   let width = $state(0);
@@ -79,7 +79,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     {/each}
   {:else}
-    <IrealScore {blocks} {symbols} {sublabels} {selected} {contextIndex} {onselect} />
+    <IrealScore {blocks} {symbols} {sublabels} {selected} {contextIndex} {onselect} {originalKey} {targetKey} />
   {/if}
   </div>
 </div>

@@ -8,7 +8,7 @@ import type { IrealSong } from "@web-music/ireal";
 export type ChordAnnotation = Readonly<{ section?: string; comments: readonly string[] }>;
 export type AnnotatedChord = ChordDescription & { annotation?: ChordAnnotation; sourceIndices?: number[]; sourceSymbol?: string };
 export type SourceScore = IrealSong["score"];
-export type ScoreToken = SourceScore["blocks"][number][number];
+export type ScoreToken = SourceScore["blocks"][number][number] & { name?: string };
 export type SongMetadata = Pick<IrealSong, "comments" | "annotations" | "score">;
 let practiceCache: Record<string, IrealEvent[]> = {};
 let bySong: Record<string, SongMetadata> = {};
@@ -39,6 +39,15 @@ export function scoreContext(id: string, index: number): ScoreToken[][] {
 // its chord index.
 export function chordLyric(id: string, index: number): string {
   const score = songScore(id);
+  if (score?.format === "ireal") {
+    let chordIndex: number | undefined;
+    const words: string[] = [];
+    for (const token of score.blocks.flat() as ScoreToken[]) {
+      if (token.chordIndex !== undefined) chordIndex = token.chordIndex;
+      else if (token.kind === "comment" && token.name === "lyrics" && chordIndex === index) words.push(token.text ?? "");
+    }
+    return words.join(" ").replace(/\s+/g, " ").trim();
+  }
   if (score?.format !== "chordwiki") return "";
   const words: string[] = [];
   let after = false;

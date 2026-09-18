@@ -30,6 +30,8 @@ SPDX-License-Identifier: Apache-2.0
     shortcutsEnabled = true,
     uniqueBySection = false,
     editable = false,
+    originalKey,
+    targetKey,
     heading = (symbol: string) => headingChord(symbol, minorNotation()),
     subheading = () => undefined,
     sublabels,
@@ -49,6 +51,8 @@ SPDX-License-Identifier: Apache-2.0
     shortcutsEnabled?: boolean;
     uniqueBySection?: boolean;
     editable?: boolean;
+    originalKey?: string;
+    targetKey?: string;
     // What a card calls its chord: its name, or its degree in the key.
     heading?: (symbol: string) => string;
     subheading?: (symbol: string) => string | undefined;
@@ -117,14 +121,14 @@ SPDX-License-Identifier: Apache-2.0
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <main class="chord-list" aria-label="Chord list" tabindex="0" bind:this={scrollElement} use:remember={viewKey("list-scroll")}>
   <div class="list-content">
-    <SongSource {songId} symbols={sourceSymbols} {sublabels} bind:open={fullChartOpen} onselect={(value) => void jumpToSource(value)} selected={[sourceIndex]} {editable} />
+    <SongSource {songId} symbols={sourceSymbols} {sublabels} bind:open={fullChartOpen} onselect={(value) => void jumpToSource(value)} selected={[sourceIndex]} {editable} {originalKey} {targetKey} />
     <p class="count">{chords.length} chords · {uniqueBySection ? "Unique chords in first-appearance order within each section" : "Unique chords in first-appearance order"}</p>
     <ol>
       {#each chords as chord, index}
         {@const lyric = chordLyric(songId, chord.sourceIndices?.[0] ?? index)}
         <li bind:this={entries[index]} aria-current={currentIndex === index ? "true" : undefined}>
           <ChordMetadata annotation={chord.annotation} />
-          {#if !fullChartOpen}<ChordSource {songId} onselect={(value) => void jumpToSource(value)} indices={chord.sourceIndices ?? []} symbols={sourceSymbols} {sublabels} />{/if}
+          {#if !fullChartOpen}<ChordSource {songId} onselect={(value) => void jumpToSource(value)} indices={chord.sourceIndices ?? []} symbols={sourceSymbols} {sublabels} {originalKey} {targetKey} />{/if}
           <div class="heading">
             <span class="number">{index + 1} / {chords.length}</span>
             <h2>{heading(chord.symbol)}{#if subheading(chord.symbol)}<span class="chord-name">{subheading(chord.symbol)}</span>{/if}</h2>

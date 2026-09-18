@@ -78,6 +78,77 @@ test('accepts extended qualities and aliases through preview, save and reload', 
   await expect(page.getByRole('dialog', { name: 'Edit chart', exact: true }).getByLabel('Chord progression')).toHaveValue(text);
 });
 
+test('draws custom lyrics and annotations and keeps lyrics with practice chords', async ({ page }, info) => {
+  await page.goto('/');
+  await openLibrary(page);
+  const editor = await openListEditor(page);
+  const text = '| C {きらきら ひかる} <first voicing -> second voicing> | G {お空の 星よ} |';
+  await editor.getByLabel('Chord progression').fill(text);
+  await expect(editor.getByLabel('Lyrics').nth(0)).toHaveText('きらきら ひかる');
+  await expect(editor.getByLabel('Lyrics').nth(1)).toHaveText('お空の 星よ');
+  await expect(editor.locator('.comment:not(.lyrics)')).toHaveText('first voicing -> second voicing');
+  await editor.getByLabel('Chart preview').screenshot({ path: info.outputPath('custom-lyrics-preview.png') });
+  await editor.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.locator('.question-heading').getByLabel('Lyrics')).toHaveText('きらきら ひかる');
+  await expect(page.getByLabel('Chord information')).toContainText('first voicing -> second voicing');
+  await page.getByRole('button', { name: 'Next chord', exact: true }).click();
+  await expect(page.locator('.question-heading').getByLabel('Lyrics')).toHaveText('お空の 星よ');
+  await page.reload();
+  await expect(page.locator('.full-score').getByLabel('Lyrics')).toHaveCount(2);
+});
+
+test('keeps arrows in lyrics and transposes a mid-chart key change', async ({ page }, info) => {
+  await page.goto('/');
+  await openLibrary(page);
+  const editor = await openListEditor(page);
+  const text = `key: Bb
+[A]
+| C7 {left -> right} | F7 |
+
+key: C
+[B]
+| D-7 G7 | C^7 | A-7 |`;
+  await editor.getByLabel('Chord progression').fill(text);
+  await expect(editor.getByRole('alert')).toHaveCount(0);
+  await expect(editor.getByLabel('Lyrics').filter({ hasText: 'left -> right' })).toHaveText('left -> right');
+  const keyChange = editor.getByLabel('Key change');
+  await expect(keyChange).toHaveText('Key: C');
+  const keyBox = await keyChange.boundingBox();
+  const nextSectionBox = await editor.getByLabel('Chart preview').locator('.section').filter({ hasText: 'B' }).boundingBox();
+  expect(keyBox?.x).toBeCloseTo(nextSectionBox?.x ?? NaN, 0);
+  expect(keyBox!.y).toBeLessThan(nextSectionBox!.y);
+  await editor.getByLabel('Chart preview').screenshot({ path: info.outputPath('mid-chart-key-change.png') });
+  await editor.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('Song key', { exact: true })).toHaveValue('Bb');
+  await expect(page.locator('.full-score .chord').nth(2)).toHaveAttribute('aria-label', 'D-7');
+  await page.getByLabel('Song key', { exact: true }).selectOption('C');
+  await expect(page.locator('.full-score .chord').first()).toHaveAttribute('aria-label', 'D7');
+  await expect(page.locator('.full-score .chord').nth(2)).toHaveAttribute('aria-label', 'E-7');
+  await expect(page.locator('.full-score').getByLabel('Key change')).toHaveText('Key: D');
+});
+
+test('keeps long and consecutive section names on one horizontal line', async ({ page }, info) => {
+  await page.setViewportSize({ width: 560, height: 900 });
+  await page.goto('/');
+  await openLibrary(page);
+  const editor = await openListEditor(page);
+  await editor.getByLabel('Chord progression').fill(`[とても長いセクション名]
+| C | F |
+[Bridge]
+[highlight cue]
+| G | C |`);
+  const sections = editor.getByLabel('Chart preview').locator('.section');
+  await expect(sections).toHaveText(['とても長いセクション名', 'Bridge · highlight cue']);
+  await expect(editor.getByLabel('Chart preview').locator('.section-item .symbol')).toHaveCount(0);
+  for (const section of await sections.all()) {
+    expect(await section.evaluate(element => {
+      const style = getComputedStyle(element);
+      return element.getBoundingClientRect().height <= Math.ceil(parseFloat(style.lineHeight)) + 2;
+    })).toBe(true);
+  }
+  await editor.getByLabel('Chart preview').screenshot({ path: info.outputPath('long-section-names.png') });
+});
+
 for (const width of [360, 1000]) test(`notation help is readable and reachable from errors at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
   await page.goto('/');
@@ -159,20 +230,20 @@ test('writes a lead sheet with repeats, endings, sections and notes, and exports
   const chart = `title: Example Blues
 key: C
 
-[A] 4/4
+[Aメロ] 4/4
 |: C7 | F7 | C7 % | C7 |
 | F7 | F7 | C7 | C7 |
 | G7 | F7 | 1. C7 | G7 :|
 | 2. C7 <Fine> | G7 |]
 
-[B]
+[Bメロ]
 | Dm7 (Db7) G7 | C^7 | %% | | NC | coda Em7 A7 |`;
   await editor.getByLabel('Chord progression').fill(chart);
   await expect(editor.getByRole('alert')).toHaveCount(0);
   await expect(editor.getByLabel('Chart preview')).toContainText('Example Blues · Key C · 21 chords');
   const preview = editor.locator('.ireal-row');
   await expect(preview).toHaveCount(5);
-  await expect(preview.nth(0).locator('.section')).toHaveText('A');
+  await expect(preview.nth(0).locator('.section')).toHaveText('Aメロ');
   await expect(preview.nth(0).locator('.meter')).toHaveText('44');
   await expect(preview.nth(2).locator('.ending')).toHaveCount(1);
   await expect(preview.nth(3)).toContainText('Fine');
@@ -183,7 +254,7 @@ key: C
   // % and %% are played: the card's count includes the repeated bars.
   await expect(page.locator('.progress')).toContainText('/ 25');
   await page.getByRole('button', { name: 'By section', exact: true }).click();
-  await expect(page.locator('.chord-list li .section').first()).toHaveText('Section A');
+  await expect(page.locator('.chord-list li .section').first()).toHaveText('Section Aメロ');
   await page.getByRole('button', { name: 'Chord practice settings' }).click();
   await page.getByRole('button', { name: 'Export current chart', exact: true }).click();
   const download = page.waitForEvent('download');

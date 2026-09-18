@@ -114,11 +114,11 @@ its own text.
 title: Example Blues      ← header lines: title, key, artist, style, tempo
 key: C
 
-[A] 4/4                   ← [section]; time signature
+[Aメロ] 4/4               ← [section name]; time signature
 |: C7 | F7 | C7 % | C7 |  ← |: :| repeat; % previous bar, %% and an empty bar
 | F7 | F7 | C7 | C7 |       for the previous two, / previous chord
 | G7 | F7 | 1. C7 | G7 :| ← 1. 2. endings
-| 2. C7 <Fine> | G7 |]    ← <note>; |] final bar; || double bar
+| 2. C7 {last time} <Fine> | G7 |] ← {lyrics}; <note>; |] final bar
 | Dm7 (Db7) G7 | NC |     ← (alternate chord) after a space; NC
 ```
 
@@ -129,7 +129,20 @@ the same bar (`Dm7 G7 | Cmaj7`). Leading/trailing barlines, full-width spaces,
 between rows. Each line supports up to 16 chords; invalid symbols show their
 line and bar number. `coda`, `segno`, `fermata` and `fine` are written as words;
 a `title:` or `key:` line overrides the dialog's fields, and `key: Am` sets a
-minor key.
+minor key. Section names such as `[Aメロ]` and `[サビ]` are displayed in full;
+their first Latin letter, or `A` when there is none, is used as the rehearsal
+mark when exporting to iReal Pro. A later `key: C` line changes the written key
+for the chords after it. That key change follows the song key selector: in a
+chart beginning in B♭, selecting C moves the later C section to D.
+
+Write lyrics in braces immediately after the chord they belong to, and a
+free-form annotation in angle brackets. For example,
+`| C {Twinkle, twinkle} <softly> | G {little star} |` draws the lyrics below
+the chords and the annotation in a separate italic line. Lyrics also appear on
+the corresponding practice card and in the chord list.
+ASCII arrows such as `{left -> right}` remain unchanged on screen and are
+written with `→` in the iReal-compatible export.
+
 The chart is drawn as it is typed; Add opens the full chart to practice it with
 transposition, fretboards and List. Charts are stored locally in the same browser
 library. **Edit current chart** in the ⋮ settings menu restores the source text and updates the same song,

@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
   import SourceScore from "./SourceScore.svelte";
   import { chordViewPersistence } from "../lib/chord-view";
   const { remember, viewKey, songKey, chartZoom, setChartZoom, highlightAnnotations, setHighlightAnnotations } = chordViewPersistence();
-  let { songId, symbols, sublabels, open = $bindable(false), selected = [], onselect, editable = false }: { songId: string; symbols: string[]; sublabels?: string[]; open?: boolean; selected?: number[]; onselect?: (index: number) => void; editable?: boolean } = $props();
+  let { songId, symbols, sublabels, open = $bindable(false), selected = [], onselect, editable = false, originalKey, targetKey }: { songId: string; symbols: string[]; sublabels?: string[]; open?: boolean; selected?: number[]; onselect?: (index: number) => void; editable?: boolean; originalKey?: string; targetKey?: string } = $props();
   const score = $derived(songScore(songId));
   // A ChordWiki chart draws its own title, credits and key, and its text is
   // the chart itself; a chart with an editor shows its text there. What is
@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
       {#if ireal}<label class="chart-size"><input type="checkbox" checked={highlightAnnotations()} onchange={event => setHighlightAnnotations(event.currentTarget.checked)} />Highlight annotations</label>{/if}
       </div>
       <div class="full-score" use:remember={viewKey("full-scroll")}>
-        <SourceScore format={score.format} blocks={score.blocks} {symbols} {sublabels} {selected} {onselect} storageId="full" />
+        <SourceScore format={score.format} blocks={score.blocks} {symbols} {sublabels} {selected} {onselect} {originalKey} {targetKey} storageId="full" />
       </div>
       {#if ireal}
       <details class="information"><summary>Song information and notation guide</summary>
