@@ -124,7 +124,12 @@ test('pastes a ChordWiki chart, practises and displays it, and exports its text'
   await expect(page.locator('.song-title')).toHaveText('Evening Practice II (copy)');
   await expect(page.getByRole('button', { name: 'Add to favorites', exact: true })).toBeVisible();
   await openLibrary(page);
-  await expect(page.getByLabel('Song', { exact: true }).locator('button').filter({ hasText: 'Evening Practice II' })).toHaveCount(2);
+  const picker = page.getByLabel('Song', { exact: true });
+  // The favorite appears in Favorites and All songs; its unfavorited copy
+  // appears once in All songs. Match their full accessible names so the
+  // copy's title is not mistaken for another occurrence of the original.
+  await expect(picker.getByRole('button', { name: 'Evening Practice II · Example Singer', exact: true })).toHaveCount(2);
+  await expect(picker.getByRole('button', { name: 'Evening Practice II (copy) · Example Singer', exact: true })).toHaveCount(1);
   await page.getByRole('button', { name: 'Close song library' }).click();
   await openLibrary(page);
   // The notation chosen last is offered first next time, and a paste in the
