@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
 
   const FORMAT_KEY = "chord-import-format";
   const FORMATS: readonly { id: ChordImportFormat; label: string }[] = [
-    { id: "ireal", label: "iReal Pro" }, { id: "chordwiki", label: "ChordWiki" }, { id: "list", label: "Chord chart" },
+    { id: "ireal", label: "iReal Pro" }, { id: "chordwiki", label: "ChordWiki" }, { id: "list", label: "Custom chart" },
   ];
   function savedFormat(): ChordImportFormat {
     const saved = localStorage.getItem(FORMAT_KEY);

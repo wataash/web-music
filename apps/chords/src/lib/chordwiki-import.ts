@@ -14,6 +14,9 @@ import type { ImportedSong } from './chord-import';
 import { normalizeInputChord } from './custom-chart';
 import { formatNote, parseChordSymbol, parseNote } from './chords';
 
+// The playlist every ChordWiki chart belongs to.
+export const CHORDWIKI_PLAYLIST = 'ChordWiki';
+
 // A chord the app cannot spell is kept as written, with its root readable, so
 // the chart still shows it and practice passes over it.
 function chordSymbol(chord: string): string {
@@ -49,7 +52,7 @@ export async function parseChordWiki(text: string, id?: string): Promise<Importe
     artist: source.artist?.trim() ?? '',
     originalKey: originalKeyOf(source.originalKey, chords),
     chords,
-    playlist: 'ChordWiki',
+    playlist: CHORDWIKI_PLAYLIST,
     metadata: { comments: source.comments, annotations: source.annotations, score: source.score },
   };
 }

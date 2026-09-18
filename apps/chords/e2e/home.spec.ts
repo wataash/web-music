@@ -11,7 +11,7 @@ test("opens chords directly without loading flashcard decks", async ({ page }) =
   });
   await page.goto("/");
   await openLibrary(page);
-  await expect(page).toHaveTitle("Chord Positions");
+  await expect(page).toHaveTitle("Chords");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("[data-chord-practice]")).toBeVisible();
   await expect(page.getByRole("button", { name: "Back to decks" })).toHaveCount(0);

@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
 <dialog bind:this={dialog} aria-labelledby="export-title">
   <h2 id="export-title">{text !== undefined ? 'Export chart text' : 'Export iReal charts'}</h2>
   {#if song && song.customText !== undefined}
-    <p>Save your chart text. Paste it under Chord chart in Add chart to recreate it. Set the original key to {song.originalKey}. The chart can also go to iReal Pro as a link or an HTML file.</p>
+    <p>Save your chart text. Paste it under Custom chart in Add chart to recreate it. Set the original key to {song.originalKey}. The chart can also go to iReal Pro as a link or an HTML file.</p>
     <button onclick={() => download('text')}>Download chord text</button>
     <button onclick={copyLink}>Copy song link</button>
     {#if copied}<p role="status">Song link copied.</p>{/if}

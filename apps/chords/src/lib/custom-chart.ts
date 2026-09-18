@@ -96,6 +96,9 @@ export const CHORD_NOTATION_GROUPS = (() => {
   return [...groups].map(([label, symbols]) => ({ label, symbols }));
 })();
 
+// The playlist every custom chart belongs to.
+export const CUSTOM_PLAYLIST = 'Custom charts';
+
 export function refreshCustomChart(song: ImportedSong): ImportedSong {
   if (song.customText === undefined) return song;
   // Reinterpret saved input with the current rules, keeping identity and order.
@@ -237,6 +240,6 @@ export function createCustomChart(text: string, title: string, key: string, id =
   const written = (header.key ?? key).replaceAll('♭', 'b').replaceAll('♯', '#').replace(/m$/, '-');
   const originalKey = formatNote(parseNote(written.replace(/-$/, '')));
   const fields = [title, header.artist ?? '', '', header.style ?? '', written, '', raw, '', header.tempo ?? '', ''];
-  return { id, title, artist: header.artist ?? '', originalKey, chords, playlist: 'My charts', customText: text,
+  return { id, title, artist: header.artist ?? '', originalKey, chords, playlist: CUSTOM_PLAYLIST, customText: text,
     metadata: { comments: [], annotations, score: irealScore(raw, positions, fields, 6) } };
 }

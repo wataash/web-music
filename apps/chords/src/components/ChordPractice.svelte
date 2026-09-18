@@ -28,6 +28,8 @@ SPDX-License-Identifier: Apache-2.0
   import ChordExport from "./ChordExport.svelte";
   import ChartEditor from "./ChartEditor.svelte";
   import { loadImportedSongs, saveImportedSongs, deleteImportedSong, type ImportedSong } from "../lib/chord-import";
+  import { CUSTOM_PLAYLIST } from "../lib/custom-chart";
+  import { CHORDWIKI_PLAYLIST } from "../lib/chordwiki-import";
   import { loadChordFavorites, saveChordFavorites } from "../lib/chord-favorites";
 
   import { defaultChordProgress, loadChordProgress, saveChordProgress, type ChordNaming } from "../lib/chord-progress";
@@ -65,7 +67,12 @@ SPDX-License-Identifier: Apache-2.0
   let playlistFilter = $state("");
   let styleFilter = $state("");
   const importedById = $derived(new Map(importedSongs.map(song => [song.id, song])));
-  const playlists = $derived([...new Set(importedSongs.map(song => song.playlist))].sort());
+  // Playlists in the filter: the charts written here, then ChordWiki, then
+  // iReal playlists by name, with iReal songs that came without one last.
+  function playlistRank(playlist: string): number {
+    return playlist === CUSTOM_PLAYLIST ? 0 : playlist === CHORDWIKI_PLAYLIST ? 1 : playlist ? 2 : 3;
+  }
+  const playlists = $derived([...new Set(importedSongs.map(song => song.playlist))].sort((a, b) => playlistRank(a) - playlistRank(b) || a.localeCompare(b)));
   const songStyles = $derived(new Map(importedSongs.map(song => [song.id, song.metadata.score.fields.find(field => irealLabel(field.label) === 'Style')?.value ?? ""])));
   const styles = $derived([...new Set(songStyles.values())].filter(Boolean).sort());
   const searchText = $derived(songSearch.toLocaleLowerCase());
@@ -428,8 +435,9 @@ SPDX-License-Identifier: Apache-2.0
       </select>
       </label>
       <select aria-label="Playlist" bind:value={playlistFilter}>
-        <option value="">All playlists</option><option value="examples">Built-in examples</option>
+        <option value="">All playlists</option>
         {#each playlists as playlist}<option value={'playlist:' + playlist}>{playlist || 'Unlisted imports'}</option>{/each}
+        <option value="examples">Built-in examples</option>
       </select>
       <select aria-label="Style" bind:value={styleFilter}>
         <option value="">All styles</option>

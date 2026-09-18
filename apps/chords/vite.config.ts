@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        lang: 'en', name: 'Chord Positions', short_name: 'Chords',
+        lang: 'en', name: 'Chords', short_name: 'Chords',
         description: 'Practice chords with iReal Pro charts',
         theme_color: '#2196f3', background_color: '#ffffff', display: 'standalone',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],

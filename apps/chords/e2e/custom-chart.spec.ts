@@ -6,7 +6,7 @@ import { openLibrary } from './helpers';
 // A chord list is typed into the chart editor under its own notation.
 async function openListEditor(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Add chart', exact: true }).click();
-  await page.getByRole('radio', { name: 'Chord chart' }).check();
+  await page.getByRole('radio', { name: 'Custom chart' }).check();
   return page.getByRole('dialog', { name: 'Add chart', exact: true });
 }
 

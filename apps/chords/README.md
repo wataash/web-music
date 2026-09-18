@@ -1,4 +1,4 @@
-# Chord Positions
+# Chords
 
 An independent Svelte app / PWA for practicing guitar and bass chord tones with iReal Pro charts.
 
@@ -72,7 +72,7 @@ Practice follows the written order, including alternate chords, and resolves pre
 
 ### Standalone chords homepage
 
-The root scripts `pnpm dev:chords` / `pnpm build:chords` use this app’s `src/main.ts` to open chord practice directly on any domain, without loading flashcard decks. Output goes to `apps/chords/dist/`. The page and PWA use English and the title “Chord Positions”.
+The root scripts `pnpm dev:chords` / `pnpm build:chords` use this app’s `src/main.ts` to open chord practice directly on any domain, without loading flashcard decks. Output goes to `apps/chords/dist/`. The page and PWA use English and the title “Chords”.
 
 Run `./node_modules/.bin/wrangler deploy --env chords` from the repository root to build and deploy the chord practice Worker. The site is published at https://chords.wataash.com/. The workers.dev address remains available; each origin has its own browser storage. After building, run `pnpm exec playwright test` from this app directory to test the standalone page.
 
@@ -98,9 +98,9 @@ Use Ctrl+P (Cmd+P on macOS) or the browser’s Print menu to print the current k
 
 The library sorts by title, artist, or import order. Import order is recorded for new imports; older charts without this information appear first, sorted by title. Reimporting a chart preserves its recorded position. **Export current chart → Copy song link** copies the original iReal chart directly; HTML export remains available if clipboard access fails.
 
-### Chord charts
+### Custom charts
 
-Under the **Chord chart** notation, enter an optional title and original key,
+Under the **Custom chart** notation, enter an optional title and original key,
 then type the chart the way a lead sheet writes it. The text compiles to iReal
 Pro's notation, so the chart is laid out on iReal's 16-cell rows, practised with
 its repeat signs resolved, and exported as an iReal link or HTML file as well as
@@ -131,7 +131,7 @@ transposition, fretboards and List. Charts are stored locally in the same browse
 library. **Edit current chart** in the ⋮ settings menu restores the source text and updates the same song,
 preserving favorites and its library order; saving starts at the first chord in
 the original key. **Export current chart** downloads the chart text — paste it
-under Chord chart and set its original key to recreate it — or copies an iReal
+under Custom chart and set its original key to recreate it — or copies an iReal
 link or saves an iReal HTML file of the song.
 
 Custom input accepts qualities such as `A^7`, `Amaj13#11`,
