@@ -7,7 +7,10 @@
 // name on its own and under both at once — and only the naturals are asked
 // until the reader turns the rest on.
 
-import type { NoteRow } from "./db";
+import { tuningSlug } from "@web-music/practice-ui/tuning";
+
+import type { CardRow, NoteRow } from "./db";
+import { noteTuning } from "./guitar-tuning";
 
 export const FRETBOARD_NOTE_TO_POSITIONS_DECK =
   "Guitar Fretboard::Note → Positions";
@@ -112,6 +115,50 @@ export function isFretboardNoteToPositionsCard(
   note: Pick<NoteRow, "tags">,
 ): boolean {
   return note.tags.split(/\s+/).includes("direction::note-to-positions");
+}
+
+// When the outside strings have the same note name, learning a fret on one
+// teaches the corresponding fret on the other. This deliberately does not
+// group equal inner strings: it represents the familiar symmetry of the two
+// edges of the neck, not every coincidentally equal open string.
+export function fretboardEdgeId(
+  note: Pick<NoteRow, "fields" | "tags">,
+): string | null {
+  const tags = note.tags.split(/\s+/);
+  if (
+    !tags.includes("direction::position-to-note") &&
+    !tags.includes("direction::note-to-positions")
+  ) {
+    return null;
+  }
+  const tuning = noteTuning(note);
+  const string = Number(note.fields[2]);
+  if (
+    tuning.length < 2 ||
+    (string !== 1 && string !== tuning.length) ||
+    (tuning[0] - tuning[tuning.length - 1]) % 12 !== 0
+  ) {
+    return null;
+  }
+  const id = note.fields[0] ?? "";
+  const edgeId = id.replace(/-string-\d+-/, "-edge-");
+  return edgeId === id ? null : edgeId;
+}
+
+// Another tuning keeps separate progress even when its outside strings also
+// match. Standard guitar omits the suffix to retain its established identity.
+export function fretboardEdgeKey(card: CardRow, note: NoteRow): string {
+  const edgeId = fretboardEdgeId(note);
+  if (edgeId === null) return card.key;
+  const slug = tuningSlug(noteTuning(note));
+  const parts = [
+    card.pkg,
+    note.mid,
+    edgeId,
+    card.ord,
+    ...(slug === "" ? [] : [slug]),
+  ];
+  return `fretboard-edge:${JSON.stringify(parts)}`;
 }
 
 export function includesFretboardNoteCard(

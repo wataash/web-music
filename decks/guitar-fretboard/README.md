@@ -64,6 +64,13 @@ string (0F) to 24F on all six strings of a guitar in standard tuning, 150
 cards. `Note → Positions` asks 22 notes × 6 strings = 132 cards. The package
 holds 282 cards.
 
+In the web app, when the first and last strings have the same note name, the
+corresponding cards in each direction share one schedule and reviews alternate
+between the two strings. Standard guitar therefore has 235 study items while
+the package retains all 282 cards for rendering and Anki export. Equal inner
+strings are deliberately not grouped, and another tuning keeps separate
+progress.
+
 - The answer to a position: `A A♯B♭ B C C♯D♭ D D♯E♭ E F F♯G♭ G G♯A♭`
 - Note → Positions: the seven naturals, the five sharps, the five flats, and
   the five pitches written under both names — `A♯B♭ C♯D♭ D♯E♭ F♯G♭ G♯A♭`

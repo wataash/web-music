@@ -79,8 +79,10 @@ bundled web decks and schedules them with FSRS.
   the app generates both decks itself, from the same code the packages are
   built with, and imports them in the bundled ones' place, so the question
   map, the cards, and what a tap on the neck sounds all follow the strings
-  chosen. Each instrument keeps its own progress, since a position is a
-  different question on different strings: switching to a bass starts its
+  chosen. In Guitar Fretboard, when the first and last strings have the same
+  note name, their corresponding positions share progress and reviews alternate
+  between the two strings; equal inner strings remain separate. Each instrument
+  otherwise keeps its own progress: switching to a bass starts its
   decks new, and switching back finds the guitar's schedule as it was. The
   shapes turned off by hand are kept per instrument too; the learning range,
   the fret window and the note selection are shared. The chord-form stages of

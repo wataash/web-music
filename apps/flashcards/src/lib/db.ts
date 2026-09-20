@@ -4,10 +4,11 @@
 // IndexedDB persistence. Deck content (notes/cards/models/decks/media) is
 // replaced wholesale per package on (re-)import, keyed by `pkg` (the sorted
 // root deck names). Study state and the review log are keyed by
-// `<note guid>#<template ord>` (or a shared guitar shape key) and survive
+// `<note guid>#<template ord>` (or a shared guitar study key) and survive
 // re-imports of regenerated decks.
 
 import Dexie, { type Table, type Transaction } from "dexie";
+import { fretboardEdgeId, fretboardEdgeKey } from "./fretboard-card";
 import { guitarShapeKey, mergeGuitarStates, normalizeGuitarLevels } from "./guitar-shapes";
 
 import { IMPORTED_VERSIONS_KEY as BUNDLED_DECK_VERSIONS_KEY } from "./bundled-decks";
@@ -48,7 +49,7 @@ export type NoteRow = Readonly<{
 
 export type CardRow = Readonly<{
   id: number;
-  key: string; // Stable study identity; guitar shape variants share one key.
+  key: string; // Stable study identity; equivalent guitar variants share one key.
   nid: number;
   did: number;
   ord: number;
@@ -166,6 +167,7 @@ class FlashcardsDatabase extends Dexie {
       forgetImportedDeckVersions();
     });
     this.version(4).upgrade(normalizeGuitarStudy);
+    this.version(5).upgrade(normalizeGuitarStudy);
   }
 }
 
@@ -186,7 +188,7 @@ export const db = new FlashcardsDatabase();
 export async function normalizeGuitarStudy(transaction: Transaction, pkg?: string): Promise<void> {
   const inPackage = <T>(table: Table<T>) => pkg === undefined ? table.toArray() : table.where("pkg").equals(pkg).toArray();
   const notes = await inPackage(transaction.table<NoteRow>("notes"));
-  if (!notes.some((note) => note.fields[1] === "guitar-interval")) return;
+  if (!notes.some((note) => note.fields[1] === "guitar-interval" || fretboardEdgeId(note) !== null)) return;
   const normalized = normalizeGuitarLevels(notes);
   const changedNotes = normalized.filter((note, i) => note.tags !== notes[i].tags);
   if (changedNotes.length) await transaction.table("notes").bulkPut(changedNotes);
@@ -196,8 +198,13 @@ export async function normalizeGuitarStudy(transaction: Transaction, pkg?: strin
   const changedCards: CardRow[] = [];
   for (const card of cards) {
     const note = byId.get(card.nid);
-    if (!note || note.fields[1] !== "guitar-interval") continue;
-    const key = guitarShapeKey(card, note);
+    if (!note) continue;
+    const key = note.fields[1] === "guitar-interval"
+      ? guitarShapeKey(card, note)
+      : fretboardEdgeId(note) !== null
+        ? fretboardEdgeKey(card, note)
+        : null;
+    if (key === null) continue;
     aliases.set(`${note.guid}#${card.ord}`, key);
     if (key !== card.key) {
       aliases.set(card.key, key);
