@@ -105,7 +105,7 @@ function renderBoard(
     `<img src="${boardFilename}" alt="">`,
     label("root", "1", root),
     label(kind, text, target),
-    ...(kind === "answer" ? referenceLabels(card, strings) : []),
+    ...(kind === "answer" ? referenceLabels(card, tuning) : []),
     "</span></span>",
   ].join("");
 }
@@ -115,8 +115,16 @@ const ALTERED_REFERENCES: Readonly<Record<string, readonly [string, number]>> = 
   "♭9": ["9", 1], "♯9": ["9", -1], "♯11": ["11", -1], "♭13": ["13", 1],
 };
 
-function referenceLabels(card: GuitarIntervalCard, strings: number): string[] {
-  const byOffset = new Map<number, string[]>();
+type ReferencePosition = Readonly<{ string: number; offset: number }>;
+
+function referenceLabels(card: GuitarIntervalCard, tuning: Tuning): string[] {
+  const byPosition = new Map<string, { position: ReferencePosition; names: string[] }>();
+  const add = (name: string, position: ReferencePosition): void => {
+    const key = `${position.string}:${position.offset}`;
+    const entry = byPosition.get(key) ?? { position, names: [] };
+    if (!entry.names.includes(name)) entry.names.push(name);
+    byPosition.set(key, entry);
+  };
   for (const name of card.names) {
     const reference = ALTERED_REFERENCES[name];
     if (!reference) continue;
@@ -125,11 +133,90 @@ function referenceLabels(card: GuitarIntervalCard, strings: number): string[] {
     // The reference belongs to a physical neighboring position; never wrap
     // it onto the opposite end of the neck drawing.
     if (Math.abs(offset) > MAX_FRET_REACH) continue;
-    byOffset.set(offset, [...(byOffset.get(offset) ?? []), text]);
+    add(text, { string: card.targetString, offset });
   }
-  return [...byOffset].sort(([a], [b]) => a - b).map(([offset, names]) =>
-    label("reference", names.join(" "), labelPosition(card.targetString, offset, strings)),
-  );
+  for (const position of rootReferencePositions(card, tuning)) {
+    add("1", position);
+  }
+  return [...byPosition.values()]
+    .sort((left, right) =>
+      left.position.offset - right.position.offset ||
+      left.position.string - right.position.string,
+    )
+    .map(({ position, names }) =>
+      label(
+        "reference",
+        names.join(" "),
+        labelPosition(position.string, position.offset, tuning.length),
+      ),
+    );
+}
+
+function rootReferencePositions(
+  card: GuitarIntervalCard,
+  tuning: Tuning,
+): ReferencePosition[] {
+  const positions: ReferencePosition[] = [];
+  const rootPitchClass = pitchClass(tuning[card.rootString - 1]);
+  const addIfRoot = (string: number, offset: number): void => {
+    if (
+      Math.abs(offset) > MAX_FRET_REACH ||
+      (string === card.rootString && offset === 0) ||
+      pitchClass(tuning[string - 1] + offset) !== rootPitchClass
+    ) {
+      return;
+    }
+    if (!positions.some((position) => position.string === string && position.offset === offset)) {
+      positions.push({ string, offset });
+    }
+  };
+
+  if (card.names.includes("M7")) {
+    addIfRoot(card.targetString, card.fretOffset + 1);
+  }
+  if (!card.names.includes("P4") && !card.names.includes("P5")) {
+    return positions;
+  }
+
+  for (const direction of [-1, 1] as const) {
+    const string = neighboringCourse(card.targetString, direction, tuning);
+    if (string === null) continue;
+    addIfRoot(string, card.fretOffset);
+    // Guitar-family tuning has one major-third course boundary (G–B in
+    // standard tuning). Its familiar one-fret displacement is useful even
+    // after the whole instrument is transposed.
+    if (isAscendingMajorThirdPair(card.targetString, string, tuning)) {
+      addIfRoot(string, card.fretOffset - 1);
+      addIfRoot(string, card.fretOffset + 1);
+    }
+  }
+  return positions;
+}
+
+function neighboringCourse(
+  string: number,
+  direction: -1 | 1,
+  tuning: Tuning,
+): number | null {
+  const targetPitchClass = pitchClass(tuning[string - 1]);
+  for (let candidate = string + direction; candidate >= 1 && candidate <= tuning.length; candidate += direction) {
+    if (pitchClass(tuning[candidate - 1]) !== targetPitchClass) return candidate;
+  }
+  return null;
+}
+
+function isAscendingMajorThirdPair(
+  left: number,
+  right: number,
+  tuning: Tuning,
+): boolean {
+  const upper = Math.min(left, right);
+  const lower = Math.max(left, right);
+  return pitchClass(tuning[upper - 1] - tuning[lower - 1]) === 4;
+}
+
+function pitchClass(pitch: number): number {
+  return ((pitch % 12) + 12) % 12;
 }
 
 function label(

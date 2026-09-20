@@ -149,3 +149,11 @@ labels on the same string one fret away: d5 → P5, d7 → m7, P4 → A4,
 P5 → A5, ♭9 → 9, 9 → ♯9, 11 → ♯11, and ♭13 → 13. References sharing a
 position are combined (for example P4 and 11). They are clipped by the fret
 window like other labels, and omitted beyond the drawing's six-fret reach.
+
+P4, P5 and M7 answers also show a muted `1` at a nearby position with the
+root's pitch class. On fourths tuning P4 points to the string below and P5 to
+the string above; fifths tuning reverses those directions, and doubled unison
+strings are treated as one course. A guitar-family major-third boundary (G–B
+in standard tuning) shifts the reference one fret diagonally. M7 points one
+fret to the right on the same string. A reference is omitted when it would
+duplicate the card's normal root or fall outside the fret window.

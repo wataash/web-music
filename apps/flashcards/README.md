@@ -44,7 +44,10 @@ bundled web decks and schedules them with FSRS.
 - Guitar Intervals draws a guitar neck around a root marked `1` and asks what
   degree another position plays above it, answering with every name for that
   distance — `m3 ♯9`, say. There are no fret numbers: the board is drawn around
-  the root, so the same shape is one card wherever it is played. Its settings
+  the root, so the same shape is one card wherever it is played. Answers mark
+  nearby roots faintly beside P4, P5 and M7: the tuning decides the string
+  direction, and a guitar's major-third boundary makes the marker diagonal.
+  Its settings
   include a ten-level learning-range slider, from basic chord forms to all
   shapes. The first level has 24 basic chord and reference shapes (49 positions); level 2 includes
   ninths across distant strings, including the high-string 9 in the six-string
