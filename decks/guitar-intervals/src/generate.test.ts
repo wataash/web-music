@@ -44,7 +44,7 @@ describe("guitar interval deck generation", () => {
     expect(notes.find((note) => note.id === "r6-s5-f2")!.fields[6]).not.toContain('class="fret-name reference"');
   });
 
-  it("places root references beside P4, P5 and M7 using the instrument's tuning", () => {
+  it("places root references beside m2, P4, P5 and M7 using the instrument's tuning", () => {
     const expectRoot = (
       tuning: readonly number[],
       id: string,
@@ -69,6 +69,12 @@ describe("guitar interval deck generation", () => {
     expectRoot(STANDARD_TUNING, "r6-s2-b2", 3, -3);
     expectRoot(STANDARD_TUNING, "r1-s3-f4", 2, 5);
     expectRoot(STANDARD_TUNING.map((pitch) => pitch - 1), "r6-s2-b2", 3, -3);
+    // The semitone above the root resolves one fret to the left while its
+    // existing flat-nine reference remains one fret to the right.
+    expectRoot(STANDARD_TUNING, "r6-s1-f1", 1, 0);
+    expect(
+      createDeckNotes().find((note) => note.id === "r6-s1-f1")!.fields[7],
+    ).toMatch(/class="fret-name reference"[^>]*>9<\/span>/);
     // M7 always resolves one fret to the right.
     expectRoot(STANDARD_TUNING, "r6-s1-b1", 1, 0);
 
@@ -88,6 +94,17 @@ describe("guitar interval deck generation", () => {
     const p4 = notes.find((note) => note.id === "r5-s4-0")!;
     expect(p4.fields[5]).toBe("11 P4");
     expect(p4.fields[7]).not.toMatch(
+      /class="fret-name reference"[^>]*>1<\/span>/,
+    );
+    const m2 = notes.find((note) => note.id === "r1-s1-f1")!;
+    expect(m2.fields[5]).toBe("♭9 m2");
+    expect(m2.fields[7]).not.toMatch(
+      /class="fret-name reference"[^>]*>1<\/span>/,
+    );
+    const clippedM2 = notes.find(
+      (note) => note.fields[4] === "-6" && note.fields[5] === "♭9 m2",
+    )!;
+    expect(clippedM2.fields[7]).not.toMatch(
       /class="fret-name reference"[^>]*>1<\/span>/,
     );
     const clippedM7 = notes.find(

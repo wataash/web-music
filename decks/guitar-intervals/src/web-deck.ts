@@ -171,6 +171,9 @@ function rootReferencePositions(
     }
   };
 
+  if (card.names.includes("m2")) {
+    addIfRoot(card.targetString, card.fretOffset - 1);
+  }
   if (card.names.includes("M7")) {
     addIfRoot(card.targetString, card.fretOffset + 1);
   }

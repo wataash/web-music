@@ -45,7 +45,7 @@ bundled web decks and schedules them with FSRS.
   degree another position plays above it, answering with every name for that
   distance — `m3 ♯9`, say. There are no fret numbers: the board is drawn around
   the root, so the same shape is one card wherever it is played. Answers mark
-  nearby roots faintly beside P4, P5 and M7: the tuning decides the string
+  nearby roots faintly beside m2, P4, P5 and M7: the tuning decides the string
   direction, and a guitar's major-third boundary makes the marker diagonal.
   Its settings
   include a ten-level learning-range slider, from basic chord forms to all
