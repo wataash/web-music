@@ -13,6 +13,7 @@ import {
   statesToWrite,
   writeSettings,
   type BackupReview,
+  type BackupSettings,
 } from "./backup";
 import type { StateRow } from "./db";
 
@@ -25,6 +26,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
     key: (index: number) => [...values.keys()][index] ?? null,
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => { values.delete(key); },
     entries: () => Object.fromEntries(values),
   };
 }
@@ -58,6 +60,28 @@ function document(overrides: Record<string, unknown> = {}) {
 }
 
 describe("backup settings", () => {
+  it.each<BackupSettings>([{}, { "music-flashcards:collapsed-decks": "[]" }])(
+    "restores defaults for absent settings while preserving device-local data: %j",
+    (incoming) => {
+      const preserved = {
+        "music-flashcards:bundled-deck-versions": "bundled",
+        "music-flashcards:dev-deck-versions": "dev",
+        "music-flashcards:review-device-id": "mine",
+        "some-other-app": "untouched",
+      };
+      const storage = memoryStorage({
+        ...preserved,
+        "music-flashcards:hidden-decks": '["Intervals"]',
+        "music-flashcards:card-scales": '{"Intervals":2}',
+        "music-flashcards:collapsed-decks": '["Music Staff"]',
+      });
+
+      expect(writeSettings(incoming, storage)).toBe(Object.keys(incoming).length);
+      expect(readSettings(storage)).toEqual(incoming);
+      expect(storage.entries()).toEqual({ ...preserved, ...incoming });
+    },
+  );
+
   it("takes the app's own settings and leaves the rest of the origin alone", () => {
     const storage = memoryStorage({
       "music-flashcards:hidden-decks": '["Intervals"]',

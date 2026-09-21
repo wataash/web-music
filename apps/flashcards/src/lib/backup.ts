@@ -50,7 +50,7 @@ export type RestoreSummary = Readonly<{
 
 type StorageLike = Pick<
   Storage,
-  "getItem" | "setItem" | "key" | "length"
+  "getItem" | "setItem" | "removeItem" | "key" | "length"
 >;
 
 function browserStorage(): StorageLike | undefined {
@@ -86,6 +86,11 @@ export function writeSettings(
     }
     storage.setItem(key, value);
     written += 1;
+  }
+  // An absent setting means the source browser used its default. Restore
+  // that default too, without removing device identity or import versions.
+  for (const key of Object.keys(readSettings(storage))) {
+    if (!Object.hasOwn(settings, key)) storage.removeItem(key);
   }
   return written;
 }

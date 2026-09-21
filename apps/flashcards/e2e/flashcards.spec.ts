@@ -1648,6 +1648,32 @@ test("carries the study progress out to a file and back in", async ({
   );
 });
 
+test("restores default deck visibility when a backup has no saved settings", async ({ page }) => {
+  await openDeckList(page);
+  await page.evaluate(() => {
+    localStorage.setItem("music-flashcards:hidden-decks", '["Intervals"]');
+  });
+  await page.reload();
+  await expect(deckRow(page, "Music Staff")).toBeVisible();
+  await expect(deckRow(page, "Intervals")).toBeHidden();
+
+  await page.getByRole("button", { name: "BACKUP" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.locator('input[type="file"]').setInputFiles({
+    name: "default-settings.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({
+      format: "music-flashcards-backup", version: 1, exportedAt: "",
+      states: [], revlog: [], settings: {},
+    })),
+  });
+  await dialog.getByRole("button", { name: "RESTORE" }).click();
+  await dialog.getByRole("button", { name: "RELOAD" }).click();
+
+  await expect(deckRow(page, "Intervals")).toBeVisible({ timeout: IMPORT_TIMEOUT });
+  expect(await page.evaluate(() => localStorage.getItem("music-flashcards:hidden-decks"))).toBeNull();
+});
+
 test("selects 41 interval keys", async ({ page }) => {
   await openDeckList(page);
   await study(page, "Intervals");
