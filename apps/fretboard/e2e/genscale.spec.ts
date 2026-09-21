@@ -59,6 +59,26 @@ test("switches to concat and renders one fretboard per pasted URL", async ({
   await shot("concat-pasted", { fullPage: true });
 });
 
+test("rejects copied settings with incomplete notes without crashing concat", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.goto("/en");
+
+  await page.getByLabel("Notes").fill("");
+  await expect(page.getByLabel("A m7 guitar scale fretboard")).toBeVisible();
+  const incompleteSettings = JSON.parse(await page.getByLabel("Settings editor").inputValue()) as AppSettings;
+  expect(incompleteSettings.notes).toEqual([]);
+
+  await page.getByRole("tab", { name: "concat" }).click();
+  await page.getByLabel("Copied settings URLs").fill(
+    [copiedSettingsUrl(incompleteSettings), copiedSettingsUrl({ ...incompleteSettings, notes: scaleTokens("M") })].join("\n"),
+  );
+
+  await expect(page.getByText("These lines do not contain valid copied settings URLs: 1.")).toBeVisible();
+  await expect(page.getByLabel("A Major guitar scale fretboard")).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
 test("updates the fretboard label when key and scale change", async ({
   page,
   shot,

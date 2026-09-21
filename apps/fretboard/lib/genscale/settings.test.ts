@@ -82,6 +82,9 @@ describe("parseSettingsText", () => {
     expect(parseSettingsText("{")).toBeNull();
     expect(parseSettingsText(JSON.stringify({ ...settings, key: "H" }))).toBeNull();
     expect(parseSettingsText(JSON.stringify({ key: "A", notes: [] }))).toBeNull();
+    expect(parseSettingsText(JSON.stringify({ ...settings, notes: [] }))).toBeNull();
+    expect(parseSettingsText(JSON.stringify({ ...settings, notes: settings.notes.slice(0, 11) }))).toBeNull();
+    expect(parseSettingsText(JSON.stringify({ ...settings, notes: [...settings.notes, "extra"] }))).toBeNull();
     expect(
       parseSettingsText(JSON.stringify({ ...settings, noteGrayLevels: [20, 40] })),
     ).toBeNull();

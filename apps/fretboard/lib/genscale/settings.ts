@@ -86,6 +86,7 @@ export function parseSettingsText(text: string): AppSettings | null {
       typeof settings.key !== "string" ||
       !tuning ||
       !notes ||
+      notes.length !== 12 ||
       !noteGrayLevels ||
       !fretSpacing
     ) {
