@@ -141,6 +141,20 @@ pnpm generate:svg
 
 ## Deployment
 
+The Fretboard app is served at <https://genscale.wataash.com/>. It is exported
+as static HTML for `/`, `/en`, and `/ja`; shared settings URLs are read in the
+browser. Deploy it to its dedicated Cloudflare Worker:
+
+```console
+pnpm deploy:fretboard
+```
+
+This builds `apps/fretboard/out/` and deploys the `fretboard` environment in
+`wrangler.toml`, including the custom domain. To build and preview the same
+static assets locally, run `pnpm preview:fretboard` (port 18427).
+
+Deploy Music Flashcards with:
+
 ```console
 pnpm deploy:workers
 ```

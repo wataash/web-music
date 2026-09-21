@@ -20,3 +20,16 @@ directory = "./apps/chords/dist"
 
 [env.chords.build]
 command = "pnpm build:chords"
+
+[env.fretboard]
+name = "genscale"
+workers_dev = true
+routes = [{ pattern = "genscale.wataash.com", custom_domain = true }]
+
+[env.fretboard.assets]
+directory = "./apps/fretboard/out"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+
+[env.fretboard.build]
+command = "pnpm build:fretboard"
