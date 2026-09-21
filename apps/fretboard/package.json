@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 18427",
     "build": "next build",
-    "start": "next start -p 18427",
+    "start": "pnpm --dir ../.. preview:fretboard",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run --coverage  $(: \"note: for human: pnpm vitest --ui --coverage\")",

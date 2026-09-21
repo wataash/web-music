@@ -10,6 +10,30 @@ function copiedSettingsUrl(settings: AppSettings, locale = "en") {
   return `http://localhost:18427/${locale}?settings=${readableSettingsParam(settings)}`;
 }
 
+test("restores URL settings on each exported route and rejects unknown locales", async ({ page }) => {
+  const settings: AppSettings = {
+    key: "D",
+    tuning: ["E4", "B3", "G3", "D3", "A2", "E2"],
+    notes: scaleTokens("M"),
+    noteGrayLevels: [20, 40, 75, 100],
+    fretSpacing: "equal-temperament",
+  };
+  const query = `?settings=${readableSettingsParam(settings)}`;
+
+  for (const [path, label] of [
+    ["/", "D Major guitar scale fretboard"],
+    ["/en", "D Major guitar scale fretboard"],
+    ["/ja", "D メジャー ギター指板スケール"],
+  ]) {
+    await page.goto(`${path}${query}`);
+    await expect(page.getByLabel(label)).toBeVisible();
+    await expect(page.getByRole("combobox", { name: path === "/ja" ? "キー" : "Key" })).toHaveValue("D");
+  }
+
+  const response = await page.goto("/unknown-locale");
+  expect(response?.status()).toBe(404);
+});
+
 test("switches to concat and renders one fretboard per pasted URL", async ({
   page,
   shot,

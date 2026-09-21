@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { notFound } from "next/navigation";
-import GenscaleApp from "../genscale-app";
+import { Suspense } from "react";
+import SettingsApp from "../settings-app";
 
 const LOCALES = ["en", "ja"] as const;
 type Locale = (typeof LOCALES)[number];
@@ -11,10 +12,9 @@ type PageProps = {
   params: Promise<{
     locale: string;
   }>;
-  searchParams?: Promise<{
-    settings?: string | string[];
-  }>;
 };
+
+export const dynamicParams = false;
 
 function isLocale(locale: string): locale is Locale {
   return LOCALES.includes(locale as Locale);
@@ -36,16 +36,12 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
-export default async function LocalePage({ params, searchParams }: PageProps) {
+export default async function LocalePage({ params }: PageProps) {
   const { locale } = await params;
-  const query = await searchParams;
 
   if (!isLocale(locale)) {
     notFound();
   }
 
-  const settings =
-    typeof query?.settings === "string" ? query.settings : undefined;
-
-  return <GenscaleApp initialSettingsText={settings} locale={locale} />;
+  return <Suspense fallback={<main className="p-5">genscale</main>}><SettingsApp locale={locale} /></Suspense>;
 }
