@@ -435,7 +435,7 @@ SPDX-License-Identifier: Apache-2.0
       <select aria-label="Playlist" bind:value={playlistFilter}>
         <option value="">All playlists ({songs.length})</option>
         {#each playlists as playlist}<option value={'playlist:' + playlist}>{playlist || 'Unlisted imports'} ({playlistCounts.get(playlist)})</option>{/each}
-        <option value="examples">Built-in examples ({CHORD_SONGS.length})</option>
+        <option value="examples">Built-in ({CHORD_SONGS.length})</option>
       </select>
     </div>
     <div class="library-secondary">
