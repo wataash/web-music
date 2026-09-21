@@ -62,6 +62,7 @@ SPDX-License-Identifier: Apache-2.0
     parseStaffNoteSelection,
     type StaffNoteSelection,
   } from "./lib/staff-note-selection";
+  import { DEFAULT_MOVABLE_DO_KEYS, parseMovableDoKeys } from "./lib/movable-do-key-selection";
   import {
     DEFAULT_GUITAR_TUNING,
     GUITAR_TUNING_KEY,
@@ -118,6 +119,7 @@ SPDX-License-Identifier: Apache-2.0
   } as const satisfies Readonly<Record<CircleNoteSettingsScope, string>>;
   const STAFF_NOTE_SELECTION_KEY =
     "music-flashcards:music-staff-note-selection";
+  const MOVABLE_DO_KEYS_KEY = "music-flashcards:movable-do-major-keys";
   const INTERVAL_PAIR_SELECTION_KEY =
     "music-flashcards:interval-pair-selection";
   const GUITAR_DIFFICULTY_KEY = "music-flashcards:guitar-difficulty";
@@ -138,6 +140,7 @@ SPDX-License-Identifier: Apache-2.0
   let staffNoteSelection = $state<StaffNoteSelection>(
     DEFAULT_STAFF_NOTE_SELECTION,
   );
+  let movableDoKeys = $state<readonly number[]>(DEFAULT_MOVABLE_DO_KEYS);
   let intervalPairSelection = $state<readonly string[]>(
     DEFAULT_INTERVAL_PAIR_SELECTION,
   );
@@ -161,6 +164,7 @@ SPDX-License-Identifier: Apache-2.0
     guitarTuning,
     intervalPairs: new Set(intervalPairSelection),
     staff: staffNoteSelection,
+    movableDoKeys: new Set(movableDoKeys),
   });
   let devSyncRunning = false;
   let devSyncAll = false;
@@ -277,6 +281,16 @@ SPDX-License-Identifier: Apache-2.0
         STAFF_NOTE_SELECTION_KEY,
         JSON.stringify(selection),
       );
+    } catch {
+      // The preference is optional when storage is unavailable.
+    }
+    void refresh();
+  }
+
+  function setMovableDoKeys(selection: readonly number[]): void {
+    movableDoKeys = parseMovableDoKeys(selection);
+    try {
+      localStorage.setItem(MOVABLE_DO_KEYS_KEY, JSON.stringify(movableDoKeys));
     } catch {
       // The preference is optional when storage is unavailable.
     }
@@ -613,6 +627,12 @@ SPDX-License-Identifier: Apache-2.0
       staffNoteSelection = DEFAULT_STAFF_NOTE_SELECTION;
     }
     try {
+      const saved = localStorage.getItem(MOVABLE_DO_KEYS_KEY);
+      if (saved !== null) movableDoKeys = parseMovableDoKeys(JSON.parse(saved));
+    } catch {
+      movableDoKeys = DEFAULT_MOVABLE_DO_KEYS;
+    }
+    try {
       const saved = localStorage.getItem(INTERVAL_PAIR_SELECTION_KEY);
       if (saved !== null) {
         intervalPairSelection = parseIntervalPairs(JSON.parse(saved));
@@ -705,6 +725,7 @@ SPDX-License-Identifier: Apache-2.0
     onguitartuningchange={(tuning) => void setGuitarTuning(tuning)}
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}
+    onmovabledokeyselectionchange={setMovableDoKeys}
   />
 {:else}
   <DeckList
@@ -740,6 +761,7 @@ SPDX-License-Identifier: Apache-2.0
     onguitartuningchange={(tuning) => void setGuitarTuning(tuning)}
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}
+    onmovabledokeyselectionchange={setMovableDoKeys}
     ondismisserror={() => (error = null)}
     ondismissnotice={() => (notice = null)}
   />

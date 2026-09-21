@@ -9,6 +9,7 @@ import { DEFAULT_FRET_WINDOW } from "./guitar-interval-selection";
 import { DEFAULT_GUITAR_TUNING } from "./guitar-tuning";
 import { DEFAULT_INTERVAL_PAIR_SELECTION } from "./interval-pair-selection";
 import { deckSettingsTarget, includesSelectedNote } from "./note-selection";
+import { DEFAULT_MOVABLE_DO_KEYS, parseMovableDoKeys } from "./movable-do-key-selection";
 import {
   ALL_STAFF_NOTES,
   DEFAULT_STAFF_NOTE_SELECTION,
@@ -25,6 +26,7 @@ const selections = {
   guitarTuning: DEFAULT_GUITAR_TUNING,
   intervalPairs: new Set(DEFAULT_INTERVAL_PAIR_SELECTION),
   staff: DEFAULT_STAFF_NOTE_SELECTION,
+  movableDoKeys: new Set(DEFAULT_MOVABLE_DO_KEYS),
 };
 
 describe("note selection", () => {
@@ -80,6 +82,11 @@ describe("note selection", () => {
   });
 
   it("routes each deck's gear to its own panel", () => {
+    expect(deckSettingsTarget("Music Staff (Movable Do)")?.kind).toBe("movable-do-keys");
+    expect(deckSettingsTarget("Music Staff (Movable Do)::Staff → Solfege")?.kind).toBe("movable-do-keys");
+    expect(deckSettingsTarget("Music Staff (Movable Do)::Staff → Solfege::Treble Clef")).toEqual({
+      kind: "staff", setting: { clef: "treble", deckLabel: "Treble Clef", movableDo: true },
+    });
     expect(
       deckSettingsTarget(
         "Music Staff (with Octave Numbers)::Note → Staff::Alto Clef",
@@ -108,5 +115,23 @@ describe("note selection", () => {
       setting: { deckLabel: "Note → Positions" },
     });
     expect(deckSettingsTarget("Guitar Fretboard")).toBeNull();
+  });
+
+  it("selects multiple movable-do keys without filtering other decks", () => {
+    const movable = (fifths: number) => ({
+      fields: ["id", "treble", "G4", String(fifths), "G", "ソ", "G4", "treble|G4"],
+      tags: `clef::treble mode::major key-fifths::${fifths}`,
+    });
+    const chosen = { ...selections, movableDoKeys: new Set([0, -2]) };
+    expect(includesSelectedNote(movable(0), chosen)).toBe(true);
+    expect(includesSelectedNote(movable(-2), chosen)).toBe(true);
+    expect(includesSelectedNote(movable(1), chosen)).toBe(false);
+    expect(includesSelectedNote(movable(7), { ...selections, movableDoKeys: new Set([7, -7]) })).toBe(true);
+    expect(includesSelectedNote(movable(-7), { ...selections, movableDoKeys: new Set([7, -7]) })).toBe(true);
+    expect(includesSelectedNote({ fields: ["id"], tags: "" }, chosen)).toBe(true);
+    expect(parseMovableDoKeys([1, 1, 0, 99, "-2"])).toEqual([0, 1]);
+    expect(parseMovableDoKeys([])).toEqual([]);
+    expect(parseMovableDoKeys(null)).toEqual(DEFAULT_MOVABLE_DO_KEYS);
+    expect(DEFAULT_MOVABLE_DO_KEYS).toHaveLength(15);
   });
 });

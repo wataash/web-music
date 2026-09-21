@@ -14,6 +14,12 @@ import {
   type DiagramLayout,
   type LabelPlacement,
 } from "@circle-of-fifths/core";
+import {
+  KEY_SIGNATURE_FONT_FAMILY,
+  keySignatureAccidentals,
+  keySignatureAdvance,
+  keySignatureGlyphCss,
+} from "@web-music/music-staff-core";
 
 export { formatNumber } from "@circle-of-fifths/core";
 
@@ -40,21 +46,8 @@ const CLEF_X = -136;
 const CLEF_Y = { treble: 12, bass: 18 } as const;
 const SIGNATURE_START_X = -110;
 const SIGNATURE_GAP = 10;
-const ACCIDENTAL_STEP_X = 7;
-const ACCIDENTAL_Y_OFFSET = -7;
 const EMPTY_SIGNATURE_WIDTH = 18;
 const ACCIDENTAL_WIDTH = 12;
-
-const accidentalYByClef = {
-  treble: {
-    sharp: [-12, -3, -15, -6, 3, -9, 0],
-    flat: [0, -9, 3, -6, 6, -3, 9],
-  },
-  bass: {
-    sharp: [-6, 3, -9, 0, 9, -3, 6],
-    flat: [6, -3, 9, 0, 12, 3, 15],
-  },
-} as const;
 
 export const DIAGRAM_STYLES = `
   .circle-of-fifths__line {
@@ -94,8 +87,7 @@ export const DIAGRAM_STYLES = `
   }
   .circle-of-fifths__key-signature {
     fill: #000;
-    font-family: "Noto Music", "Noto Sans Symbols2", "DejaVu Sans",
-      sans-serif;
+    font-family: ${KEY_SIGNATURE_FONT_FAMILY};
     dominant-baseline: central;
   }
   .circle-of-fifths__clef {
@@ -106,8 +98,7 @@ export const DIAGRAM_STYLES = `
     font-size: 40px;
   }
   .circle-of-fifths__key-accidental {
-    font-size: 18px;
-    text-anchor: middle;
+    ${keySignatureGlyphCss(6)};
   }
   .circle-of-fifths--single-note .circle-of-fifths__major {
     font-size: 88px;
@@ -395,28 +386,22 @@ function createStaffModel(
     .map((note) => ({ note, fifths: fifthsForMajorNote(note) }))
     .filter(({ fifths }) => Math.abs(fifths) < 8)
     .map(({ note, fifths }) => {
-      const symbol = fifths > 0 ? "♯" : fifths < 0 ? "♭" : "";
       const count = Math.abs(fifths);
-      const pattern =
-        accidentalYByClef[clef][fifths >= 0 ? "sharp" : "flat"];
       const signature = {
         note,
         fifths,
-        symbol,
-        accidentals: Array.from({ length: count }, (_, index) => ({
-          x:
-            x +
-            ACCIDENTAL_WIDTH / 2 +
-            index * ACCIDENTAL_STEP_X,
-          y:
-            pattern[index % pattern.length] +
-            ACCIDENTAL_Y_OFFSET,
-        })),
+        ...keySignatureAccidentals(
+          clef,
+          fifths,
+          x + ACCIDENTAL_WIDTH / 2,
+          STAFF_LINE_Y[0],
+          STAFF_LINE_Y[1] - STAFF_LINE_Y[0],
+        ),
       } as const;
       const width =
         count === 0
           ? EMPTY_SIGNATURE_WIDTH
-          : (count - 1) * ACCIDENTAL_STEP_X + ACCIDENTAL_WIDTH;
+          : (count - 1) * keySignatureAdvance(6) + ACCIDENTAL_WIDTH;
       x += width + SIGNATURE_GAP;
       return signature;
     });

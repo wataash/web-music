@@ -99,6 +99,10 @@ bundled web decks and schedules them with FSRS.
   5–6 exist for completeness on instruments with extreme ranges, and are not a
   general learning target. The selection applies both to the plain
   `Staff → Note` deck and to both directions of the deck with octave numbers.
+  The separate major-key `Music Staff (Movable Do)` deck shares this selection
+  and asks for ド–シ from the key signature and written note. Its answer also
+  shows the sounding pitch; minor keys and chromatic alterations are excluded.
+  Its notation font is bundled for consistent, offline PWA rendering.
   For the ranges see the [ABRSM Music Theory syllabus][abrsm-theory]; for
   avoiding many ledger lines with 8va, [Dorico's guide][dorico-octave-line]
 - The staff a card draws is framed for everything its clef can carry, so it

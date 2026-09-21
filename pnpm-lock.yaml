@@ -374,6 +374,9 @@ importers:
       '@circle-of-fifths/core':
         specifier: workspace:*
         version: link:../circle-of-fifths-core
+      '@web-music/music-staff-core':
+        specifier: workspace:*
+        version: link:../music-staff-core
     devDependencies:
       vitest:
         specifier: ^4.1.10

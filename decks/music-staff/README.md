@@ -27,6 +27,15 @@ Music Staff (with Octave Numbers) [Advanced]
 
 The plain deck holds 132 `Staff → Note` cards and the one with octave numbers
 264 cards in both directions, 396 in total.
+
+The Flashcards web app also bundles `Music Staff (Movable Do)` as a separate
+major-key reading deck. It asks for ド–シ from a clef, key signature and one
+written note, across twelve major keys and all four clefs (1,584 cards).
+The answer gives the solfege prominently and the sounding pitch and key as
+context. It uses the same per-clef ledger-line selection as the fixed-do
+decks. Accidentals outside the key signature and minor keys are not included.
+This deck is currently web-only; `generate:anki` still exports the two
+fixed-do deck trees described above.
 `Music Staff (with Octave Numbers)` is marked `hiddenByDefault`, and so are
 the alto and tenor clefs of the plain deck — the clefs violists, cellists and
 trombonists read — so the web app's deck list starts without them until
@@ -241,5 +250,6 @@ Note names, their positions on a staff and the staff SVG rendering live in
 select which notes to ask and the same renderer for the small staves in its
 settings screen, so this deck holds only the dimensions its cards need. The
 shared Anki package generation lives in `../../packages/anki-apkg/`. The circle
-of fifths SVG in `../../packages/circle-of-fifths-svg/` is for key signatures
-only, so its staff rendering is not shared with this one.
+of fifths SVG in `../../packages/circle-of-fifths-svg/` keeps its own staff
+renderer, but its key-signature placements and glyph metrics are shared with
+the movable-do cards through the core package.

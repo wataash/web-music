@@ -5,8 +5,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-import { createWebDeckData } from "./apkg";
+import { createWebDeckData, type WebDeckData } from "./apkg";
 import { createWebDeckArtifacts } from "./generate";
+import { createMovableDoWebDeckData } from "./movable-do";
 
 const { values } = parseArgs({
   options: { output: { type: "string", short: "o" } },
@@ -16,8 +17,22 @@ const artifacts = createWebDeckArtifacts();
 const document = {
   format: "web-music-flashcards-deck",
   version: 1,
-  deck: createWebDeckData(artifacts.notes, artifacts.media),
+  deck: mergeDecks(
+    createWebDeckData(artifacts.notes, artifacts.media),
+    createMovableDoWebDeckData(),
+  ),
 } as const;
+
+function mergeDecks(first: WebDeckData, second: WebDeckData): WebDeckData {
+  return {
+    models: [...first.models, ...second.models],
+    decks: [...first.decks, ...second.decks],
+    notes: [...first.notes, ...second.notes],
+    cards: [...first.cards, ...second.cards],
+    media: [...first.media, ...second.media],
+    rootDeckNames: [...first.rootDeckNames, ...second.rootDeckNames],
+  };
+}
 
 await mkdir(dirname(outputPath), { recursive: true });
 await writeFile(outputPath, JSON.stringify(document));

@@ -103,7 +103,7 @@ export default defineConfig(({ mode }) => ({
         // second copy in the service worker cache would only make that visit
         // download the same ~15 MB twice. The manifest stays precached, so an
         // offline launch can still see that no deck changed.
-        globPatterns: ["**/*.{js,css,html,svg}", "decks/manifest.json"],
+        globPatterns: ["**/*.{js,css,html,svg,ttf}", "decks/manifest.json"],
       },
     }),
   ],

@@ -11,7 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@circle-of-fifths/core": "workspace:*"
+    "@circle-of-fifths/core": "workspace:*",
+    "@web-music/music-staff-core": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^4.1.10"

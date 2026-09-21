@@ -22,6 +22,13 @@ import {
   type Clef,
   type Pitch,
 } from "./model";
+import {
+  MAJOR_KEYS,
+  keySignatureAccidentalForNote,
+  keySignatureAccidentals,
+  keySignatureAdvance,
+  keySignatureGlyphCss,
+} from "./key-signature";
 
 export type StaffPalette = Readonly<{
   // null leaves the staff transparent, for a diagram drawn on a page that
@@ -223,6 +230,12 @@ export type StaffRowSvgInput = Readonly<{
   columnWidth?: number;
   // Room under the staff for each note's name.
   nameHeight?: number;
+  // Major-key signature; pitch positions remain natural staff positions.
+  keyFifths?: number;
+  // Add movable-do names below the pitch names (C major when key is omitted).
+  showSolfege?: boolean;
+  // Reference diagrams draw all notes at full opacity without controls.
+  interactive?: boolean;
 }>;
 
 // Every note of a clef on one staff, each in a column of its own that carries
@@ -235,17 +248,34 @@ export function renderStaffRowSvg({
   geometry = ROW_STAFF_GEOMETRY,
   columnWidth = 30,
   nameHeight = 22,
+  keyFifths,
+  showSolfege = false,
+  interactive = true,
 }: StaffRowSvgInput): string {
   if (!isClef(clef)) {
     throw new RangeError(
       `clef must be one of ${CLEFS.join(", ")}: ${String(clef)}`,
     );
   }
+  const key = MAJOR_KEYS.find(
+    (item) => item.fifths === (keyFifths ?? (showSolfege ? 0 : undefined)),
+  );
+  if (keyFifths !== undefined && !key) {
+    throw new RangeError(
+      `keyFifths must be an integer from -7 to 7: ${keyFifths}`,
+    );
+  }
+  const clefColumnWidth = clefWidth(geometry);
+  const signatureWidth = keyFifths === undefined || keyFifths === 0
+    ? 0
+    : geometry.lineGap * 1.5 +
+      Math.abs(keyFifths) * keySignatureAdvance(geometry.lineGap, "reading");
   const on = new Set(selected);
   const notes = pitches.map((pitch, index) => ({
     pitch,
     step: staffStep(clef, validatePitch(clef, pitch)),
-    centerX: clefWidth(geometry) + (index + 0.5) * columnWidth,
+    centerX:
+      clefColumnWidth + signatureWidth + (index + 0.5) * columnWidth,
     on: on.has(pitch),
   }));
   const frame = staffFrame(
@@ -253,7 +283,7 @@ export function renderStaffRowSvg({
     notes.map(({ step }) => step),
     geometry,
   );
-  const width = clefWidth(geometry) + pitches.length * columnWidth;
+  const width = clefColumnWidth + signatureWidth + pitches.length * columnWidth;
   const height = frame.height + nameHeight;
   const nameBaselineY = frame.top + frame.height + nameHeight - geometry.padding;
 
@@ -271,28 +301,59 @@ export function renderStaffRowSvg({
         })
         .join("");
       const noteY = staffStepY(geometry, step);
+      const parsed = parsePitch(pitch);
+      const spelledPitch = keyFifths === undefined
+        ? pitch
+        : `${parsed.note}${keySignatureAccidentalForNote(parsed.note, keyFifths)}${parsed.octave}`;
+      const tonic = key === undefined ? undefined : key.tonic[0];
+      const solfege = tonic === undefined
+        ? undefined
+        : ["Do", "Re", "Mi", "Fa", "Sol", "La", "Ti"][
+            (diatonicIndex(parsed) -
+              diatonicIndex({ note: tonic as Pitch["note"], octave: parsed.octave }) +
+              7) % 7
+          ];
       return [
-        `<g class="staff__note" data-pitch="${escapeXml(pitch)}" data-selected="${isOn}"`,
-        ` role="checkbox" aria-checked="${isOn}" aria-label="${escapeXml(pitch)}" tabindex="0">`,
-        `<rect class="staff__column" x="${round(centerX - columnWidth / 2)}" y="${frame.top}" width="${columnWidth}" height="${round(height)}"/>`,
+        `<g class="staff__note" data-pitch="${escapeXml(pitch)}"${interactive ? ` data-selected="${isOn}" role="checkbox" aria-checked="${isOn}" aria-label="${escapeXml(spelledPitch)}" tabindex="0"` : ""}>`,
+        interactive
+          ? `<rect class="staff__column" x="${round(centerX - columnWidth / 2)}" y="${frame.top}" width="${columnWidth}" height="${round(height)}"/>`
+          : "",
         ledgers,
         `<path class="staff__note-head" fill-rule="evenodd" d="${noteHeadPath(geometry, centerX, noteY)}"/>`,
-        `<text class="staff__name" x="${round(centerX)}" y="${round(nameBaselineY)}">${escapeXml(pitch)}</text>`,
+        `<text class="staff__name" x="${round(centerX)}" y="${round(showSolfege ? nameBaselineY - geometry.lineGap * 1.5 : nameBaselineY)}">${escapeXml(spelledPitch)}</text>`,
+        showSolfege && solfege
+          ? `<text class="staff__solfege" x="${round(centerX)}" y="${round(nameBaselineY)}">${solfege}</text>`
+          : "",
         "</g>",
       ].join("");
     })
     .join("");
 
   return [
-    `<svg class="staff staff-row" xmlns="http://www.w3.org/2000/svg" width="${round(width)}" height="${round(height)}"`,
+    `<svg class="staff staff-row${interactive ? "" : " staff-row--reference"}" xmlns="http://www.w3.org/2000/svg" width="${round(width)}" height="${round(height)}"`,
     ` viewBox="0 ${frame.top} ${round(width)} ${round(height)}" role="group"`,
-    ` aria-label="${CLEF_LABELS[clef]} clef notes">`,
-    `<style>${staffStyles(geometry)}${staffRowStyles(geometry)}</style>`,
+    ` aria-label="${CLEF_LABELS[clef]} clef${key ? `, ${escapeXml(key.tonic)} major` : ""} notes">`,
+    `<style>${staffStyles(geometry)}${staffRowStyles(geometry, interactive)}</style>`,
     lines,
     `<text class="staff__clef" data-clef="${clef}" x="${geometry.clefX}" y="${clefBaselineY(geometry, clef)}">${CLEF_GLYPHS[clef]}</text>`,
+    keyFifths === undefined ? "" : renderRowKeySignature(clef, keyFifths, geometry, clefColumnWidth),
     columns,
     "</svg>",
   ].join("");
+}
+
+function renderRowKeySignature(clef: Clef, fifths: number, geometry: StaffGeometry, clefColumnWidth: number): string {
+  const signature = keySignatureAccidentals(
+    clef, fifths, clefColumnWidth + geometry.lineGap * 0.7,
+    geometry.topLineY, geometry.lineGap, "reading",
+  );
+  const glyphCss = escapeXml(keySignatureGlyphCss(
+    geometry.lineGap, "reading", fifths > 0 ? "sharp" : "flat",
+  ));
+  const glyphs = signature.accidentals.map(({ x, y }) =>
+    `<text x="${round(x)}" y="${round(y)}" style="${glyphCss}">${signature.symbol}</text>`,
+  ).join("");
+  return `<g class="staff__key-signature" aria-hidden="true" fill="${geometry.palette.note}">${glyphs}</g>`;
 }
 
 // The clef glyph's own column, which no note is placed in.
@@ -300,15 +361,17 @@ function clefWidth(geometry: StaffGeometry): number {
   return geometry.clefX + geometry.lineGap * 3.4;
 }
 
-function staffRowStyles(geometry: StaffGeometry): string {
+function staffRowStyles(geometry: StaffGeometry, interactive = true): string {
+  const selector = interactive ? ".staff-row:not(.staff-row--reference)" : ".staff-row--reference";
+  const inactive = `${selector} .staff__note[data-selected="false"]`;
   return [
-    `.staff-row .staff__note{cursor:pointer}`,
-    `.staff-row .staff__column{fill:currentColor;opacity:0.1}`,
-    `.staff-row .staff__note[data-selected="false"] .staff__column{opacity:0}`,
-    `.staff-row .staff__note[data-selected="false"] .staff__note-head,`,
-    `.staff-row .staff__note[data-selected="false"] .staff__ledger-line,`,
-    `.staff-row .staff__note[data-selected="false"] .staff__name{opacity:0.3}`,
-    `.staff-row .staff__name{fill:currentColor;font-family:"Noto Sans","DejaVu Sans",sans-serif;font-size:${geometry.lineGap * 1.3}px;text-anchor:middle}`,
+    interactive ? [
+      `${selector} .staff__note{cursor:pointer}`,
+      `${selector} .staff__column{fill:currentColor;opacity:0.1}`,
+      `${inactive} .staff__column{opacity:0}`,
+      `${inactive} .staff__note-head,${inactive} .staff__ledger-line,${inactive} .staff__name{opacity:0.3}`,
+    ].join("") : "",
+    `${selector} .staff__name,${selector} .staff__solfege{fill:currentColor;font-family:"Noto Sans","DejaVu Sans",sans-serif;font-size:${geometry.lineGap * 1.3}px;text-anchor:middle}`,
   ].join("");
 }
 

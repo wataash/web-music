@@ -8,6 +8,7 @@ const CHILD_ORDER_BY_PARENT = new Map<string, readonly string[]>([
     [
       "Music Staff",
       "Music Staff (with Octave Numbers)",
+      "Music Staff (Movable Do)",
       "Intervals",
       "Interval Identification",
       "Guitar Fretboard",
@@ -36,6 +37,11 @@ const CHILD_ORDER_BY_PARENT = new Map<string, readonly string[]>([
     ["♭3", "Δ3"],
   ],
   ["Music Staff", ["Staff → Note"]],
+  ["Music Staff (Movable Do)", ["Staff → Solfege"]],
+  [
+    "Music Staff (Movable Do)::Staff → Solfege",
+    ["Treble Clef", "Bass Clef", "Alto Clef", "Tenor Clef"],
+  ],
   [
     "Music Staff (with Octave Numbers)",
     ["Staff → Note", "Note → Staff"],

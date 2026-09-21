@@ -14,6 +14,7 @@ import {
   includesFretboardNoteCard,
 } from "./fretboard-card";
 import type { Tuning } from "./guitar-tuning";
+import { includesMovableDoKeyCard, movableDoKeyDeckSetting } from "./movable-do-key-selection";
 import {
   guitarIntervalDeckSetting,
   includesGuitarIntervalCard,
@@ -45,6 +46,7 @@ export type NoteSelections = Readonly<{
   guitarTuning: Tuning;
   intervalPairs: ReadonlySet<string>;
   staff: StaffNoteSelection;
+  movableDoKeys: ReadonlySet<number>;
 }>;
 
 export function includesSelectedNote(
@@ -56,7 +58,8 @@ export function includesSelectedNote(
     includesFretboardNoteCard(note, selections.fretboardNotes) &&
     includesGuitarIntervalCard(note, selections.fretWindow, selections.guitarDifficulty, selections.guitarOverrides) &&
     includesIntervalPairCard(note, selections.intervalPairs) &&
-    includesStaffNoteCard(note, selections.staff)
+    includesStaffNoteCard(note, selections.staff) &&
+    includesMovableDoKeyCard(note, selections.movableDoKeys)
   );
 }
 
@@ -73,7 +76,8 @@ export type DeckSettingsTarget =
   // instrument, which every guitar deck's gear offers as well.
   | Readonly<{ kind: "guitar-instrument"; setting: Readonly<{ deckLabel: string }> }>
   | Readonly<{ kind: "interval"; setting: IntervalDeckSetting }>
-  | Readonly<{ kind: "staff"; setting: StaffNoteDeckSetting }>;
+  | Readonly<{ kind: "staff"; setting: StaffNoteDeckSetting }>
+  | Readonly<{ kind: "movable-do-keys"; setting: Readonly<{ deckLabel: string }> }>;
 
 export function deckSettingsTarget(
   deckName: string,
@@ -93,5 +97,7 @@ export function deckSettingsTarget(
   }
   const staff = staffNoteDeckSetting(deckName);
   if (staff !== null) return { kind: "staff", setting: staff };
+  const movableDo = movableDoKeyDeckSetting(deckName);
+  if (movableDo !== null) return { kind: "movable-do-keys", setting: movableDo };
   return null;
 }

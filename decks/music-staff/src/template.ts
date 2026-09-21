@@ -88,7 +88,7 @@ const WEB_KEYBOARD_BASES = {
   }),
 } as const;
 
-const WEB_DIAGRAM_SCRIPT = `
+export const WEB_DIAGRAM_SCRIPT = `
 <script>
 (() => {
   const staffBases = ${JSON.stringify(WEB_STAFF_BASES)};

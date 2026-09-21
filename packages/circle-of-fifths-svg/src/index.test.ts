@@ -94,6 +94,10 @@ describe("SVG diagram", () => {
       "treble",
       "bass",
     ]);
+    expect(atNine?.staffs[1].signatures[0].accidentals.slice(0, 2)).toEqual([
+      { x: -104, y: -1 },
+      { x: -97, y: -10 },
+    ]);
     expect(
       atNine?.staffs[0].signatures.map(
         ({ fifths, accidentals }) => ({

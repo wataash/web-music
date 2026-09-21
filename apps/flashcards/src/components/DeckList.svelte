@@ -66,6 +66,7 @@ SPDX-License-Identifier: Apache-2.0
     onguitartuningchange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
+    onmovabledokeyselectionchange,
     ondismisserror,
     ondismissnotice,
   }: {
@@ -98,6 +99,7 @@ SPDX-License-Identifier: Apache-2.0
     onguitartuningchange: (tuning: Tuning) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
+    onmovabledokeyselectionchange: (selection: readonly number[]) => void;
     ondismisserror: () => void;
     ondismissnotice: () => void;
   } = $props();
@@ -548,6 +550,7 @@ SPDX-License-Identifier: Apache-2.0
     {onguitartuningchange}
     {onintervalpairselectionchange}
     {onstaffnoteselectionchange}
+    {onmovabledokeyselectionchange}
     onclose={closeNoteSettings}
   />
 {/if}

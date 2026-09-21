@@ -125,6 +125,7 @@ describe("staff note selection", () => {
   });
 
   it("puts a gear on every clef deck in both directions", () => {
+    expect(staffNoteDeckSetting("Music Staff (Movable Do)::Staff → Solfege::Bass Clef")).toEqual({ clef: "bass", deckLabel: "Bass Clef", movableDo: true });
     expect(
       staffNoteDeckSetting("Music Staff::Staff → Note::Treble Clef"),
     ).toEqual({ clef: "treble", deckLabel: "Treble Clef" });

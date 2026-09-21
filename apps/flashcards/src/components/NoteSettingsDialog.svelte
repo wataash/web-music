@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
   import GuitarIntervalSettings from "./GuitarIntervalSettings.svelte";
   import InstrumentSettings from "./InstrumentSettings.svelte";
   import IntervalPairSettings from "./IntervalPairSettings.svelte";
+  import MovableDoKeySettings from "./MovableDoKeySettings.svelte";
   import SettingsDialog from "./SettingsDialog.svelte";
   import StaffNoteSettings from "./StaffNoteSettings.svelte";
   import type {
@@ -41,6 +42,7 @@ SPDX-License-Identifier: Apache-2.0
     onguitartuningchange,
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
+    onmovabledokeyselectionchange,
     onclose,
   }: {
     targets: readonly DeckSettingsTarget[];
@@ -59,6 +61,7 @@ SPDX-License-Identifier: Apache-2.0
     onguitartuningchange: (tuning: Tuning) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
     onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
+    onmovabledokeyselectionchange: (selection: readonly number[]) => void;
     onclose: () => void;
   } = $props();
 
@@ -68,6 +71,7 @@ SPDX-License-Identifier: Apache-2.0
   let staff = $state<StaffNoteSelection>(
     untrack(() => ({ ...noteSelections.staff })),
   );
+  let movableDoKeys = $state<readonly number[]>(untrack(() => [...noteSelections.movableDoKeys]));
   let circle = $state(untrack(() => ({ ...noteSelections.circle })));
   let intervalPairs = $state<readonly string[]>(
     untrack(() => [...noteSelections.intervalPairs]),
@@ -84,7 +88,12 @@ SPDX-License-Identifier: Apache-2.0
   // The instrument is every guitar deck's, so it is set once above their
   // sections rather than in each of them.
   const guitarDecks = $derived(targets.some(isGuitarDeckTarget));
-  const sections = $derived(targets.filter((target) => target.kind !== "guitar-instrument"));
+  const movableDoDecks = $derived(targets.some((target) =>
+    target.kind === "movable-do-keys" || (target.kind === "staff" && target.setting.movableDo === true),
+  ));
+  const sections = $derived(targets.filter((target) =>
+    target.kind !== "guitar-instrument" && target.kind !== "movable-do-keys",
+  ));
 
   const SCOPE_FIELDS = {
     "note-to-cell": "noteToCell",
@@ -115,6 +124,7 @@ SPDX-License-Identifier: Apache-2.0
   function apply(): void {
     const kinds = new Set(targets.map(({ kind }) => kind));
     if (kinds.has("staff")) onstaffnoteselectionchange(staff);
+    if (movableDoDecks) onmovabledokeyselectionchange(movableDoKeys);
     if (kinds.has("interval")) onintervalpairselectionchange(intervalPairs);
     if (kinds.has("fretboard-note")) {
       onfretboardnoteselectionchange(fretboardNotes);
@@ -169,6 +179,11 @@ SPDX-License-Identifier: Apache-2.0
       }}
     />
   {/if}
+  {#if movableDoDecks}
+    <div class="deck-section">
+      <MovableDoKeySettings selection={movableDoKeys} onchange={(keys) => (movableDoKeys = keys)} />
+    </div>
+  {/if}
   {#each sections as target (sectionKey(target))}
     <div class="deck-section">
       {#if target.kind === "circle"}
@@ -204,7 +219,7 @@ SPDX-License-Identifier: Apache-2.0
           onpreview={onpreviewfretwindow}
           onchange={(selection) => (fretWindow = selection)}
         />
-      {:else}
+      {:else if target.kind === "staff"}
         <StaffNoteSettings
           clef={target.setting.clef}
           deckLabel={target.setting.deckLabel}

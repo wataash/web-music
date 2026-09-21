@@ -25,6 +25,8 @@ export const OCTAVE_NUMBER_STAFF_TO_NOTE_DECK =
   `${OCTAVE_NUMBER_MUSIC_STAFF_DECK}::Staff → Note`;
 export const OCTAVE_NUMBER_NOTE_TO_STAFF_DECK =
   `${OCTAVE_NUMBER_MUSIC_STAFF_DECK}::Note → Staff`;
+export const MOVABLE_DO_STAFF_TO_SOLFEGE_DECK =
+  "Music Staff (Movable Do)::Staff → Solfege";
 
 // How far a note sits from the staff, which is the only thing that makes one
 // harder to read than another once accidentals are out of the picture.
@@ -37,6 +39,7 @@ export type StaffNoteSelection = Readonly<Record<Clef, readonly string[]>>;
 export type StaffNoteDeckSetting = Readonly<{
   clef: Clef;
   deckLabel: string;
+  movableDo?: boolean;
 }>;
 
 // Basic follows ABRSM Grade 2, which extends the stave to include two ledger
@@ -127,13 +130,18 @@ export function staffNoteDeckSetting(
     STAFF_TO_NOTE_DECK,
     OCTAVE_NUMBER_STAFF_TO_NOTE_DECK,
     OCTAVE_NUMBER_NOTE_TO_STAFF_DECK,
+    MOVABLE_DO_STAFF_TO_SOLFEGE_DECK,
   ]) {
     if (!deckName.startsWith(`${parent}::`)) continue;
     const leaf = deckName.slice(parent.length + 2);
     const clef = CLEFS.find(
       (candidate) => leaf === `${CLEF_LABELS[candidate]} Clef`,
     );
-    if (clef) return { clef, deckLabel: `${CLEF_LABELS[clef]} Clef` };
+    if (clef) return {
+      clef,
+      deckLabel: `${CLEF_LABELS[clef]} Clef`,
+      ...(parent === MOVABLE_DO_STAFF_TO_SOLFEGE_DECK ? { movableDo: true } : {}),
+    };
   }
   return null;
 }
