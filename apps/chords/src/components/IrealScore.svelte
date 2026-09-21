@@ -146,15 +146,18 @@ SPDX-License-Identifier: Apache-2.0
   .chord:focus-visible, .repeat-pick:focus-visible { outline: 2px solid var(--text-accent); outline-offset: 2px; }
   .repeat-pick { z-index: 1; position: absolute; inset: 0 auto 0 0; width: 32px; border: 0; padding: 0; background: transparent; cursor: pointer; }
   .repeat-pick.centered { transform: translateX(-50%); }
-  .main-chord { display: inline-flex; align-items: baseline; }
+  /* Keep the accidental in its own column.  Flex baseline alignment lets
+     fallback fonts on Android overlap a sharp/flat with the quality (notably
+     F#°7), even though the same chord looks fine with the desktop font. */
+  .main-chord { display: inline-grid; grid-auto-flow: column; grid-auto-columns: max-content; align-items: baseline; white-space: nowrap; }
   .invisible-root { visibility: hidden; }
   .root { letter-spacing: -0.08em; }
-  .accidental { font-size: 0.95em; align-self: flex-start; margin-top: -0.12em; margin-left: 0.04em; line-height: 1; }
+  .accidental { font-size: 0.95em; align-self: flex-start; margin-top: -0.45em; margin-left: 0.04em; line-height: 1; }
   .quality { font-size: 0.65em; font-weight: 600; margin-left: 0.06em; transform: translateY(0.08em); }
   .bass { display: block; font-size: 0.65em; margin-left: 0.5em; line-height: 0.95; }
   .narrow { font-stretch: condensed; letter-spacing: -0.055em; }
-  .alternate { top: 23%; }
-  .alternate .chord { display: inline-flex; align-items: baseline; font-size: clamp(12px, 2.5cqw, 18px); }
+  .alternate { top: 8%; }
+  .alternate .chord { display: inline-grid; align-items: baseline; font-size: clamp(12px, 2.5cqw, 18px); }
   /* The degree in small under the name. */
   .sublabel { font-size: 0.45em; font-weight: 400; line-height: 1.1; color: var(--on-surface-muted); }
   .alternate .bass { margin-left: 0.1em; }

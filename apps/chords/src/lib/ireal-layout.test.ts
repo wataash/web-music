@@ -35,6 +35,12 @@ it('places alternate chords above their main chord and keeps narrow chords in th
     .toEqual([[0, false], [0, true], [2, false], [3, false], [4, false]]);
 });
 
+it('places multiple alternate chords side by side above their main chord', () => {
+  const row = layoutIreal(score('[F#h7(Ah7 D7b9)XyQZ'))[0];
+  expect(row.items.filter(item => item.token.kind === 'chord').map(item => [item.column, item.alternate]))
+    .toEqual([[0, false], [0, true], [1, true]]);
+});
+
 it('retains variable bar widths and displays chord qualities in iReal notation', () => {
   const row = layoutIreal(score('[C |F XyQ G7XyQZ'))[0];
   expect(row.items.filter(item => item.token.kind === 'bar').map(item => item.column)).toEqual([0, 2, 12]);

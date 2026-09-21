@@ -34,7 +34,9 @@ export function resolveIreal(blocks: ScoreToken[][]): { rows: IrealRow[]; events
     if (token.kind === 'space') { column++; continue; }
     const cell = token.kind === 'chord' || isRepeatToken(token);
     if (token.kind === 'section') section = token.text;
-    const position = alternate || token.kind === 'comment' ? lastChord : column;
+    const position = alternate
+      ? lastChord + rows.at(-1)!.items.filter(item => item.alternate && item.column === lastChord).length
+      : token.kind === 'comment' ? lastChord : column;
     rows.at(-1)!.items.push({ token, column: Math.min(16, position), alternate, indices: [], section });
     if (cell && !alternate) { lastChord = column; column++; }
   }
