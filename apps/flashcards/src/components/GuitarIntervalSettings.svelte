@@ -11,7 +11,6 @@ SPDX-License-Identifier: Apache-2.0
   import {
     DEFAULT_FRET_WINDOW,
     clampFretReach,
-    fretWindowCellCount,
     MAX_FRET_REACH,
     guitarDifficultyLabel,
     DEFAULT_GUITAR_DIFFICULTY,
@@ -119,11 +118,6 @@ SPDX-License-Identifier: Apache-2.0
 
 <GuitarIntervalMap {notes} {selectedNotes} window={draft} stringCount={tuning.length} {overrides} {onoverrideschange} />
 
-<div class="table-summary">
-  <span>{deckLabel}</span>
-  <span>{fretWindowCellCount(draft, tuning.length)} positions per root in window</span>
-</div>
-
 <div class="reaches">
   {#each sides as { side, label, mirrored }}
     <section class="reach">
@@ -150,10 +144,10 @@ SPDX-License-Identifier: Apache-2.0
   </button>
 </div>
 
-<p class="hint">
-  Frets are relative to root 1. Widen the window to include more positions.
-  Equivalent shapes share progress and selection. Reviews rotate through their strings.
-</p>
+<details class="hint">
+  <summary>Help</summary>
+  <p>Fret numbers are relative to root 1. Equivalent shapes share progress and selection; reviews rotate through their strings.</p>
+</details>
 
 <style>
   .threshold {
@@ -189,23 +183,9 @@ SPDX-License-Identifier: Apache-2.0
     accent-color: var(--count-new);
   }
 
-  .table-summary {
-    display: flex;
-    justify-content: space-between;
-    padding: 0 0 14px;
-    border-bottom: 1px solid var(--divider);
-    font-weight: 500;
-  }
-
-  .table-summary span:last-child,
   .hint,
   .reach label {
     color: var(--on-surface-muted);
-  }
-
-  .table-summary span:last-child {
-    font-size: 13px;
-    font-weight: 400;
   }
 
   /* Side by side, in the order the board reads. */
@@ -269,4 +249,7 @@ SPDX-License-Identifier: Apache-2.0
     font-size: 13px;
   }
 
+  .hint summary {
+    cursor: pointer;
+  }
 </style>

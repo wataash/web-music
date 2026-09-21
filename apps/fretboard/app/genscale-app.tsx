@@ -269,7 +269,7 @@ export default function GenscaleApp({
   const [copySettingsStatus, setCopySettingsStatus] =
     useState<CopySettingsStatus>("idle");
   const [mode, setMode] = useState<AppMode>("edit");
-  const [concatText, setConcatText] = useState(CONCAT_EXAMPLE_URLS);
+  const [concatText, setConcatText] = useState("");
   const [noteGrayLevels, setNoteGrayLevels] = useState<number[]>([
     ...(initialSettings?.noteGrayLevels ?? DEFAULT_NOTE_GRAY_LEVELS),
   ]);
@@ -545,9 +545,9 @@ export default function GenscaleApp({
                 </p>
               ) : null}
 
-              <div className="grid gap-3 text-sm font-semibold">
-                <span>{t.noteGrayLevels}</span>
-                <div className="grid gap-3 md:grid-cols-2">
+              <details className="text-sm font-semibold">
+                <summary className="cursor-pointer">{t.appearance}</summary>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
                   {NOTE_GRAY_CONTROLS.map(({ label, tone }) => {
                     const colors = noteColors(tone, noteGrayLevels);
 
@@ -589,7 +589,7 @@ export default function GenscaleApp({
                     );
                   })}
                 </div>
-              </div>
+              </details>
 
               <div className="grid gap-2 text-sm font-semibold">
                 <span>{t.tuning}</span>
@@ -615,16 +615,19 @@ export default function GenscaleApp({
                     </option>
                   ))}
                 </select>
-                <textarea
-                  aria-label={t.tuning}
-                  className="min-h-36 resize-y rounded-md border border-[#c9bda9] bg-white p-3 font-mono text-sm leading-6"
-                  value={tuning}
-                  spellCheck={false}
-                  onChange={(event) => {
-                    setTuning(event.target.value);
-                    setSettingValid(true);
-                  }}
-                />
+                <details>
+                  <summary className="cursor-pointer">{t.editTuning}</summary>
+                  <textarea
+                    aria-label={t.tuning}
+                    className="mt-2 min-h-36 w-full resize-y rounded-md border border-[#c9bda9] bg-white p-3 font-mono text-sm leading-6"
+                    value={tuning}
+                    spellCheck={false}
+                    onChange={(event) => {
+                      setTuning(event.target.value);
+                      setSettingValid(true);
+                    }}
+                  />
+                </details>
               </div>
 
               {!parsedTuning.valid ? (
@@ -651,18 +654,21 @@ export default function GenscaleApp({
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm font-semibold">
-                {t.settingEditor}
-                <textarea
-                  aria-label={t.settingEditor}
-                  className="min-h-72 resize-y rounded-md border border-[#c9bda9] bg-white p-3 font-mono text-sm leading-6"
-                  value={
-                    settingValid ? currentSettingEditorText : settingEditorText
-                  }
-                  spellCheck={false}
-                  onChange={(event) => applySettingEditor(event.target.value)}
-                />
-              </label>
+              <details className="text-sm font-semibold">
+                <summary className="cursor-pointer">{t.advanced}</summary>
+                <label className="mt-3 grid gap-2">
+                  {t.settingEditor}
+                  <textarea
+                    aria-label={t.settingEditor}
+                    className="min-h-72 resize-y rounded-md border border-[#c9bda9] bg-white p-3 font-mono text-sm leading-6"
+                    value={
+                      settingValid ? currentSettingEditorText : settingEditorText
+                    }
+                    spellCheck={false}
+                    onChange={(event) => applySettingEditor(event.target.value)}
+                  />
+                </label>
+              </details>
 
               {!settingValid ? (
                 <p className="rounded-md bg-[#fff4df] px-3 py-2 text-sm text-[#7a4f00]">
@@ -722,7 +728,6 @@ export default function GenscaleApp({
                 <textarea
                   aria-label={t.concatInput}
                   className="min-h-56 resize-y rounded-md border border-[#c9bda9] bg-white p-3 font-mono text-sm leading-6"
-                  placeholder={t.concatHelp}
                   spellCheck={false}
                   value={concatText}
                   onChange={(event) => setConcatText(event.target.value)}
@@ -730,6 +735,15 @@ export default function GenscaleApp({
               </label>
 
               <p className="mt-3 text-sm text-[#5f584f]">{t.concatHelp}</p>
+              {concatText === "" ? (
+                <button
+                  className="mt-3 text-sm font-semibold text-[#2d4f47] underline underline-offset-2"
+                  type="button"
+                  onClick={() => setConcatText(CONCAT_EXAMPLE_URLS)}
+                >
+                  {t.showExample}
+                </button>
+              ) : null}
 
               {concatResults.invalid.length ? (
                 <p className="mt-3 rounded-md bg-[#fff4df] px-3 py-2 text-sm text-[#7a4f00]">

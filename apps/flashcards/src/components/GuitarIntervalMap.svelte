@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <section class="map" aria-label="Question map">
   <strong>Question map</strong>
-  <p>Tap intervals to include or exclude all equivalent shapes together.</p>
+  <p>Tap an interval to change all equivalent shapes.</p>
   <div class="roots">
     {#each roots as root, index}
       <section class="board" aria-label="Root string {root}">
@@ -66,13 +66,13 @@ SPDX-License-Identifier: Apache-2.0
     {/each}
   </div>
   <div class="legend"><span class="swatch included"></span>Included<span class="swatch"></span>Excluded<span class="swatch root"></span>Root 1</div>
-  <p>Moving the learning range resets individual changes.</p>
   {#if Object.keys(overrides).length > 0}
+    <p>Changing the learning range resets individual changes.</p>
     <button class="reset-individual" onclick={() => onoverrideschange({})}>RESET INDIVIDUAL CHANGES</button>
   {/if}
   <p class="detail" aria-live="polite">
     {#if detail}String {detail.fields[2]} → string {detail.fields[3]} · fret {offsetLabel(Number(detail.fields[4]))} · <strong>{detail.fields[5]}</strong> · {included(detail) ? 'Included' : 'Excluded'}
-      · {guitarShapeIds(detail).length} equivalent positions share this setting and progress
+      · {guitarShapeIds(detail).length} equivalent positions
     {/if}
   </p>
 </section>

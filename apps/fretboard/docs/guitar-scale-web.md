@@ -15,12 +15,12 @@ Block inlays, with n as the number of strings:
 ## Overview
 
 genscale is a web app that visualises scales and chord tones on a guitar
-fretboard. In `edit` you set the key, a scale preset and the tuning, and the
-function name of each note is shown from fret 0 to 24. In `concat` you paste
+fretboard. In `Fretboard` you set the key, a scale preset and the tuning, and the
+function name of each note is shown from fret 0 to 24. In `Combine` you paste
 several settings URLs, obtained from
-`Copy URL with this settings (experimental)`, and the fretboards are stacked
-vertically. The `concat` textarea starts with three sample URLs already in it.
-The fretboard shown in `edit` can be exported as SVG.
+`Copy link`, and the fretboards are stacked
+vertically. The `Combine` textarea starts empty; `Show example` inserts three sample URLs.
+The fretboard shown in `Fretboard` can be exported as SVG.
 
 ## Features
 
@@ -40,13 +40,13 @@ The fretboard shown in `edit` can be exported as SVG.
 
 ## Screens
 
-The app has two screens, `edit` and `concat`, switched by tabs.
+The app has two screens, `Fretboard` and `Combine` (`指板` and `結合` in Japanese), switched by tabs. Appearance, Edit tuning and Advanced are collapsed initially. The diagram below shows these expanded, with the Combine examples loaded.
 
 ```text
-genscale     [GitHub] [Export SVG in edit]  [EN][JA]
-[edit] [concat]
+genscale     [GitHub] [Export SVG in Fretboard]  [EN][JA]
+[Fretboard] [Combine]
 
-edit
+Fretboard
 +--------------------------------------------------------------+
 |                                                              |
 |                    fretboard SVG preview                     |
@@ -92,10 +92,10 @@ edit
 | |   "notes": ["1", "...♭9", "...9", "..♭3", "...3", ...] | |
 | | }                                                        | |
 | +----------------------------------------------------------+ |
-| [Copy URL with this settings (experimental)]                |
+| [Copy link]                |
 +--------------------------------------------------------------+
 
-concat
+Combine
 +--------------------------------------------------------------+
 | Copied settings URLs                                         |
 | +----------------------------------------------------------+ |
@@ -121,16 +121,16 @@ concat
 +--------------------------------------------------------------+
 ```
 
-- `edit` shows the fretboard SVG in the preview area at the top, and the panel
+- `Fretboard` shows the fretboard SVG in the preview area at the top, and the panel
   below it edits the key, scale, Notes, NOTE colours, tuning, fret spacing and
   the settings JSON.
-- `concat` takes one settings URL per line in the textarea and draws a
+- `Combine` takes one settings URL per line in the textarea and draws a
   fretboard for each valid URL below it.
-- The `concat` textarea starts with three sample settings URLs: D m7, G Altered
-  and C Δ7.
-- Each fretboard in `concat` is headed `Line N: KEY SCALE`, or
+- `Show example` fills the empty `Combine` textarea with D m7, G Altered
+  and C Δ7 sample settings URLs.
+- Each fretboard in `Combine` is headed `Line N: KEY SCALE`, or
   `N行目: KEY SCALE` in the Japanese UI.
-- The export-SVG button in the header appears only in `edit` and saves what is
+- The export-SVG button in the header appears only in `Fretboard` and saves what is
   currently shown.
 - The GitHub icon on the right of the header links to
   `https://github.com/wataash/genscale`.
@@ -192,8 +192,8 @@ and SVG filenames use a short identifier such as `alt`.
 
 ## Settings editor
 
-The Settings editor shows the current settings as JSON. Changing the key,
-scale, tuning, Notes, NOTE grayscale or fret spacing in the `edit` UI updates
+Open Advanced to see the Settings editor, which shows the current settings as JSON. Changing the key,
+scale, tuning, Notes, NOTE grayscale or fret spacing in the `Fretboard` UI updates
 the JSON as well.
 
 Editing the JSON updates the UI whenever the content is valid. The settings
@@ -228,7 +228,7 @@ older JSON that omits it is read as `equal-temperament`.
 The scale is detected from `notes`, and becomes `Custom` when it matches no
 preset.
 
-The `Copy URL with this settings (experimental)` button below the Settings
+The `Copy link` button below the Settings
 editor copies a URL holding the current JSON in a `settings` query parameter.
 The JSON in the URL is compact and on one line, keeping `{}`, `[]`, `"`, `♭`,
 `♯` and the like as they are wherever possible; only characters that would
@@ -239,13 +239,13 @@ https://example.com/en?settings={"key":"A","tuning":["E4","B3","G3","D3","A2","E
 ```
 
 Opening that URL reads the JSON in `settings` and applies it as the initial
-`edit` settings. If `settings` is invalid JSON, or JSON that is incomplete as
+`Fretboard` settings. If `settings` is invalid JSON, or JSON that is incomplete as
 genscale settings, the default settings are shown and the Settings editor goes
 into an error state.
 
-In `concat`, those URLs are pasted into the textarea one per line.
+In `Combine`, those URLs are pasted into the textarea one per line.
 
-- Three sample URLs are filled in on first load.
+- The input starts empty. `Show example` inserts three sample URLs.
 - A URL may be absolute or relative, but it must carry a `settings` query
   parameter.
 - One fretboard is drawn per valid line.

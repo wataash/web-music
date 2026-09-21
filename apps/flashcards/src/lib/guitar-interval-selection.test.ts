@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_FRET_WINDOW,
   clampFretReach,
-  fretWindowCellCount,
   fretWindowVariables,
   guitarIntervalDeckSetting,
   includesGuitarIntervalCard,
@@ -71,11 +70,6 @@ describe("guitar fret window", () => {
     });
     expect(parseFretWindow({ left: "wide" })).toEqual(DEFAULT_FRET_WINDOW);
     expect(clampFretReach(2.4)).toBe(2);
-  });
-
-  it("asks about every position in the window but the root's own", () => {
-    expect(fretWindowCellCount(DEFAULT_FRET_WINDOW)).toBe(41);
-    expect(fretWindowCellCount({ left: 0, right: 0 })).toBe(5);
   });
 
   it("drops the cards the window has cropped away", () => {

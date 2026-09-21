@@ -13,13 +13,15 @@ export const TRANSLATIONS: Record<
     tuning: string;
     tuningPreset: string;
     customTuning: string;
+    editTuning: string;
     fretSpacing: string;
     equalTemperamentSpacing: string;
     equalWidthSpacing: string;
     notes: string;
-    noteGrayLevels: string;
+    appearance: string;
     noteGrayValue: (label: string) => string;
     settingEditor: string;
+    advanced: string;
     copySettingsUrl: string;
     copySettingsUrlCopying: string;
     copySettingsUrlCopied: string;
@@ -29,6 +31,7 @@ export const TRANSLATIONS: Record<
     concatMode: string;
     concatInput: string;
     concatHelp: string;
+    showExample: string;
     concatEmpty: string;
     concatInvalidLines: (lineNumbers: string) => string;
     concatBoardTitle: (lineNumber: number, key: string, scale: string) => string;
@@ -47,23 +50,25 @@ export const TRANSLATIONS: Record<
     tuning: "Tuning",
     tuningPreset: "Preset",
     customTuning: "Custom",
+    editTuning: "Edit tuning",
     fretSpacing: "Fret spacing",
     equalTemperamentSpacing: "Equal temperament",
     equalWidthSpacing: "Equal width",
     notes: "Notes",
-    noteGrayLevels: "Note grayscale",
+    appearance: "Appearance",
     noteGrayValue: (label) => `${label} grayscale`,
     settingEditor: "Settings editor",
-    copySettingsUrl: "Copy URL with this settings (experimental)",
+    advanced: "Advanced",
+    copySettingsUrl: "Copy link",
     copySettingsUrlCopying: "Copying...",
     copySettingsUrlCopied: "Copied",
     copySettingsUrlFailed: "Copy failed",
     modeTabsLabel: "Mode",
-    editMode: "edit",
-    concatMode: "concat",
+    editMode: "Fretboard",
+    concatMode: "Combine",
     concatInput: "Copied settings URLs",
-    concatHelp:
-      'Paste one URL per line from "Copy URL with this settings (experimental)".',
+    concatHelp: "Paste one copied link per line.",
+    showExample: "Show example",
     concatEmpty: "No valid copied URLs yet.",
     concatInvalidLines: (lineNumbers) =>
       `These lines do not contain valid copied settings URLs: ${lineNumbers}.`,
@@ -83,23 +88,25 @@ export const TRANSLATIONS: Record<
     tuning: "チューニング",
     tuningPreset: "プリセット",
     customTuning: "カスタム",
+    editTuning: "チューニングを編集",
     fretSpacing: "フレット間隔",
     equalTemperamentSpacing: "平均律",
     equalWidthSpacing: "等幅",
     notes: "Notes",
-    noteGrayLevels: "NOTE色 (グレースケール)",
+    appearance: "表示",
     noteGrayValue: (label) => `${label} のグレースケール`,
     settingEditor: "設定エディタ",
-    copySettingsUrl: "この設定のURLをコピー (experimental)",
+    advanced: "詳細設定",
+    copySettingsUrl: "リンクをコピー",
     copySettingsUrlCopying: "コピー中...",
     copySettingsUrlCopied: "コピーしました",
     copySettingsUrlFailed: "コピー失敗",
     modeTabsLabel: "モード",
-    editMode: "edit",
-    concatMode: "concat",
+    editMode: "指板",
+    concatMode: "結合",
     concatInput: "コピーした設定URL",
-    concatHelp:
-      "各行に 1 つずつ、「この設定のURLをコピー (experimental)」でコピーしたURLを貼り付けます。",
+    concatHelp: "コピーしたリンクを1行に1つ貼り付けてください。",
+    showExample: "例を見る",
     concatEmpty: "有効な設定URLがまだありません。",
     concatInvalidLines: (lineNumbers) =>
       `次の行は有効な設定URLではありません: ${lineNumbers}`,

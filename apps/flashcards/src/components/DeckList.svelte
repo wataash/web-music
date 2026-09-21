@@ -412,7 +412,7 @@ SPDX-License-Identifier: Apache-2.0
     {#if decks.length === 0}
       <p class="empty">
         {#if busy}
-          Preparing music theory decks…
+          Preparing decks…
         {:else}
           The bundled decks could not be loaded.
         {/if}
@@ -506,23 +506,26 @@ SPDX-License-Identifier: Apache-2.0
   </main>
 
   <footer class="legal">
-    <p>
-      Music Flashcards independently reimplements the interface and study
-      workflow of
-      <a href="https://apps.ankiweb.net/" target="_blank" rel="noreferrer"
-        >Anki</a
-      > and AnkiDroid. It is not affiliated with or endorsed by Ankitects or
-      the AnkiDroid project.
-    </p>
-    <p>
-      Anki is a trademark of Ankitects Pty Ltd.
-      <span aria-hidden="true"> · </span>
-      <a
-        href="https://spdx.org/licenses/Apache-2.0.html"
-        target="_blank"
-        rel="noreferrer">Apache-2.0</a
-      >
-    </p>
+    <details>
+      <summary>About</summary>
+      <p>
+        Music Flashcards independently reimplements the interface and study
+        workflow of
+        <a href="https://apps.ankiweb.net/" target="_blank" rel="noreferrer"
+          >Anki</a
+        > and AnkiDroid. It is not affiliated with or endorsed by Ankitects or
+        the AnkiDroid project.
+      </p>
+      <p>
+        Anki is a trademark of Ankitects Pty Ltd.
+        <span aria-hidden="true"> · </span>
+        <a
+          href="https://spdx.org/licenses/Apache-2.0.html"
+          target="_blank"
+          rel="noreferrer">Apache-2.0</a
+        >
+      </p>
+    </details>
   </footer>
 </div>
 
@@ -828,6 +831,10 @@ SPDX-License-Identifier: Apache-2.0
 
   .legal p {
     margin: 0;
+  }
+
+  .legal summary {
+    cursor: pointer;
   }
 
   .legal a {

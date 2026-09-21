@@ -128,9 +128,10 @@ SPDX-License-Identifier: Apache-2.0
     {/if}
     {#if settings.noteMode === "custom"}
       <label class="stacked-field">
-        <span>Notes <small>separated by spaces or commas</small></span>
+        <span>Notes</span>
         <textarea
           rows="4"
+          placeholder="C G D A"
           value={settings.customNotes}
           spellcheck="false"
           oninput={(event) => update({ customNotes: event.currentTarget.value })}

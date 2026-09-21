@@ -146,15 +146,17 @@ key: C
     {#each FORMATS as candidate}<label><input type="radio" name="chord-import-format" value={candidate.id} checked={format === candidate.id} onchange={() => chooseFormat(candidate.id)} />{candidate.label}</label>{/each}
   </fieldset>
   {#if format === "ireal"}
-    <p id="ireal-paste-help">Songs or playlists from iReal Pro. Right-click an iReal link on a computer, or touch and hold it on a phone or tablet, and copy the link address. Paste it below, then choose Add.</p>
+    <p id="ireal-paste-help">Paste an iReal Pro song or playlist link.</p>
     <label>Shared link / HTML<textarea bind:value={text} rows="3" disabled={busy} aria-describedby="ireal-paste-help" autocapitalize="off" spellcheck={false} placeholder="irealb://… or irealbook://…"></textarea></label>
+    <details><summary>Help</summary><p>Right-click an iReal link on a computer, or touch and hold it on a phone or tablet, then copy its address.</p></details>
   {:else if format === "chordwiki"}
-    <p id="chordwiki-paste-help">One chart in ChordWiki notation: its {"{title:…}"} and {"{key:…}"} lines, then the lyrics with each chord in brackets before the syllable it falls on. Paste the whole chart below, then choose Add.</p>
+    <p id="chordwiki-paste-help">Paste a ChordWiki chart.</p>
     <label>ChordWiki text<textarea bind:value={text} rows="7" disabled={busy} aria-describedby="chordwiki-paste-help" autocapitalize="off" spellcheck={false} placeholder={CHORDWIKI_PLACEHOLDER}></textarea></label>
+    <details><summary>Help</summary><p>Include {"{title:…}"} and {"{key:…}"} lines, then lyrics with chords in brackets before their syllables.</p></details>
   {:else}
     <div class="fields"><label>Title (optional)<input bind:value={title} disabled={busy} /></label><label>Original key<select aria-label="Original key" bind:value={key} disabled={busy}>{#each PRACTICE_KEYS as note}<option>{note}</option>{/each}</select></label></div>
     <label>Chord progression<textarea bind:value={text} rows="7" disabled={busy} spellcheck={false} autocapitalize="off" aria-describedby="chord-list-help" placeholder={LIST_PLACEHOLDER}></textarea></label>
-    <p id="chord-list-help">A chart the way a lead sheet writes it: | between bars, |: and :| for repeats, 1. and 2. for endings, [Aメロ] for a section, % for the previous bar, {"{lyrics}"} after a chord, &lt;free-form note&gt; for an annotation. A line without | puts each chord in its own bar; each line is one row. Title and key can also be written as title: and key: lines; another key: line later in the chart marks a transposable key change.</p>
+    <p id="chord-list-help">Use | to separate bars.</p>
     <ChordNotationHelp bind:this={notationHelp} />
   {/if}
   {#if preview}

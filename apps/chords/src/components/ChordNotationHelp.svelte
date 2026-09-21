@@ -40,6 +40,7 @@ SPDX-License-Identifier: Apache-2.0
   <summary bind:this={summary}>Chord notation help</summary>
   <h3>Bars and lines</h3>
   <p>Each line is one row of the chart. Spaces separate bars: <code>A7 D7 A7 A7</code> makes four bars. With <code>|</code> in a line, the barlines separate its bars and spaces put chords in the same bar: <code>Dm7 G7 | Cmaj7</code>. Use up to 16 chords per line; a blank line adds space between rows.</p>
+  <p>Use <code>title:</code> and <code>key:</code> header lines; a later <code>key:</code> line changes key. Put <code>{"{lyrics}"}</code> after a chord for lyrics and <code>&lt;note&gt;</code> for a free-form annotation.</p>
   <table><caption>Chart notation</caption><tbody>
     {#each chart as [label, examples]}<tr><th scope="row">{label}</th><td><code>{examples}</code></td></tr>{/each}
   </tbody></table>

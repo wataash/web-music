@@ -80,7 +80,6 @@ SPDX-License-Identifier: Apache-2.0
 <section>
   <div class="summary">
     <span>Major keys</span>
-    <span>{selection.length} / {MAJOR_KEYS_BY_SIGNATURE.length} selected</span>
   </div>
   <div class="actions">
     <button type="button" onclick={() => onchange(MAJOR_KEYS_BY_SIGNATURE.map(({ fifths }) => fifths))}>Select all</button>
@@ -121,14 +120,12 @@ SPDX-License-Identifier: Apache-2.0
     <text class="count" x={CENTER} y={CENTER - 2} text-anchor="middle">{selection.length} / 15</text>
     <text class="count-label" x={CENTER} y={CENTER + 17} text-anchor="middle">selected</text>
   </svg>
-  <p>Only selected keys are asked in Music Staff (Movable Do). Your progress is kept.</p>
   <StaffScaleReference />
 </section>
 
 <style>
   @font-face { font-family: "Noto Music"; src: url("/fonts/NotoMusic-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: block; }
   .summary, .actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .summary span:last-child, p { color: var(--on-surface-muted); font-size: 13px; }
   .actions { justify-content: flex-start; margin: 12px 0; }
   button { border: 1px solid var(--divider); border-radius: 6px; background: transparent; color: inherit; padding: 6px 10px; cursor: pointer; }
   .wheel { display: block; width: min(100%, 440px); height: auto; margin: 0 auto; overflow: visible; }
@@ -143,5 +140,4 @@ SPDX-License-Identifier: Apache-2.0
   .hub { fill: var(--surface); stroke: var(--divider); stroke-width: 1.5; }
   .count { fill: currentColor; font-size: 20px; font-weight: 700; }
   .count-label { fill: var(--on-surface-muted); font-size: 12px; }
-  p { margin: 12px 0 0; }
 </style>

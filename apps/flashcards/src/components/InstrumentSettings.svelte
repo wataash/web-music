@@ -34,11 +34,9 @@ SPDX-License-Identifier: Apache-2.0
   </div>
   <TuningSettings bind:tuning={draft} onchange={(value) => onchange([...value])} />
   <p class="hint">
-    Guitar Intervals and Guitar Fretboard are both drawn for this instrument.
-    Each instrument and tuning keeps its own progress: a position is a
-    different question on different strings.
+    Both guitar decks use this tuning. Progress is saved per tuning.
     {#if !sameTuning(draft, applied)}
-      APPLY redraws both decks for {describeTuning(draft)}.
+      APPLY updates both decks.
     {/if}
   </p>
 </section>

@@ -128,11 +128,14 @@ SPDX-License-Identifier: Apache-2.0
   onapply={apply}
   oncancel={restored === null ? onclose : reload}
 >
-  <p class="lead">
-    A backup holds the study schedule, the answers behind it, and the deck
-    settings — everything that would otherwise stay in this browser. The decks
-    themselves are downloaded again, so they are left out.
-  </p>
+  <p class="lead">Back up progress and settings.</p>
+  <details class="details">
+    <summary>Details</summary>
+    <p class="note">
+      Backups save the study schedule, answers, and deck settings. Decks are
+      downloaded again and are not included.
+    </p>
+  </details>
 
   <dl class="counts">
     <div>
@@ -177,9 +180,8 @@ SPDX-License-Identifier: Apache-2.0
             : `, from ${chosen.backup.exportedAt.slice(0, 10)}`}
         </p>
         <p class="note">
-          A card is restored only where the file is the newer of the two, so
-          studying done here since the backup is kept. Deck settings are taken
-          from the file.
+          Only progress newer in the backup is restored; newer local progress
+          is kept. Deck settings are overwritten with the file's settings.
         </p>
       {/if}
     </div>
@@ -202,6 +204,19 @@ SPDX-License-Identifier: Apache-2.0
   .lead,
   .note {
     color: var(--on-surface-muted);
+  }
+
+  .details {
+    margin-top: 8px;
+    font-size: 13px;
+  }
+
+  .details summary {
+    cursor: pointer;
+  }
+
+  .details .note {
+    margin-top: 8px;
   }
 
   .counts {

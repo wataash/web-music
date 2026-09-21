@@ -15,7 +15,6 @@ SPDX-License-Identifier: Apache-2.0
 
   let {
     ring,
-    deckLabel,
     tableKind,
     selection,
     onchange,
@@ -65,7 +64,6 @@ SPDX-License-Identifier: Apache-2.0
           <th>Note</th>
           <th class="fifths-column">
             Fifths from {ring === "outer" ? "C" : "A"}
-            <small>(= Accidentals in Key Signature)</small>
           </th>
           <th>Difficulty</th>
         </tr>
@@ -102,7 +100,7 @@ SPDX-License-Identifier: Apache-2.0
       checked={preset === "basic"}
       onchange={() => choosePreset("basic")}
     />
-    <span>Basic <small>(Default)</small></span>
+    <span>Basic</span>
   </label>
   <label>
     <input
@@ -111,7 +109,7 @@ SPDX-License-Identifier: Apache-2.0
       checked={preset === "advanced"}
       onchange={() => choosePreset("advanced")}
     />
-    <span>Up to Advanced</span>
+    <span>Advanced</span>
   </label>
   <label>
     <input
@@ -120,7 +118,7 @@ SPDX-License-Identifier: Apache-2.0
       checked={preset === "all"}
       onchange={() => choosePreset("all")}
     />
-    <span>All <small>(Includes Esoteric)</small></span>
+    <span>All</span>
   </label>
   <label>
     <input
@@ -133,10 +131,10 @@ SPDX-License-Identifier: Apache-2.0
   </label>
 </fieldset>
 
-<p class="hint">
-  This selection controls which
-  <code>{deckLabel}</code> cards are studied.
-</p>
+<details class="help">
+  <summary>Help</summary>
+  <p>Fifths from {ring === "outer" ? "C" : "A"} also gives the key signature: positive for sharps, negative for flats.</p>
+</details>
 
 <style>
   fieldset {
@@ -172,9 +170,7 @@ SPDX-License-Identifier: Apache-2.0
     accent-color: var(--count-new);
   }
 
-  small,
-  .selected-count,
-  .hint {
+  .selected-count {
     color: var(--on-surface-muted);
   }
 
@@ -224,13 +220,6 @@ SPDX-License-Identifier: Apache-2.0
     vertical-align: bottom;
   }
 
-  th small {
-    display: block;
-    margin-top: 2px;
-    font-size: 10px;
-    font-weight: 400;
-  }
-
   tbody tr:last-child td {
     border-bottom: 0;
   }
@@ -250,19 +239,13 @@ SPDX-License-Identifier: Apache-2.0
     font-size: 15px;
   }
 
-  .hint {
-    margin: 16px 0 0;
+  .help {
+    margin-top: 16px;
+    color: var(--on-surface-muted);
     font-size: 13px;
   }
 
-  .hint code {
-    padding: 2px 5px;
-    border-radius: 4px;
-    background: var(--divider);
-    color: var(--on-surface);
-    font-family: inherit;
-    font-size: 0.95em;
-    font-weight: 500;
-    white-space: nowrap;
+  .help summary {
+    cursor: pointer;
   }
 </style>

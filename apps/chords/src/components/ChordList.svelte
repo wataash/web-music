@@ -122,7 +122,7 @@ SPDX-License-Identifier: Apache-2.0
 <main class="chord-list" aria-label="Chord list" tabindex="0" bind:this={scrollElement} use:remember={viewKey("list-scroll")}>
   <div class="list-content">
     <SongSource {songId} symbols={sourceSymbols} {sublabels} bind:open={fullChartOpen} onselect={(value) => void jumpToSource(value)} selected={[sourceIndex]} {editable} {originalKey} {targetKey} />
-    <p class="count">{chords.length} chords · {uniqueBySection ? "Unique chords in first-appearance order within each section" : "Unique chords in first-appearance order"}</p>
+    <p class="count">{chords.length} unique chords{uniqueBySection ? " by section" : ""}</p>
     <ol>
       {#each chords as chord, index}
         {@const lyric = chordLyric(songId, chord.sourceIndices?.[0] ?? index)}
@@ -134,7 +134,7 @@ SPDX-License-Identifier: Apache-2.0
             <h2>{heading(chord.symbol)}{#if subheading(chord.symbol)}<span class="chord-name">{subheading(chord.symbol)}</span>{/if}</h2>
             {#if lyric}<p class="lyric" aria-label="Lyrics">{lyric}</p>{/if}
             {#if !chord.noChord}
-              <button disabled={!soundEnabled} aria-label={`${index + 1}: Play ${chord.symbol}`} onclick={() => selectChord(index)}>Play chord</button>
+              <button disabled={!soundEnabled} aria-label={`${index + 1}: Play ${chord.symbol}`} onclick={() => selectChord(index)}><span aria-hidden="true">▶</span></button>
             {/if}
           </div>
           <div data-list-board={index} class="list-board" class:loaded={loaded.has(index)} style:aspect-ratio={loaded.has(index) ? undefined : `${CHORD_BOARD_NUT_X + fretCount * CHORD_BOARD_FRET_WIDTH} / ${chordBoardHeight(tuning.length)}`}>

@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
   <label>Preset<select aria-label="Instrument preset" value={selectedPreset?.id ?? 'custom'} onchange={choose}><option value="custom" disabled>Custom tuning</option>{#each TUNING_PRESETS as p}<option value={p.id}>{p.label}</option>{/each}</select></label>
   <label>Strings<select aria-label="String count" value={tuning.length} onchange={event => resize(Number(event.currentTarget.value))}>{#each Array.from({ length: MAX_STRINGS - MIN_STRINGS + 1 }, (_, i) => i + MIN_STRINGS) as count}<option value={count}>{count}</option>{/each}</select></label>
   {#if selectedPreset?.note}<p>{selectedPreset.note}</p>{/if}
-  <p>String 1 is the top string on the diagram. Pitches include octaves (middle C = C4).</p>
+  <p>1 = top string · C4 = middle C</p>
   <div class="tunings">
     {#each tuning as midi, index}
       {@const currentOctave = Math.floor(midi / 12) - 1}

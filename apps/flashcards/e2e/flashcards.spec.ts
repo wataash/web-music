@@ -639,12 +639,13 @@ test("names a fretboard position's degree, in a window of frets", async ({
   // frets fill the same screen.
   await dialog.locator("#fret-reach-left").fill("0");
   await dialog.locator("#fret-reach-right").fill("1");
-  await expect(dialog).toContainText("11 positions per root in window");
+  await expect(dialog.locator("#fret-reach-right")).toHaveValue("1");
   await expect.poll(boardWidth).toBeGreaterThan(wide);
 
   // RESET goes back to the three frets each way the deck ships with.
   await dialog.getByRole("button", { name: /^RESET/ }).click();
-  await expect(dialog).toContainText("41 positions per root in window");
+  await expect(dialog.locator("#fret-reach-left")).toHaveValue("3");
+  await expect(dialog.locator("#fret-reach-right")).toHaveValue("3");
   await expect(dialog.getByRole("button", { name: /^RESET/ })).toBeDisabled();
 
   // Cancelling puts the board back rather than leaving it on the dragged one.
@@ -1135,7 +1136,7 @@ test("draws the staff at one size however many notes it asks", async ({
   expect(basic).toBeGreaterThan(0);
 
   await openNoteSettings(page);
-  await page.getByRole("radio", { name: /^All/ }).check();
+  await page.getByRole("radio", { name: "6 ledger lines", exact: true }).check();
   await page.getByRole("button", { name: "APPLY" }).click();
 
   // The card trims the image to the notes that can come up, and trimming is
@@ -1166,7 +1167,7 @@ test("frames the staff for every clef the deck asks", async ({ page }) => {
   await page
     .locator(".deck-section")
     .first()
-    .getByRole("radio", { name: /^All/ })
+    .getByRole("radio", { name: "6 ledger lines", exact: true })
     .check();
   await page.getByRole("button", { name: "APPLY" }).click();
 
@@ -1520,8 +1521,8 @@ test("sets every clef under the deck being studied", async ({ page, shot }) => {
   // Each section sets its own clef, and one APPLY saves them together.
   const counts = sections.locator(".selected-count");
   const before = await counts.allTextContents();
-  await sections.first().getByRole("radio", { name: /^All/ }).check();
-  await sections.nth(1).getByRole("radio", { name: /Advanced/ }).check();
+  await sections.first().getByRole("radio", { name: "6 ledger lines", exact: true }).check();
+  await sections.nth(1).getByRole("radio", { name: "4 ledger lines", exact: true }).check();
   await page.getByRole("button", { name: "APPLY" }).click();
 
   await openNoteSettings(page);
@@ -1529,10 +1530,10 @@ test("sets every clef under the deck being studied", async ({ page, shot }) => {
   expect(after[0]).not.toBe(before[0]);
   expect(after[1]).not.toBe(before[1]);
   await expect(
-    sections.first().getByRole("radio", { name: /^All/ }),
+    sections.first().getByRole("radio", { name: "6 ledger lines", exact: true }),
   ).toBeChecked();
   await expect(
-    sections.nth(1).getByRole("radio", { name: /Advanced/ }),
+    sections.nth(1).getByRole("radio", { name: "4 ledger lines", exact: true }),
   ).toBeChecked();
 });
 
@@ -1546,7 +1547,7 @@ test("chooses a clef's notes on the staff itself", async ({ page, shot }) => {
   await expect(notes).toHaveCount(33);
   const count = page.locator(".selected-count");
   await expect(count).toHaveText("19 / 33 selected");
-  await expect(page.getByRole("radio", { name: /^Basic/ })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "2 ledger lines", exact: true })).toBeChecked();
   await shot("staff-note-settings");
 
   // A tap anywhere in a note's column turns it on or off.

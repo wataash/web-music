@@ -77,8 +77,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <section class="threshold">
   <label for="interval-pair-threshold">
-    Turn on pairs named at least
-    <strong>{threshold.toLocaleString("en-US")}</strong> times in Jazz 1460
+    Jazz 1460 count ≥ <strong>{threshold.toLocaleString("en-US")}</strong>
   </label>
   <input
     id="interval-pair-threshold"
@@ -150,12 +149,7 @@ SPDX-License-Identifier: Apache-2.0
   </div>
 </section>
 
-<p class="hint">
-  Each cell is one card of <code>{deckLabel}</code>, showing how often iReal
-  Pro's Jazz 1460 playlist names that degree above that root, which is also
-  what its shade says once it is on. Tap a cell to turn it on or off, or a
-  heading to turn its whole row or column.
-</p>
+<p class="hint">Counts come from iReal Pro's Jazz 1460 playlist. Changing the threshold replaces your selection.</p>
 
 <style>
   .threshold {
@@ -260,6 +254,19 @@ SPDX-License-Identifier: Apache-2.0
   .corner {
     min-width: 44px;
     font-weight: 500;
+  }
+
+  th button {
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+  }
+
+  th button:hover,
+  th button:focus-visible {
+    background: var(--divider);
   }
 
   /* One blue ramp, five steps, pale for a pair jazz standards barely name and
@@ -379,13 +386,5 @@ SPDX-License-Identifier: Apache-2.0
   .hint {
     margin: 16px 0 0;
     font-size: 13px;
-  }
-
-  .hint code {
-    padding: 2px 5px;
-    border-radius: 4px;
-    background: var(--divider);
-    color: var(--on-surface);
-    font-family: inherit;
   }
 </style>

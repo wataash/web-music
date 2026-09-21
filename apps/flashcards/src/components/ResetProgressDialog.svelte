@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
   </dl>
 
   {#if nothingToReset}
-    <p class="note">Nothing has been studied in this deck yet.</p>
+    <p class="note">No progress in this deck yet.</p>
   {:else}
     <p class="warning">
       Every card in this deck{preview.subdeckCount > 0

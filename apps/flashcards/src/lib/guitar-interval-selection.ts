@@ -82,12 +82,6 @@ export function parseFretWindow(value: unknown): FretWindow {
   };
 }
 
-// How many cells a window can ask about: every string at every fret in it,
-// less the root's own cell.
-export function fretWindowCellCount(window: FretWindow, stringCount = DEFAULT_GUITAR_TUNING.length): number {
-  return stringCount * (window.left + window.right + 1) - 1;
-}
-
 export function isGuitarIntervalCard(note: Pick<NoteRow, "fields">): boolean {
   return note.fields[1] === "guitar-interval";
 }

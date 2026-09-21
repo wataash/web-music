@@ -94,7 +94,7 @@ SPDX-License-Identifier: Apache-2.0
       checked={preset === "naturals"}
       onchange={() => choosePreset("naturals")}
     />
-    <span>Naturals <small>(Default)</small></span>
+    <span>Naturals</span>
   </label>
   <label>
     <input
@@ -103,7 +103,7 @@ SPDX-License-Identifier: Apache-2.0
       checked={preset === "all"}
       onchange={() => choosePreset("all")}
     />
-    <span>All <small>(Adds ♭, ♯ and both-names notes)</small></span>
+    <span>All notes</span>
   </label>
   <label>
     <input
@@ -116,12 +116,10 @@ SPDX-License-Identifier: Apache-2.0
   </label>
 </fieldset>
 
-<p class="hint">
-  A pitch with two names is asked three ways — under each name on its own, and
-  under both at once, as <code>A♯B♭</code>, where one dot carries the two
-  spellings. This selection controls which
-  <code>{deckLabel}</code> cards are studied.
-</p>
+<details class="hint">
+  <summary>Help</summary>
+  <p>A note such as <code>A♯B♭</code> is one pitch. It can be asked as A♯, B♭, or both names together.</p>
+</details>
 
 <style>
   fieldset {
@@ -157,7 +155,6 @@ SPDX-License-Identifier: Apache-2.0
     accent-color: var(--count-new);
   }
 
-  small,
   .selected-count,
   .hint {
     color: var(--on-surface-muted);
@@ -225,6 +222,10 @@ SPDX-License-Identifier: Apache-2.0
   .hint {
     margin: 16px 0 0;
     font-size: 13px;
+  }
+
+  .hint summary {
+    cursor: pointer;
   }
 
   .hint code {

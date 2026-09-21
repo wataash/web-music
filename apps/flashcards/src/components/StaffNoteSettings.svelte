@@ -130,7 +130,7 @@ SPDX-License-Identifier: Apache-2.0
       checked={preset === "basic"}
       onchange={() => choosePreset("basic")}
     />
-    <span>Basic <small>(Up to 2 Ledger Lines, Default)</small></span>
+    <span>2 ledger lines</span>
   </label>
   <label>
     <input
@@ -139,7 +139,7 @@ SPDX-License-Identifier: Apache-2.0
       checked={preset === "advanced"}
       onchange={() => choosePreset("advanced")}
     />
-    <span>Up to Advanced <small>(Up to 4 Ledger Lines)</small></span>
+    <span>4 ledger lines</span>
   </label>
   <label>
     <input
@@ -148,7 +148,7 @@ SPDX-License-Identifier: Apache-2.0
       checked={preset === "esoteric"}
       onchange={() => choosePreset("esoteric")}
     />
-    <span>All <small>(Includes Esoteric, 6 Ledger Lines)</small></span>
+    <span>6 ledger lines</span>
   </label>
   <label>
     <input
@@ -160,11 +160,6 @@ SPDX-License-Identifier: Apache-2.0
     <span>Custom</span>
   </label>
 </fieldset>
-
-<p class="hint">
-  This selection controls which <code>{deckLabel}</code> notes are studied,
-  in both <code>Staff → Note</code> and <code>Note → Staff</code>.
-</p>
 
 <style>
   fieldset {
@@ -199,12 +194,6 @@ SPDX-License-Identifier: Apache-2.0
     accent-color: var(--count-new);
   }
 
-  small,
-  .selected-count,
-  .hint {
-    color: var(--on-surface-muted);
-  }
-
   .note-table-section {
     border: 1px solid var(--divider);
     border-radius: 8px;
@@ -221,6 +210,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .selected-count {
+    color: var(--on-surface-muted);
     font-size: 13px;
     font-weight: 400;
   }
@@ -248,21 +238,5 @@ SPDX-License-Identifier: Apache-2.0
 
   .staff-scroll :global(.staff__note) {
     outline: none;
-  }
-
-  .hint {
-    margin: 16px 0 0;
-    font-size: 13px;
-  }
-
-  .hint code {
-    padding: 2px 5px;
-    border-radius: 4px;
-    background: var(--divider);
-    color: var(--on-surface);
-    font-family: inherit;
-    font-size: 0.95em;
-    font-weight: 500;
-    white-space: nowrap;
   }
 </style>

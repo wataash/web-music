@@ -59,15 +59,6 @@ main {
   padding-bottom: 20px;
 }
 
-.eyebrow {
-  margin: 0 0 3px;
-  color: #657069;
-  font-family: ui-monospace, "SFMono-Regular", monospace;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 h1 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
@@ -231,11 +222,6 @@ select {
   margin-top: 12px;
   font-size: 13px;
   font-weight: 700;
-}
-
-.stacked-field small {
-  color: #727a73;
-  font-weight: 400;
 }
 
 .stacked-field input,

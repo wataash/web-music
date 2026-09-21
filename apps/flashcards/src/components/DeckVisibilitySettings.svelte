@@ -79,10 +79,7 @@ SPDX-License-Identifier: Apache-2.0
   </ul>
 
   <p class="hint">
-    A deck turned off leaves the list, taking anything under it with it;
-    turning one of those back on brings the decks over it with it, but not its
-    siblings. Nothing is deleted, and what a deck asks when it is studied is
-    its own settings' business.
+    Hidden decks keep their progress.
   </p>
 </SettingsDialog>
 

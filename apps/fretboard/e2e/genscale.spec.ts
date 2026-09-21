@@ -28,6 +28,14 @@ test("restores URL settings on each exported route and rejects unknown locales",
     await page.goto(`${path}${query}`);
     await expect(page.getByLabel(label)).toBeVisible();
     await expect(page.getByRole("combobox", { name: path === "/ja" ? "キー" : "Key" })).toHaveValue("D");
+    const japanese = path === "/ja";
+    await expect(page.getByRole("tab", { name: japanese ? "指板" : "Fretboard" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: japanese ? "結合" : "Combine" })).toBeVisible();
+    await expect(page.getByText(japanese ? "表示" : "Appearance", { exact: true })).toBeVisible();
+    await expect(page.getByText(japanese ? "詳細設定" : "Advanced", { exact: true })).toBeVisible();
+    await expect(page.getByText(japanese ? "チューニングを編集" : "Edit tuning", { exact: true })).toBeVisible();
+    await expect(page.getByLabel(japanese ? "設定エディタ" : "Settings editor")).toBeHidden();
+    await expect(page.getByRole("slider", { name: japanese ? "NOTE のグレースケール" : "NOTE grayscale", exact: true, includeHidden: true })).toBeHidden();
   }
 
   const response = await page.goto("/unknown-locale");
@@ -55,7 +63,9 @@ test("switches to concat and renders one fretboard per pasted URL", async ({
     fretSpacing: "equal-width",
   };
 
-  await page.getByRole("tab", { name: "concat" }).click();
+  await page.getByRole("tab", { name: "Combine" }).click();
+  await expect(page.getByLabel("Copied settings URLs")).toBeEmpty();
+  await page.getByRole("button", { name: "Show example" }).click();
   await expect(page.getByLabel("D m7 guitar scale fretboard")).toBeVisible();
   await expect(
     page.getByLabel("G Altered dominant guitar scale fretboard"),
@@ -88,12 +98,19 @@ test("rejects copied settings with incomplete notes without crashing concat", as
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto("/en");
 
-  await page.getByLabel("Notes").fill("");
+  const notes = page.getByLabel("Notes");
+  await notes.click();
+  await notes.press("ControlOrMeta+A");
+  await notes.press("Backspace");
+  await expect(notes).toHaveValue("");
+  await notes.fill("1");
+  await expect(notes).toHaveValue("1");
   await expect(page.getByLabel("A m7 guitar scale fretboard")).toBeVisible();
-  const incompleteSettings = JSON.parse(await page.getByLabel("Settings editor").inputValue()) as AppSettings;
-  expect(incompleteSettings.notes).toEqual([]);
+  const settingEditor = page.getByLabel("Settings editor");
+  await expect.poll(async () => (JSON.parse(await settingEditor.inputValue()) as AppSettings).notes).toEqual(["1"]);
+  const incompleteSettings = JSON.parse(await settingEditor.inputValue()) as AppSettings;
 
-  await page.getByRole("tab", { name: "concat" }).click();
+  await page.getByRole("tab", { name: "Combine" }).click();
   await page.getByLabel("Copied settings URLs").fill(
     [copiedSettingsUrl(incompleteSettings), copiedSettingsUrl({ ...incompleteSettings, notes: scaleTokens("M") })].join("\n"),
   );
@@ -148,6 +165,7 @@ test("supports editable tuning and string count", async ({ page, shot }) => {
   await page.goto("/en");
 
   const tuningPreset = page.getByRole("combobox", { name: "Preset" });
+  await page.getByText("Edit tuning", { exact: true }).click();
   await expect(tuningPreset).toHaveValue("guitar");
   await expect(page.getByLabel("Tuning")).toHaveValue(
     "E4\nB3\nG3\nD3\nA2\nE2",
@@ -192,6 +210,8 @@ test("switches between equal-temperament and equal-width fret spacing", async ({
 
 test("syncs the settings editor with the controls", async ({ page }) => {
   await page.goto("/en");
+  await page.getByText("Appearance", { exact: true }).click();
+  await page.getByText("Advanced", { exact: true }).click();
 
   await expect(page.locator('svg circle[fill="#333333"]')).not.toHaveCount(0);
   await expect(page.getByRole("slider", { name: "NOTE grayscale", exact: true }).locator("xpath=ancestor::label[1]").getByText("Δ7", { exact: true })).toBeVisible();
@@ -295,7 +315,7 @@ test("copies and restores settings through the URL", async ({ page }) => {
     .getByRole("combobox", { name: "Fret spacing" })
     .selectOption("equal-width");
   await page.getByRole("button", {
-    name: "Copy URL with this settings (experimental)",
+    name: "Copy link",
   }).click();
   await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
 
@@ -334,6 +354,8 @@ test("keeps the fretboard above the controls at small and large widths", async (
     await page.setViewportSize(viewport);
     await page.goto("/en");
 
+    await expect(page.getByLabel("A m7 guitar scale fretboard")).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Key" })).toBeVisible();
     const fretboardBox = await page
       .getByLabel("A m7 guitar scale fretboard")
       .boundingBox();
@@ -355,6 +377,7 @@ test("shows the 24th fret when the browser is wide enough", async ({ page }) => 
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto("/en");
 
+  await expect(page.locator("svg text").filter({ hasText: /^24$/ }).first()).toBeVisible();
   const label24Box = await page
     .locator("svg text")
     .filter({ hasText: /^24$/ })
@@ -412,11 +435,22 @@ test("renders Japanese UI at /ja", async ({ page, shot }) => {
       .getByRole("combobox", { name: "スケール" })
       .locator("option", { hasText: "オルタード" }),
   ).toHaveAttribute("value", "alt");
+  await expect(page.getByRole("tab", { name: "指板" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "結合" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "リンクをコピー" })).toBeVisible();
+  await expect(page.getByLabel("チューニング")).toBeHidden();
+  await expect(
+    page.getByRole("slider", { name: "NOTE のグレースケール", exact: true, includeHidden: true }),
+  ).toBeHidden();
+  await expect(page.getByLabel("設定エディタ")).toBeHidden();
+  await expect(page.getByLabel("A m7 ギター指板スケール")).toBeVisible();
+  await shot("japanese-ui", { fullPage: true });
+  await page.getByText("チューニングを編集", { exact: true }).click();
+  await page.getByText("表示", { exact: true }).click();
+  await page.getByText("詳細設定", { exact: true }).click();
   await expect(page.getByLabel("チューニング")).toBeVisible();
   await expect(
     page.getByRole("slider", { name: "NOTE のグレースケール", exact: true }),
   ).toBeVisible();
   await expect(page.getByLabel("設定エディタ")).toBeVisible();
-  await expect(page.getByLabel("A m7 ギター指板スケール")).toBeVisible();
-  await shot("japanese-ui", { fullPage: true });
 });

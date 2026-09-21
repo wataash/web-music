@@ -60,7 +60,6 @@ SPDX-License-Identifier: Apache-2.0
     DEFAULT_CARD_OFFSETS,
     DEFAULT_CARD_SCALES,
     DEFAULT_DECK_CARD_SETTINGS,
-    formatCardOffset,
     type CardOffset,
     type CardPart,
     type CardRotation,
@@ -189,9 +188,8 @@ SPDX-License-Identifier: Apache-2.0
   // covering; here the card is the whole screen and the part is under the
   // finger that is moving it.
   let positioning = $state(false);
-  // What was last taken hold of and where it now is, said back to the reader:
-  // under a finger it is the finger that says where a part is, but a part
-  // nudged a little needs a number to say how far it went.
+  let showLayoutHelp = $state(false);
+  // The last part selected for layout controls.
   let arranged = $state<CardPart | "answer" | null>(null);
   // The screen the answer row is dragged around, so where it is let go can be
   // turned into one of the places it may sit.
@@ -765,6 +763,13 @@ SPDX-License-Identifier: Apache-2.0
   function openCardLayout(): void {
     openOverDeckActions(historyStateForCardLayout);
     arranged = null;
+    try {
+      const key = "music-flashcards:layout-help-seen";
+      showLayoutHelp = localStorage.getItem(key) !== "true";
+      localStorage.setItem(key, "true");
+    } catch {
+      showLayoutHelp = true;
+    }
     positioning = true;
   }
 
@@ -933,9 +938,9 @@ SPDX-License-Identifier: Apache-2.0
   <main class="card-area">
     {#if finished}
       <div class="congrats">
-        <p class="congrats-title">Today's study is complete</p>
+        <p class="congrats-title">Done for today</p>
         <p class="session-summary">
-          This session: {sessionNew} new · {sessionReview} review
+          {sessionNew} new · {sessionReview} review
         </p>
         {#if loadingExtraAvailability}
           <p>Checking for more cards…</p>
@@ -947,7 +952,7 @@ SPDX-License-Identifier: Apache-2.0
             STUDY MORE
           </button>
         {:else}
-          <p>No additional cards are available.</p>
+          <p>No more cards available.</p>
         {/if}
       </div>
     {:else if item}
@@ -996,17 +1001,20 @@ SPDX-License-Identifier: Apache-2.0
         role="group"
         aria-label="Arrange card"
       >
-        <p>
-          {#if arranged === null}
-            Drag to move, pinch to size, twist to turn.
-          {:else if arranged === "answer"}
-            Answer buttons {ANSWER_ANCHOR_LABELS[answerAnchor]}
-          {:else}
-            {CARD_PART_LABELS[arranged]}
-            {formatCardScale(partScales[arranged])}
-            · {formatCardOffset(deckSettings.offsets[arranged])}
-          {/if}
-        </p>
+        <details class="layout-help" bind:open={showLayoutHelp}>
+          <summary>Help</summary>
+          <p>Drag to move, pinch to size, twist to turn.</p>
+        </details>
+        {#if arranged !== null}
+          <p>
+            {#if arranged === "answer"}
+              Answer buttons {ANSWER_ANCHOR_LABELS[answerAnchor]}
+            {:else}
+              {CARD_PART_LABELS[arranged]}
+              {formatCardScale(partScales[arranged])}
+            {/if}
+          </p>
+        {/if}
         <button
           aria-label="Rotate anticlockwise"
           title={ROTATION_LABELS[rotation]}
@@ -1436,6 +1444,17 @@ SPDX-License-Identifier: Apache-2.0
   .laying-out p {
     flex: 1 0 100%;
     margin: 0;
+  }
+
+  .layout-help {
+    pointer-events: auto;
+    flex: 1 0 100%;
+  }
+
+  .layout-help summary {
+    cursor: pointer;
+    min-height: 32px;
+    align-content: center;
   }
 
   .laying-out button {

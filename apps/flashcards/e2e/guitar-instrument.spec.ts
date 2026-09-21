@@ -54,8 +54,7 @@ test("draws both guitar decks for the chosen instrument and keeps each instrumen
   await preset.selectOption("bass-4");
   await expect(map.getByRole("table")).toHaveCount(4);
   await expect(map.locator(".roots .cell")).toHaveCount(4 * (4 * 13 - 1));
-  await expect(dialog).toContainText("27 positions per root in window");
-  await expect(dialog).toContainText("APPLY redraws both decks for 4-string bass");
+  await expect(dialog).toContainText("APPLY updates both decks.");
   await shot("bass-question-map");
   await dialog.getByRole("button", { name: "CANCEL" }).click();
   expect(await storedTunings(page)).toEqual({

@@ -14,7 +14,6 @@ SPDX-License-Identifier: Apache-2.0
 
   let keyFifths = $state(0);
   let clef = $state<Clef>("treble");
-  const referenceId = $props.id();
 
   const staffRow = $derived(
     renderStaffRowSvg({
@@ -32,22 +31,16 @@ SPDX-License-Identifier: Apache-2.0
 <details class="scale-reference">
   <summary>Scale reference</summary>
   <div class="controls">
-    <label>
-      <span id={`${referenceId}-key-label`}>Reference key</span>
-      <select aria-labelledby={`${referenceId}-key-label`} bind:value={keyFifths}>
-        {#each MAJOR_KEYS_BY_SIGNATURE as key (key.fifths)}
-          <option value={key.fifths}>{key.tonic} major</option>
-        {/each}
-      </select>
-    </label>
-    <label>
-      <span id={`${referenceId}-clef-label`}>Reference clef</span>
-      <select aria-labelledby={`${referenceId}-clef-label`} bind:value={clef}>
-        {#each CLEFS as candidate (candidate)}
-          <option value={candidate}>{CLEF_LABELS[candidate]} clef</option>
-        {/each}
-      </select>
-    </label>
+    <select aria-label="Reference key" bind:value={keyFifths}>
+      {#each MAJOR_KEYS_BY_SIGNATURE as key (key.fifths)}
+        <option value={key.fifths}>{key.tonic} major</option>
+      {/each}
+    </select>
+    <select aria-label="Reference clef" bind:value={clef}>
+      {#each CLEFS as candidate (candidate)}
+        <option value={candidate}>{CLEF_LABELS[candidate]} clef</option>
+      {/each}
+    </select>
   </div>
   <div class="staff-scroll">
     {@html staffRow}
@@ -73,13 +66,6 @@ SPDX-License-Identifier: Apache-2.0
     gap: 12px;
     padding: 0 14px 14px;
     border-bottom: 1px solid var(--divider);
-  }
-
-  label {
-    display: grid;
-    gap: 5px;
-    color: var(--on-surface-muted);
-    font-size: 13px;
   }
 
   select {

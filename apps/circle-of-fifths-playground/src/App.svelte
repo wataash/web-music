@@ -93,7 +93,6 @@ SPDX-License-Identifier: Apache-2.0
 <main>
   <header class="app-header">
     <div>
-      <p class="eyebrow">Music theory laboratory</p>
       <h1>Circle of Fifths</h1>
     </div>
     <div class="header-actions">
