@@ -6,11 +6,12 @@
   "type": "module",
   "scripts": {
     "analyze": "node src/cli.js",
+    "chart-features": "node src/chart-features-cli.js",
     "test": "node --test src/*.test.js",
     "extract": "node src/extract.js"
   },
   "engines": {
-    "node": ">=22.5"
+    "node": ">=22.18"
   },
   "dependencies": {
     "@web-music/ireal": "workspace:*",
