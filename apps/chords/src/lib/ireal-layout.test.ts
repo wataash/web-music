@@ -35,10 +35,32 @@ it('places alternate chords above their main chord and keeps narrow chords in th
     .toEqual([[0, false], [0, true], [2, false], [3, false], [4, false]]);
 });
 
-it('places multiple alternate chords side by side above their main chord', () => {
+it('divides the cell of a chord evenly between the alternates above it', () => {
   const row = layoutIreal(score('[F#h7(Ah7 D7b9)XyQZ'))[0];
-  expect(row.items.filter(item => item.token.kind === 'chord').map(item => [item.column, item.alternate]))
-    .toEqual([[0, false], [0, true], [1, true]]);
+  const main = row.items.find(item => item.token.kind === 'chord' && !item.alternate)!;
+  const alternates = row.items.filter(item => item.token.kind === 'chord' && item.alternate);
+  expect(alternates.map(item => [item.column, item.span])).toEqual([[0, main.span! / 2], [main.span! / 2, main.span! / 2]]);
+});
+
+it('keeps three alternate chords inside their own share of the cell', () => {
+  const row = layoutIreal(score('[F#h7(Ah7 D7b9 G-7)XyQ|C7XyQZ'))[0];
+  const main = row.items.find(item => item.token.kind === 'chord' && !item.alternate)!;
+  const alternates = row.items.filter(item => item.token.kind === 'chord' && item.alternate);
+  expect(alternates).toHaveLength(3);
+  for (const [index, item] of alternates.entries()) {
+    expect(item.span).toBeCloseTo(main.span! / 3);
+    // Each one starts where the previous one ends, and the last ends with the cell.
+    expect(item.column).toBeCloseTo(main.column + main.span! * index / 3);
+    const next = alternates[index + 1];
+    expect(item.column + item.span!).toBeLessThanOrEqual((next?.column ?? main.column + main.span!) + 1e-9);
+  }
+});
+
+it('leaves an annotation written beside an alternate chord out of the share', () => {
+  const row = layoutIreal(score('[F#h7(Ah7<Note> D7b9)XyQZ'))[0];
+  const alternates = row.items.filter(item => item.token.kind === 'chord' && item.alternate);
+  const main = row.items.find(item => item.token.kind === 'chord' && !item.alternate)!;
+  expect(alternates.map(item => item.span)).toEqual([main.span! / 2, main.span! / 2]);
 });
 
 it('retains variable bar widths and displays chord qualities in iReal notation', () => {
@@ -110,4 +132,32 @@ it('changes minor notation without changing roots, basses or other chord qualiti
   expect(irealChordParts('BbmM7/Db', 'm')).toEqual({ root: 'B', accidental: '♭', quality: 'm△7', bass: 'D♭' });
   expect(irealChordParts('C7b9', 'm').quality).toBe('7♭9');
   expect(irealChordParts('Cdim7', 'm').quality).toBe('°7');
+});
+
+it('writes a half-diminished seventh as ø7 and keeps ° for the diminished seventh', () => {
+  // Gh7 in the source is a half-diminished chord, whatever the minor setting.
+  expect(irealChordParts('Gm7b5', '-', true)).toEqual({ root: 'G', accidental: '', quality: 'ø7', bass: '' });
+  expect(irealChordParts('Gm7b5', 'm', true).quality).toBe('ø7');
+  expect(irealChordParts('G-7b5', '-', true).quality).toBe('ø7');
+  expect(irealChordParts('Gm7b5/Db', '-', true).bass).toBe('D♭');
+  expect(irealChordParts('Gdim7', '-', true).quality).toBe('°7');
+  expect(irealChordParts('Gdim', '-', true).quality).toBe('°');
+  // Other minor chords still follow the setting.
+  expect(irealChordParts('Gm7', 'm', true).quality).toBe('m7');
+  expect(irealChordParts('Gm7', '-', true).quality).toBe('-7');
+});
+
+it('drops the brackets around a tension but leaves other brackets alone', () => {
+  expect(irealChordParts('C7(b9)', '-', true).quality).toBe('7♭9');
+  expect(irealChordParts('C7(#9)', '-', true).quality).toBe('7♯9');
+  expect(irealChordParts('Caug7(b9)', '-', true).quality).toBe('+7♭9');
+  expect(irealChordParts('C(add9)', '-', true).quality).toBe('(add9)');
+});
+
+it('leaves the compact chart spelling out of the degrees and the ChordWiki score', () => {
+  // The default is what the degree labels and headings have always shown.
+  expect(irealChordParts('Gm7b5').quality).toBe('-7♭5');
+  expect(irealChordParts('Gm7b5', 'm').quality).toBe('m7♭5');
+  expect(irealChordParts('C7(b9)').quality).toBe('7(♭9)');
+  expect(irealChordParts('Cm7(#13)', 'm').quality).toBe('m7(♯13)');
 });

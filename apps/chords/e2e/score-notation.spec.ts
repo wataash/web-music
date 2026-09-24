@@ -20,7 +20,8 @@ async function openScore(page: Page, raw: string) {
   await importLink(page, 'irealb://' + encodeURIComponent('Notation Example=Example==Swing=C==1r34LbKcu7' + scramble(raw) + '==0=0'));
   await expect(page.getByRole('status').filter({ hasText: 'Added 1 song' })).toBeVisible();
   await closeLibrary(page);
-  await page.getByText('Full chart', { exact: true }).click();
+  // The chart opens by itself; the tests below toggle it from there.
+  await expect(page.locator('details.song-source')).toHaveAttribute('open', '');
   return page.locator('.full-score .ireal-sheet');
 }
 
@@ -108,6 +109,54 @@ for (const width of [320, 700]) {
       const sheet = await openScore(page, '[C7XyQ|W/EXyQZ');
       await expect(sheet.locator('.root:visible').filter({ hasText: /^C$/ })).toHaveCount(1);
     });
+
+    test('writes ø7 apart from °7 and drops the brackets of a tension', async ({ page }) => {
+      const sheet = await openScore(page, '[T44Gh7XyQ|Go7XyQ|C7b9XyQZ');
+      await expect(sheet.locator('.quality')).toHaveText(['ø7', '°7', '7♭9']);
+      // The chart spelling is the only thing that changes: the chord the rest
+      // of the app announces and practises is untouched.
+      const labels = await sheet.locator('.chord').evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label')));
+      expect(labels).toEqual(['Gm7b5', 'Gdim7', 'C7(b9)']);
+    });
+
+    test('shares one cell between three alternate chords without overlap', async ({ page }) => {
+      const sheet = await openScore(page, '*A[T44F#h7(Ah7 D7b9 G-7)XyQ|C7XyQZ');
+      const alternates = sheet.locator('.alternate .chord');
+      await expect(alternates).toHaveCount(3);
+      const boxes = await alternates.evaluateAll(nodes => nodes.map(node => {
+        const rect = node.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, bottom: rect.bottom };
+      }));
+      for (const [index, box] of boxes.entries()) {
+        const next = boxes[index + 1];
+        if (next) expect(box.right).toBeLessThanOrEqual(next.left + 1);
+      }
+      const main = (await sheet.locator('.item:not(.alternate) .chord').first().boundingBox())!;
+      const row = (await sheet.locator('.ireal-row').first().boundingBox())!;
+      expect(Math.max(...boxes.map(box => box.bottom))).toBeLessThanOrEqual(main.y + 1);
+      expect(boxes.at(-1)!.right).toBeLessThanOrEqual(row.x + row.width + 1);
+      // The alternate reads as a chord: its root keeps about seventy percent
+      // of the main size, and only the quality shrinks and rides high.
+      const sizes = await sheet.evaluate(element => {
+        const chord = element.querySelector('.alternate .chord')!;
+        const quality = chord.querySelector('.quality')!;
+        const root = chord.querySelector('.root')!;
+        return {
+          main: parseFloat(getComputedStyle(element.querySelector('.item:not(.alternate) .chord')!).fontSize),
+          alternate: parseFloat(getComputedStyle(chord).fontSize),
+          quality: parseFloat(getComputedStyle(quality).fontSize),
+          qualityTop: quality.getBoundingClientRect().top,
+          rootTop: root.getBoundingClientRect().top,
+          rootHeight: root.getBoundingClientRect().height,
+        };
+      });
+      expect(sizes.alternate).toBeGreaterThan(sizes.main * 0.6);
+      expect(sizes.alternate).toBeLessThan(sizes.main * 0.8);
+      // Small beside the root, but never so small that it stops being read.
+      expect(sizes.quality).toBeLessThan(sizes.alternate * 0.7);
+      expect(sizes.quality).toBeGreaterThan(sizes.alternate * 0.5);
+      expect(sizes.qualityTop).toBeLessThanOrEqual(sizes.rootTop + sizes.rootHeight * 0.25);
+    });
   });
 }
 
@@ -117,6 +166,103 @@ for (const width of [320, 700]) test('keeps the alternate chord below the ending
   const alternate = (await sheet.locator('.alternate .chord').boundingBox())!;
   const ending = (await sheet.getByTitle('Ending 1', { exact: true }).first().boundingBox())!;
   expect(alternate.y).toBeGreaterThanOrEqual(ending.y + ending.height);
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await page.getByRole('group', { name: 'Chord names' }).getByRole('button', { name: 'Dm7 + IIm7', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => document.fonts.ready);
+  const withDegree = (await sheet.locator('.alternate .chord').boundingBox())!;
+  const main = (await sheet.locator('.layered .item:not(.alternate) .chord').first().boundingBox())!;
+  expect(withDegree.y + withDegree.height).toBeLessThanOrEqual(main.y + 1);
+});
+
+test('sets the chart chords in the chart face and leaves the rest of the page alone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 });
+  const sheet = await openScore(page, '*A[T44F#-7/A(D7b9)<Note>XyQ|F7XyQZ');
+  // The face is served by the app, so it is there before anything is measured:
+  // the file itself has to arrive, not just be declared.
+  const loaded = await page.evaluate(async () => {
+    const faces = await document.fonts.load('24px "Barlow Condensed"');
+    return { families: faces.map(face => face.family), statuses: faces.map(face => face.status) };
+  });
+  expect(loaded.families).toContain('Barlow Condensed');
+  expect(loaded.statuses).toContain('loaded');
+  expect(await page.evaluate(() => document.fonts.check('24px "Barlow Condensed"'))).toBe(true);
+  const naming = (option: string) => page.getByRole('button', { name: 'Chord practice settings' }).click()
+    .then(() => page.getByRole('group', { name: 'Chord names' }).getByRole('button', { name: option, exact: true }).click())
+    .then(() => page.keyboard.press('Escape'));
+  await naming('Dm7 + IIm7');
+  await expect(sheet.locator('.sublabel').first()).toBeVisible();
+  // The fixture spells one slash chord, so the bass is part of what is measured.
+  await expect(sheet.locator('.bass')).toHaveCount(1);
+  const fonts = await sheet.evaluate(element => {
+    const style = (selector: string) => getComputedStyle(element.querySelector(selector)!);
+    return {
+      chord: style('.chord').fontFamily, chordWeight: style('.chord').fontWeight,
+      quality: style('.quality').fontFamily, qualityWeight: style('.quality').fontWeight,
+      synthesis: style('.chord').fontSynthesis,
+      bass: style('.bass').fontFamily,
+      sublabel: style('.sublabel').fontFamily,
+      section: style('.section').fontFamily,
+      comment: style('.comment').fontFamily,
+    };
+  });
+  // The chord and everything spelled inside it use the chart face at one weight.
+  expect(fonts.chord).toContain('Barlow Condensed');
+  expect(fonts.quality).toContain('Barlow Condensed');
+  expect(fonts.bass).toContain('Barlow Condensed');
+  expect(fonts.chordWeight).toBe('400');
+  expect(fonts.qualityWeight).toBe('400');
+  expect(fonts.synthesis).toBe('none');
+  // The degree, the section letter and the annotation keep the page's own face.
+  expect(fonts.sublabel).not.toContain('Barlow');
+  expect(fonts.section).not.toContain('Barlow');
+  expect(fonts.comment).not.toContain('Barlow');
+  // The degree under an alternate still clears the chord underneath it.
+  const alternate = (await sheet.locator('.alternate .chord').boundingBox())!;
+  const main = (await sheet.locator('.item:not(.alternate) .chord').first().boundingBox())!;
+  expect(alternate.y + alternate.height).toBeLessThanOrEqual(main.y + 1);
+  // A sharp is set inside the chord, whatever face draws it: a fallback that
+  // rises out of the chord's own box lands on the degree above it.
+  const accidental = (await sheet.locator('.accidental').first().boundingBox())!;
+  expect(accidental.y).toBeGreaterThanOrEqual(main.y - 1);
+  expect(accidental.y + accidental.height).toBeLessThanOrEqual(main.y + main.height + 1);
+  const marks = await sheet.evaluate(element => {
+    const size = (selector: string) => parseFloat(getComputedStyle(element.querySelector(selector)!).fontSize);
+    return { root: size('.root'), accidental: size('.accidental') };
+  });
+  expect(marks.accidental).toBeLessThan(marks.root * 0.9);
+  await naming('Dm7');
+});
+
+for (const width of [320, 700]) test(`stacks accidentals above narrow major symbols at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 });
+  const sheet = await openScore(page, '[T44Ab^7XyQ|F#o7XyQ|C7b9XyQ|Db7#9XyQZ');
+  await page.evaluate(() => document.fonts.ready);
+  const chord = sheet.locator('.chord').first();
+  await expect(chord).toHaveAttribute('aria-label', 'AbM7');
+  await expect(chord.locator('.accidental')).toHaveText('♭');
+  const flatPaths = chord.locator('.accidental svg path');
+  await expect(flatPaths).toHaveCount(2);
+  const [stem, bowl] = await flatPaths.evaluateAll(paths => paths.map(path => {
+    const style = getComputedStyle(path);
+    return { fill: style.fill, stroke: style.stroke, width: parseFloat(style.strokeWidth) };
+  }));
+  expect(stem.fill).toBe('none');
+  expect(stem.width).toBeLessThan(1);
+  expect(bowl.fill).not.toBe('none');
+  expect(bowl.stroke).toBe('none');
+  await expect(chord.locator('.quality')).toHaveText('△7');
+  const flat = (await chord.locator('.accidental').boundingBox())!;
+  const quality = (await chord.locator('.quality').boundingBox())!;
+  expect(Math.abs(flat.x - quality.x)).toBeLessThan(3);
+  expect(flat.y + flat.height).toBeLessThanOrEqual(quality.y + 1);
+  const triangle = (await chord.locator('.quality svg').boundingBox())!;
+  expect(triangle.height).toBeGreaterThan(triangle.width * 1.3);
+  for (const symbol of await sheet.locator('.accidental').all()) await expect(symbol.locator('svg')).toHaveCount(1);
+  await expect(sheet.locator('.quality').nth(2)).toHaveText('7♭9');
+  await expect(sheet.locator('.quality').nth(3)).toHaveText('7♯9');
+  await expect(sheet.locator('.quality').nth(2).locator('svg')).toHaveCount(1);
+  await expect(sheet.locator('.quality').nth(3).locator('svg')).toHaveCount(1);
 });
 
 test('practices repeated bars, highlights their sign, and restores the expanded position', async ({ page }) => {
@@ -170,6 +316,41 @@ test('selects written and repeated chords from the score in practice and list vi
   await page.getByText('Full chart', { exact: true }).click();
   await page.locator('.chord-source').getByRole('button', { name: 'D7', exact: true }).click();
   await expect(page.getByLabel('Chord number', { exact: true })).toHaveValue('2');
+});
+
+test('opens the full chart for a song the reader has not closed', async ({ page }) => {
+  const chart = (title: string) => `${title}=Example==Swing=C==1r34LbKcu7${scramble('*A[T44C7XyQ|F7XyQZ')}==0=0`;
+  await page.goto('/');
+  await openLibrary(page);
+  await importLink(page, 'irealb://' + encodeURIComponent(`${chart('Chart One')}===${chart('Chart Two')}===Two Charts`));
+  await expect(page.getByRole('status').filter({ hasText: 'Added 2 songs' })).toBeVisible();
+  await closeLibrary(page);
+  const details = page.locator('details.song-source');
+  // Nothing has been saved for this song, so the chart is open to begin with.
+  await expect(details).toHaveAttribute('open', '');
+  await expect(page.locator('.full-score .ireal-sheet')).toBeVisible();
+
+  await page.getByText('Full chart', { exact: true }).click();
+  await expect(details).not.toHaveAttribute('open', '');
+  await expect(page.locator('.chord-source')).toBeVisible();
+
+  // The choice belongs to the song, so both views and a reload keep it.
+  await page.getByRole('button', { name: 'List', exact: true }).click();
+  await expect(page.locator('.chord-list')).toBeVisible();
+  await expect(details).not.toHaveAttribute('open', '');
+  await page.getByRole('button', { name: 'Card', exact: true }).click();
+  await expect(page.locator('.card-area')).toBeVisible();
+  await expect(details).not.toHaveAttribute('open', '');
+  // A song the reader has never opened still starts open, and going back to
+  // the first song finds it as it was left.
+  await openLibrary(page);
+  await page.getByLabel('Song', { exact: true }).getByRole('button', { name: 'Chart Two · Example', exact: true }).click();
+  await expect(details).toHaveAttribute('open', '');
+  await openLibrary(page);
+  await page.getByLabel('Song', { exact: true }).getByRole('button', { name: 'Chart One · Example', exact: true }).click();
+  await expect(details).not.toHaveAttribute('open', '');
+  await page.reload();
+  await expect(details).not.toHaveAttribute('open', '');
 });
 
 test('sounds the chord chosen from the score', async ({ page }) => {

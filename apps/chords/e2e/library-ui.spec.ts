@@ -34,7 +34,6 @@ for (const width of [320, 1000]) test(`library controls and import dialog at ${w
   await closeLibrary(page);
   expect(await page.locator('[data-chord-practice]').evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(2);
   if (width !== 320) return;
-  await page.getByText('Full chart', { exact: true }).click();
   await expect(page.locator('.full-score h3')).toHaveCount(0);
   await expect(page.getByRole('group', { name: 'Strings for bass notes' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Reset settings and position' })).toHaveCount(0);

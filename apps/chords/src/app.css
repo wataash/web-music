@@ -1,6 +1,15 @@
 /* SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com> */
 /* SPDX-License-Identifier: Apache-2.0 */
 
+/* Self-host the chart face for consistent metrics online and offline. */
+@font-face {
+  font-family: 'Barlow Condensed';
+  src: url('/fonts/barlow-condensed-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* An open disclosure shows how far it reaches: a box around it from the
    summary to the end of what it opened. The summary keeps its place at the
    margin, so closed and open headings line up. */

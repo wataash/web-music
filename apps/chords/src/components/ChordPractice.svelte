@@ -186,7 +186,7 @@ SPDX-License-Identifier: Apache-2.0
     else libraryDialog?.close();
   });
   let instrumentOpen = $state(false);
-  let fullChartOpen = $state(false);
+  let fullChartOpen = $state(true);
   const isFavorite = $derived(favoriteIds.includes(selectedSong.id));
   const settingsId = $derived(`Chord positions: ${selectedSong.id}`);
   let targetKey = $state<string>(untrack(() => savedProgress.keys[songId] ?? selectedSong.originalKey));

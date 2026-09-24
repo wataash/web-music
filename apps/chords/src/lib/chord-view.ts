@@ -24,7 +24,7 @@ export function chordViewPersistence() {
   const viewKey = (name: string) => `${store?.scope() ?? ""}:${name}`;
   const songKey = (name: string) => `${store?.songScope?.() ?? store?.scope() ?? ""}:${name}`;
   const hasView = (key: string) => !!store?.views()[key];
-  function remember(node: HTMLElement, initialKey: string) {
+  function remember(node: HTMLElement, initialKey: string, defaultOpen = false) {
     const views = store?.views();
     let key = initialKey;
     let revision = 0;
@@ -41,7 +41,7 @@ export function chordViewPersistence() {
       const current = ++revision;
       restoring = true;
       const value = views?.[key];
-      if (node instanceof HTMLDetailsElement) node.open = value?.open ?? false;
+      if (node instanceof HTMLDetailsElement) node.open = value?.open ?? defaultOpen;
       await tick();
       if (current !== revision) return;
       // Lazy details and fretboards must settle before restoring scroll offsets.

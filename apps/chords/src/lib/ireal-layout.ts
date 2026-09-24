@@ -34,9 +34,9 @@ export function resolveIreal(blocks: ScoreToken[][]): { rows: IrealRow[]; events
     if (token.kind === 'space') { column++; continue; }
     const cell = token.kind === 'chord' || isRepeatToken(token);
     if (token.kind === 'section') section = token.text;
-    const position = alternate
-      ? lastChord + rows.at(-1)!.items.filter(item => item.alternate && item.column === lastChord).length
-      : token.kind === 'comment' ? lastChord : column;
+    // Alternate chords all start on the cell of the chord they sit above;
+    // the cell is shared out between them once the row is complete.
+    const position = alternate ? lastChord : token.kind === 'comment' ? lastChord : column;
     rows.at(-1)!.items.push({ token, column: Math.min(16, position), alternate, indices: [], section });
     if (cell && !alternate) { lastChord = column; column++; }
   }
@@ -47,6 +47,21 @@ export function resolveIreal(blocks: ScoreToken[][]): { rows: IrealRow[]; events
       const next = row.items.find(candidate => candidate.column > item.column && !candidate.alternate &&
         ['chord', 'bar', 'symbol'].includes(candidate.token.kind));
       item.span = Math.max(1, (next?.column ?? 16) - item.column);
+    }
+    // The alternate chords above one chord divide that chord's cell evenly,
+    // so a third alternate has as much room as the first and none of them can
+    // reach into the next one's letters. Only chords take a share; an
+    // annotation written inside the brackets keeps the cell it was given.
+    const groups = new Map<number, IrealItem[]>();
+    for (const item of row.items) {
+      if (item.alternate && item.token.kind === 'chord') groups.set(item.column, [...(groups.get(item.column) ?? []), item]);
+    }
+    for (const group of groups.values()) {
+      const width = (group[0].span ?? 1) / group.length;
+      for (const [index, item] of group.entries()) {
+        item.column += width * index;
+        item.span = width;
+      }
     }
   }
   // Brackets span bars and continue across systems until a closing bar or ending.
@@ -106,12 +121,18 @@ export function resolveIreal(blocks: ScoreToken[][]): { rows: IrealRow[]; events
   return { rows: rows.filter(row => row.items.length), events };
 }
 
-export function irealChordParts(symbol: string, minor: '-' | 'm' = '-') {
+export function irealChordParts(symbol: string, minor: '-' | 'm' = '-', compact = false) {
   const match = /^([A-G])([#b]*)(.*?)(?:\/([A-G][#b]*))?$/.exec(symbol);
   if (!match) return { root: symbol, accidental: '', quality: '', bass: '' };
-  const quality = match[3].replace(/^mM/, '-△').replace(/^M/, '△')
-    .replace(/^m(?!aj|in)/, '-').replace(/^dim/, '°').replace(/^aug/, '+')
-    .replaceAll('^', '△').replaceAll('#', '♯').replaceAll('b', '♭');
+  // `compact` is the chart's own spelling: a half-diminished seventh as ø7,
+  // kept apart from the ° of the fully diminished seventh, and a tension
+  // without its brackets. Degrees, headings and the ChordWiki score read the
+  // plain spelling, so the chart opts in and nothing else changes.
+  let quality = compact ? match[3].replace(/^(?:m(?!aj|in)|-)7b5$/, 'ø7') : match[3];
+  quality = quality.replace(/^mM/, '-△').replace(/^M/, '△')
+    .replace(/^m(?!aj|in)/, '-').replace(/^dim/, '°').replace(/^aug/, '+');
+  if (compact) quality = quality.replace(/\(([#b]\d{1,2})\)/g, '$1');
+  quality = quality.replaceAll('^', '△').replaceAll('#', '♯').replaceAll('b', '♭');
   return { root: match[1], accidental: match[2].replaceAll('b', '♭').replaceAll('#', '♯'), quality: minor === 'm' ? quality.replace(/^-/, 'm') : quality,
     bass: (match[4] ?? '').replaceAll('b', '♭').replaceAll('#', '♯') };
 }

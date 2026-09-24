@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
   import { transposeChordSymbol } from "../lib/chords";
   import type { ScoreToken } from '../lib/chord-metadata';
   import { layoutIreal, irealChordParts, commentText, type IrealItem } from '../lib/ireal-layout';
+  import ChordGlyph from './ChordGlyph.svelte';
   let { blocks, symbols, sublabels, selected = [], contextIndex, onselect, originalKey, targetKey }: { blocks: ScoreToken[][]; symbols: string[]; sublabels?: string[]; selected?: number[]; contextIndex?: number; onselect?: (index: number) => void; originalKey?: string; targetKey?: string } = $props();
   const allRows = $derived(layoutIreal(blocks));
   const rows = $derived(allRows.filter(row => contextIndex === undefined || row.items.some(item => item.indices.includes(contextIndex))));
@@ -83,9 +84,9 @@ SPDX-License-Identifier: Apache-2.0
         <span class="item" title={musicSymbol ? irealLabel(token.label) : undefined} style:left={`${(barRepeat ? item.repeatColumn ?? item.column : item.column) / 16 * 100}%`} class:alternate={item.alternate} class:section-item={token.kind === 'section'} class:key-change-item={token.name === 'key-change'} class:music-symbol={musicSymbol} class:beside-section={musicSymbol && row.items.some(other => other.column === item.column && other.token.kind === 'section')}>
           {#if token.chordIndex !== undefined}
             {@const symbol = symbols[token.chordIndex]}
-            {@const parts = irealChordParts(symbol, minorNotation())}
+            {@const parts = irealChordParts(symbol, minorNotation(), true)}
             <button type="button" class="chord" tabindex={item === tabItem ? 0 : -1} data-score-index={item.indices[0]} onkeydown={event => navigate(event, item)} disabled={!onselect} onclick={() => choose(item.indices)} use:fitChord={item.span ?? 1} class:narrow={token.narrow} class:selected={active} aria-label={symbol} title={`Original notation: ${token.raw}`}>
-              <span class="main-chord" class:invisible-root={token.raw.startsWith("W")}><span class="root">{parts.root}</span>{#if parts.accidental}<span class="accidental">{parts.accidental}</span>{/if}<span class="quality">{parts.quality}</span></span>{#if parts.bass}<span class="bass">/{parts.bass}</span>{/if}{#if sublabels?.[token.chordIndex]}<span class="sublabel">{sublabels[token.chordIndex]}</span>{/if}
+              <span class="main-chord" class:invisible-root={token.raw.startsWith("W")}><span class="root">{parts.root}</span><span class="suffix">{#if parts.accidental}<span class="accidental"><ChordGlyph text={parts.accidental} /></span>{/if}<span class="quality"><ChordGlyph text={parts.quality} /></span></span></span>{#if parts.bass}<span class="bass">/<ChordGlyph text={parts.bass} /></span>{/if}{#if sublabels?.[token.chordIndex]}<span class="sublabel">{sublabels[token.chordIndex]}</span>{/if}
             </button>
           {:else if token.kind === 'bar'}
             <span class="bar" class:double={['[', ']'].includes(token.raw)} class:final={token.raw === 'Z'} title={irealLabel(token.label)}>
@@ -131,35 +132,44 @@ SPDX-License-Identifier: Apache-2.0
   .ireal-sheet { container-type: inline-size; width: 100%; color: var(--on-surface); }
   .highlight-annotations .comment, .highlight-annotations .ending, .highlight-annotations .music-symbol, .highlight-annotations .symbol:not(.selected) { color: var(--text-accent); }
   .highlight-annotations .comment { font-weight: 600; }
-  .ireal-row { position: relative; height: clamp(84px, 16cqw, 112px); margin-bottom: calc(var(--gap) * 8px + var(--note-space) + var(--lyric-space)); margin-left: 1.1em; margin-right: 0.6em; }
-  .ireal-row.compact { height: clamp(68px, 13cqw, 92px); }
+  .ireal-row { position: relative; height: clamp(96px, 20cqw, 144px); margin-bottom: calc(var(--gap) * 8px + var(--note-space) + var(--lyric-space)); margin-left: 1.1em; margin-right: 0.6em; }
+  .ireal-row.compact { height: clamp(80px, 17cqw, 124px); }
   .compact .item:not(.section-item):not(.music-symbol) { top: 30%; height: 62%; }
   .compact.ireal-row.leading-bar::before { top: 30%; height: 59%; }
-  .ireal-row.layered { height: clamp(110px, 22cqw, 150px); }
+  .ireal-row.layered { height: clamp(124px, 28cqw, 200px); }
   .layered .item:not(.alternate):not(.section-item):not(.music-symbol) { top: 60%; height: 36%; }
   .layered .item.alternate { top: 35%; }
   .layered.ireal-row::before { top: 60%; height: 34%; }
   .ireal-row.leading-bar::before { content: ''; position: absolute; left: 0; top: 40%; height: 49.4%; border-left: 1.5px solid currentColor; }
   .item { position: absolute; top: 40%; height: 52%; }
-  .chord { border: 0; border-radius: 0; background: transparent; color: inherit; padding: 0; text-align: left; cursor: pointer; position: relative; display: inline-grid; white-space: nowrap; padding-left: 0.12em; font-family: 'Arial Narrow', 'Liberation Sans Narrow', sans-serif; font-size: clamp(18px, 4.8cqw, 32px); font-weight: 500; line-height: 1.1; transform-origin: left center; }
+  /* Use the same condensed face on every device without synthesised bold. */
+  .chord { border: 0; border-radius: 0; background: transparent; color: inherit; padding: 0; text-align: left; cursor: pointer; position: relative; display: inline-grid; white-space: nowrap; padding-left: 0.12em; font-family: 'Barlow Condensed', 'Arial Narrow', 'Liberation Sans Narrow', sans-serif; font-size: clamp(22px, 5.6cqw, 38px); font-weight: 400; font-synthesis: none; line-height: 1.1; transform-origin: left center; }
   .chord:disabled { cursor: default; }
   .chord:focus-visible, .repeat-pick:focus-visible { outline: 2px solid var(--text-accent); outline-offset: 2px; }
   .repeat-pick { z-index: 1; position: absolute; inset: 0 auto 0 0; width: 32px; border: 0; padding: 0; background: transparent; cursor: pointer; }
   .repeat-pick.centered { transform: translateX(-50%); }
-  /* Keep the accidental in its own column.  Flex baseline alignment lets
-     fallback fonts on Android overlap a sharp/flat with the quality (notably
-     F#°7), even though the same chord looks fine with the desktop font. */
-  .main-chord { display: inline-grid; grid-auto-flow: column; grid-auto-columns: max-content; align-items: baseline; white-space: nowrap; }
+  /* Reserve room for the tall root; stack the accidental above its quality. */
+  .main-chord { display: inline-grid; grid-auto-flow: column; grid-auto-columns: max-content; align-items: end; white-space: nowrap; height: 1.6em; }
+  .root { display: inline-block; line-height: 1; transform: scaleY(1.35) skewX(-3deg); transform-origin: left 90%; -webkit-text-stroke: 0.012em currentColor; }
+  .suffix { display: inline-grid; justify-items: start; line-height: 1; margin-left: 0.03em; padding-bottom: 0.08em; }
   .invisible-root { visibility: hidden; }
-  .root { letter-spacing: -0.08em; }
-  .accidental { font-size: 0.95em; align-self: flex-start; margin-top: -0.45em; margin-left: 0.04em; line-height: 1; }
-  .quality { font-size: 0.65em; font-weight: 600; margin-left: 0.06em; transform: translateY(0.08em); }
+  .accidental { font-size: 0.8em; line-height: 0.85; }
+  .quality { font-size: 0.68em; font-weight: 400; line-height: 1; }
   .bass { display: block; font-size: 0.65em; margin-left: 0.5em; line-height: 0.95; }
   .narrow { font-stretch: condensed; letter-spacing: -0.055em; }
   .alternate { top: 8%; }
-  .alternate .chord { display: inline-grid; align-items: baseline; font-size: clamp(12px, 2.5cqw, 18px); }
+  /* An alternate reads as a chord, not as a footnote: its root keeps about
+     seventy percent of the main chord's size and only the quality shrinks,
+     sitting high beside the root the way the printed chart sets it. */
+  .alternate .chord { display: inline-grid; align-items: baseline; font-size: clamp(16px, 4cqw, 27px); line-height: 1; }
+  .alternate .main-chord { align-items: start; height: 1.2em; padding-top: 0.2em; box-sizing: border-box; }
+  .alternate .suffix { display: contents; }
+  .alternate .accidental { font-size: 0.6em; line-height: 1; margin-left: 0.04em; }
+  .alternate .quality { margin-left: 0.06em; }
   /* The degree in small under the name. */
-  .sublabel { font-size: 0.45em; font-weight: 400; line-height: 1.1; color: var(--on-surface-muted); }
+  .sublabel { font-family: sans-serif; font-size: 0.45em; font-weight: 400; line-height: 1.1; color: var(--on-surface-muted); }
+  /* Keep alternate degrees small enough to clear the main chord below. */
+  .alternate .sublabel { font-size: 0.35em; line-height: 1; }
   .alternate .bass { margin-left: 0.1em; }
   .selected { color: var(--text-accent); background: color-mix(in srgb, var(--text-accent) 15%, transparent); border-radius: 3px; }
   .bar { position: absolute; top: 0; height: 95%; border-left: 1.5px solid currentColor; }

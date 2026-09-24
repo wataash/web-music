@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
         theme_color: '#2196f3', background_color: '#ffffff', display: 'standalone',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
       },
-      workbox: { globPatterns: ['**/*.{js,css,html,svg}'] },
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,woff2}'] },
     }),
   ],
   test: { environment: 'node', include: ['src/**/*.test.ts'] },

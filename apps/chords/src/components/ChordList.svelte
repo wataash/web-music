@@ -66,7 +66,7 @@ SPDX-License-Identifier: Apache-2.0
 
   const currentIndex = $derived(Math.max(0, chords.findIndex((chord, index) =>
     chord.sourceIndices ? chord.sourceIndices.includes(sourceIndex) : index === sourceIndex)));
-  let fullChartOpen = $state(false);
+  let fullChartOpen = $state(true);
   let boardScale = $state<CardScale>(SCREEN_WIDTH);
   const entries: HTMLLIElement[] = [];
   let scrollElement: HTMLElement;

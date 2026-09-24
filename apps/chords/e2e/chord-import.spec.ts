@@ -26,7 +26,6 @@ test("imports, searches, transposes, persists and deletes iReal songs", async ({
   await expect(page.getByLabel("Song key", { exact: true })).toHaveValue("C#");
   await page.getByRole("button", { name: "List", exact: true }).click();
   await expect(page.getByText("Chord tones are not supported for this chord. The original symbol is shown.", { exact: true })).toBeVisible();
-  await page.getByText("Full chart", { exact: true }).click();
   await expect(page.getByLabel("Source song information")).toContainText("Import Two");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator("[data-chord-practice]")).toBeVisible();
