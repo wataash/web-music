@@ -5,14 +5,15 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { songFile } from "./songs.mjs";
+import { PHONE } from "./options.mjs";
 
 const PLAYWRIGHT = new URL("../../../apps/chords/node_modules/@playwright/test/index.mjs", import.meta.url);
 const TIMEOUT = 60_000;
 
 // How every capture is taken, on both sides, so the pictures can only differ
-// in how the chart itself is drawn.
+// in how the chart itself is drawn. Which browser drew them is read from the
+// browser afterwards, not assumed here.
 export const CONDITIONS = [
-  "Android device over adb",
   "dark theme",
   "original key (no transposition)",
   "Chart size: Fit",
@@ -62,6 +63,23 @@ const FONTS = async () => {
   return faces.map(face => ({ family: face.family, status: face.status }));
 };
 
+// Chrome on this machine gets a context of its own at the phone's size; the
+// device's Chrome is used as it stands, in a page of its own.
+async function openPage(chromium, mode, cdpPort) {
+  if (mode === "android") {
+    const browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`);
+    return { browser, page: await browser.contexts()[0].newPage() };
+  }
+  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const context = await browser.newContext({
+    viewport: { width: PHONE.width, height: PHONE.height },
+    deviceScaleFactor: PHONE.deviceScaleFactor,
+    colorScheme: "dark",
+    serviceWorkers: "block",
+  });
+  return { browser, page: await context.newPage() };
+}
+
 async function importPlaylist(page, playlist) {
   await page.getByRole("button", { name: "Choose song", exact: true }).click();
   await page.getByRole("button", { name: "Add chart", exact: true }).click();
@@ -98,15 +116,14 @@ async function openSong(page, song) {
   if (await highlight.isChecked()) await highlight.uncheck();
 }
 
-// Connects to the Chrome already running on the device and photographs each
-// song's chart. The browser and its context belong to the device, so only the
-// page opened here is closed.
-export async function captureSide({ cdpPort, url, playlist, songs, directory, signal }) {
+// Photographs each song's chart in the browser asked for. On a device the
+// browser and its context are the device's own, so only the page opened here
+// is closed; on this machine the whole browser belongs to the run.
+export async function captureSide({ browser: mode, cdpPort, url, playlist, songs, directory, signal }) {
   signal?.throwIfAborted();
   const { chromium } = await import(PLAYWRIGHT.href);
   await mkdir(directory, { recursive: true });
-  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`);
-  const page = await browser.contexts()[0].newPage();
+  const { browser, page } = await openPage(chromium, mode, cdpPort);
   const abort = () => { void page.close().catch(() => {}); };
   signal?.addEventListener("abort", abort, { once: true });
   try {
@@ -154,6 +171,7 @@ export async function captureSide({ cdpPort, url, playlist, songs, directory, si
     }
     return {
       viewport: captured.at(-1).viewport,
+      browser: { mode, version: browser.version() },
       fonts: fonts.map(face => face.family).sort(),
       songs: captured,
     };

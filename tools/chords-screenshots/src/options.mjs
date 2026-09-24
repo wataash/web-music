@@ -3,21 +3,31 @@
 
 import path from "node:path";
 
-export const USAGE = `Usage: node tools/chords-screenshots/compare.mjs --before REF --after REF --output DIR --device SERIAL --playlist FILE
+export const USAGE = `Usage: node tools/chords-screenshots/compare.mjs --before REF --after REF --output DIR --playlist FILE
 
-Captures the Full chart of the same songs from two revisions on one Android
-device and builds a gallery comparing them.
+Captures the Full chart of the same songs from two revisions and builds a
+gallery comparing them.
 
   --before REF        Revision to capture first (any revision git can resolve).
   --after REF         Revision to capture second.
   --output DIR        Directory to create; it must not exist yet.
-  --device SERIAL     adb serial, as \`adb devices\` prints it.
   --playlist FILE     iReal Pro playlist HTML to import.
+  --browser NAME      chrome (default) captures headless on this machine at a
+                      phone's window; android captures on a device over adb.
+  --device SERIAL     adb serial, as \`adb devices\` prints it. Required with,
+                      and only used by, --browser android.
+  --ireal-dir DIR     Captures made in iReal Pro, to stand beside the two
+                      revisions as a third column.
   --songs FILE        Songs to capture (default: tools/chords-screenshots/songs.json).
   --preview-port N    Port for the preview server on host and device (default 4173).
   --cdp-port N        Local port forwarded to the device's Chrome (default 19222).`;
 
-const STRINGS = ["before", "after", "output", "device", "playlist", "songs"];
+// A phone's window, as the Android captures were taken, so a chart from this
+// machine and a chart from the device can be held against each other.
+export const PHONE = { width: 411, height: 789, deviceScaleFactor: 2.625 };
+export const BROWSERS = ["chrome", "android"];
+
+const STRINGS = ["before", "after", "output", "device", "playlist", "songs", "browser", "ireal-dir"];
 const PORTS = ["preview-port", "cdp-port"];
 
 function port(value, name) {
@@ -43,8 +53,12 @@ export function parseOptions(argv, { repository, defaultSongs }) {
     values[name] = value;
   }
 
-  const missing = ["before", "after", "output", "device", "playlist"].filter(name => !(name in values));
+  const browser = values.browser ?? "chrome";
+  if (!BROWSERS.includes(browser)) throw new TypeError(`--browser must be ${BROWSERS.join(" or ")}`);
+  const required = ["before", "after", "output", "playlist", ...(browser === "android" ? ["device"] : [])];
+  const missing = required.filter(name => !(name in values));
   if (missing.length) throw new TypeError(`Missing ${missing.map(name => `--${name}`).join(", ")}\n\n${USAGE}`);
+  if (browser !== "android" && "device" in values) throw new TypeError("--device only applies to --browser android");
 
   const output = path.resolve(values.output);
   const relative = path.relative(repository, output);
@@ -55,7 +69,9 @@ export function parseOptions(argv, { repository, defaultSongs }) {
     before: values.before,
     after: values.after,
     output,
-    device: values.device,
+    browser,
+    device: values.device ?? null,
+    irealDir: "ireal-dir" in values ? path.resolve(values["ireal-dir"]) : null,
     playlist: path.resolve(values.playlist),
     songs: values.songs === undefined ? defaultSongs : path.resolve(values.songs),
     previewPort: "preview-port" in values ? port(values["preview-port"], "preview-port") : 4173,
