@@ -22,6 +22,26 @@ node tools/chords-screenshots/compare.mjs --before base --after main --output /t
 | `--preview-port` | Port served on the host and reversed onto the device (default 4173). |
 | `--cdp-port` | Host port forwarded to the device's Chrome (default 19222). |
 
+## Song selection
+
+The default 50-song list preserves the original 13 captures in order, starting
+with **It Could Happen To You**. Six familiar standards provide ordinary-chart
+comparisons; the remaining selections broaden coverage of the local Jazz 1460
+feature catalog:
+
+- All 25 source keys, six time signatures plus unspecified meter, and final-row
+  lengths from 0 to 8 measures.
+- All recorded per-measure chord densities and ending numbers, including brackets
+  spanning rows and short, medium and long charts.
+- Catalog maxima for rows, measures, main, alternate, slash and narrow chords, repeat signs,
+  navigation marks, fermatas, notes, meter changes and row gaps.
+
+Examples include **Harlequin** (30 slash chords), **H & H** (six meter changes),
+**Fantasy in D (or Ugetsu)** (15 two-bar repeats), **Locomotion** (six fermatas)
+and **You Know I Care** (seven row gaps). These are layout samples, not a claim
+to cover every chord spelling or every combination of features. Tests check
+the list against the tracked feature catalog; no playlist download is needed.
+
 ## What it needs
 
 - `git`, `adb` and `tar` on the path, and Node 22.5 or newer.
