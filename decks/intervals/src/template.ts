@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WEB_INTERVAL_KEYBOARD_SCRIPT } from "./web-keyboard";
+import { cardPrompt, CARD_PROMPT_CSS } from "@web-music/practice-ui/card-prompt";
 
 export const ROOT_DECK_NAME = "Intervals";
 export const IDENTIFICATION_DECK_NAME = "Interval Identification";
@@ -22,9 +23,7 @@ export const FIELD_NAMES = [
 // question mark holds the place it will take.
 export const FRONT_TEMPLATE = `
 <main class="interval-card">
-  <div class="prompt-line" data-card-part="text">
-    <span class="question">{{Question}}</span><span class="answer-value">?</span>
-  </div>
+  ${cardPrompt(false)}
   <div class="diagram keyboard" data-card-part="keyboard">{{Keyboard}}</div>
 </main>
 `.trim();
@@ -33,9 +32,7 @@ export const FRONT_TEMPLATE = `
 // front keyboard's: nothing on the card moves as it is turned over.
 export const BACK_TEMPLATE = `
 <main class="interval-card">
-  <div class="prompt-line" data-card-part="text">
-    <span class="question">{{Question}}</span><span class="answer-value">{{Answer}}</span>
-  </div>
+  ${cardPrompt(true)}
   <div class="diagram keyboard" data-card-part="keyboard">{{AnswerKeyboard}}</div>
 </main>
 `.trim();
@@ -45,9 +42,7 @@ export const BACK_TEMPLATE = `
 // only the answer note name in that package; the front never expands it.
 export const WEB_FRONT_TEMPLATE = `
 <main class="interval-card">
-  <div class="prompt-line" data-card-part="text">
-    <span class="question">{{Question}}</span><span class="answer-value">?</span>
-  </div>
+  ${cardPrompt(false)}
   <div class="diagram keyboard" data-card-part="keyboard" data-interval-keyboard data-root="{{Root}}"></div>
 </main>
 ${WEB_INTERVAL_KEYBOARD_SCRIPT}
@@ -55,9 +50,7 @@ ${WEB_INTERVAL_KEYBOARD_SCRIPT}
 
 export const WEB_BACK_TEMPLATE = `
 <main class="interval-card">
-  <div class="prompt-line" data-card-part="text">
-    <span class="question">{{Question}}</span><span class="answer-value">{{Answer}}</span>
-  </div>
+  ${cardPrompt(true)}
   <div class="diagram keyboard" data-card-part="keyboard" data-interval-keyboard data-root="{{Root}}" data-answer="{{AnswerKeyboard}}"></div>
 </main>
 ${WEB_INTERVAL_KEYBOARD_SCRIPT}
@@ -65,6 +58,7 @@ ${WEB_INTERVAL_KEYBOARD_SCRIPT}
 
 export const CARD_CSS = `
 .card {
+  --prompt-font-size: calc(clamp(2.4rem, 10vw, 4rem) * var(--text-scale, 1));
   box-sizing: border-box;
   margin: 0;
   padding: 1rem;
@@ -88,32 +82,7 @@ export const CARD_CSS = `
   padding-block-start: 8rem;
 }
 
-.question,
-.answer-value {
-  font-size: calc(clamp(2.4rem, 10vw, 4rem) * var(--text-scale, 1));
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-/* Equal columns keep the question left of center and the answer right of
-   center, so neither moves the other when the card is turned over. */
-.prompt-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: baseline;
-  gap: 0 calc(clamp(2.4rem, 10vw, 4rem) * var(--text-scale, 1) * 0.4);
-  width: 100%;
-}
-
-.question {
-  justify-self: end;
-}
-
-.answer-value {
-  justify-self: start;
-  color: #fcd34d;
-}
+${CARD_PROMPT_CSS}
 
 /* Cancel the card padding so drawings reach its edges. Keep enlarged keys
    visible outside this row when the keyboard is repositioned. */

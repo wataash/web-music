@@ -8,10 +8,12 @@ import {
   formatPitch,
   keySignatureAccidentalForNote,
   keySignatureAccidentals,
-  keySignatureGlyphCss,
+  renderKeySignatureGlyph,
   MAJOR_KEYS,
   naturalPitchesInRange,
   NOTE_LETTERS,
+  OPTIONAL_KEYBOARD_CSS,
+  OPTIONAL_KEYBOARD_SCRIPT,
 } from "@web-music/music-staff-core";
 import type { WebDeckData } from "./apkg";
 import { CARD_CSS, WEB_DIAGRAM_SCRIPT } from "./template";
@@ -31,13 +33,13 @@ const NOTE_SHIFT = 110;
 
 export { MAJOR_KEYS } from "@web-music/music-staff-core";
 
-const SOLFEGE = ["Do", "Re", "Mi", "Fa", "Sol", "La", "Ti"] as const;
+const SOLFEGE = ["Do", "Re", "Mi", "Fa", "So", "La", "Ti"] as const;
 const JAPANESE_SOLFEGE: Readonly<Record<(typeof SOLFEGE)[number], string>> = {
   Do: "ド",
   Re: "レ",
   Mi: "ミ",
   Fa: "ファ",
-  Sol: "ソ",
+  So: "ソ",
   La: "ラ",
   Ti: "シ",
 };
@@ -56,20 +58,20 @@ export function movableDoAnswer(note: string, tonic: string, fifths: number): Re
 const SIGNATURE_LAYOUTS = Object.fromEntries(
   CLEFS.map((clef) => [
     clef,
-    {
-      sharp: keySignatureAccidentals(
-        clef, 7, 84,
+    Object.fromEntries((["sharp", "flat"] as const).map((sign) => {
+      const signature = keySignatureAccidentals(
+        clef, sign === "sharp" ? 7 : -7, 84,
         CARD_STAFF_GEOMETRY.topLineY,
-        CARD_STAFF_GEOMETRY.lineGap,
-        "reading",
-      ),
-      flat: keySignatureAccidentals(
-        clef, -7, 84,
-        CARD_STAFF_GEOMETRY.topLineY,
-        CARD_STAFF_GEOMETRY.lineGap,
-        "reading",
-      ),
-    },
+        CARD_STAFF_GEOMETRY.lineGap, "reading",
+      );
+      return [sign, signature.accidentals.map(({ x, y }) =>
+        renderKeySignatureGlyph(
+          signature.symbol as "♯" | "♭", x, y,
+          CARD_STAFF_GEOMETRY.lineGap,
+          `movable-do__accidental movable-do__accidental--${sign}`,
+        ),
+      )];
+    })),
   ]),
 );
 
@@ -100,14 +102,10 @@ const SIGNATURE_SCRIPT = `
     }
     const layout = layouts[clef]?.[fifths >= 0 ? 'sharp' : 'flat'];
     if (!layout) continue;
-    for (const { x, y } of layout.accidentals.slice(0, Math.abs(fifths))) {
-      const sign = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      sign.setAttribute('class', 'movable-do__accidental movable-do__accidental--' + (fifths >= 0 ? 'sharp' : 'flat'));
-      sign.setAttribute('x', String(x));
-      sign.setAttribute('y', String(y));
-      sign.textContent = layout.symbol;
-      svg.append(sign);
-    }
+    const signature = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    signature.setAttribute('class', 'staff__key-signature');
+    svg.append(signature);
+    signature.insertAdjacentHTML('beforeend', layout.slice(0, Math.abs(fifths)).join(''));
   }
 })();
 </script>`;
@@ -128,19 +126,24 @@ const ANSWER_SCRIPT = `
 })();
 </script>`;
 
-const FRONT = `<main class="staff-card movable-do-card"><div class="diagram" data-card-part="staff" data-staff="{{Staff}}" data-major-fifths="{{Fifths}}"></div></main>\n${WEB_DIAGRAM_SCRIPT}\n${SIGNATURE_SCRIPT}`;
-const BACK = `<main class="staff-card movable-do-card"><div class="diagram" data-card-part="staff" data-staff="{{Staff}}" data-major-fifths="{{Fifths}}"></div><div class="movable-do__answer" data-card-part="text" data-movable-do-answer data-sounding-pitch="{{SoundingPitch}}" data-solfege="{{Solfege}}"></div><div class="movable-do__pitch">{{SoundingPitch}} · {{Key}} major</div></main>\n${WEB_DIAGRAM_SCRIPT}\n${SIGNATURE_SCRIPT}\n${ANSWER_SCRIPT}`;
+const FRONT = `<main class="staff-card movable-do-card" data-optional-keyboard data-keyboard-notes=""><div class="diagram" data-card-part="staff" data-staff="{{Staff}}" data-major-fifths="{{Fifths}}"></div></main>\n${WEB_DIAGRAM_SCRIPT}\n${SIGNATURE_SCRIPT}\n${OPTIONAL_KEYBOARD_SCRIPT}`;
+const BACK = `<main class="staff-card movable-do-card" data-optional-keyboard data-keyboard-notes="{{SoundingPitch}}"><div class="diagram" data-card-part="staff" data-staff="{{Staff}}" data-major-fifths="{{Fifths}}"></div><div class="movable-do__answer" data-card-part="text" data-movable-do-answer data-sounding-pitch="{{SoundingPitch}}" data-solfege="{{Solfege}}"></div><div class="movable-do__pitch">{{SoundingPitch}} · {{Key}} major</div></main>\n${WEB_DIAGRAM_SCRIPT}\n${SIGNATURE_SCRIPT}\n${ANSWER_SCRIPT}\n${OPTIONAL_KEYBOARD_SCRIPT}`;
 const CROP_WIDTH_RATIO = CARD_STAFF_GEOMETRY.width / READING_STAFF_WIDTH;
-const CSS = `@font-face{font-family:"Noto Music";src:url("/fonts/NotoMusic-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:block}\n${CARD_CSS}\n.movable-do__answer{font-size:calc(clamp(2.5rem,11vw,5rem) * var(--text-scale,1));font-weight:700;color:#fcd34d}\n.movable-do__pitch{font-size:1rem;color:#d1d5db}\n.movable-do__accidental{fill:#f9fafb}\n.movable-do__accidental--sharp{${keySignatureGlyphCss(CARD_STAFF_GEOMETRY.lineGap, "reading", "sharp")}}\n.movable-do__accidental--flat{${keySignatureGlyphCss(CARD_STAFF_GEOMETRY.lineGap, "reading", "flat")}}\n.movable-do-card .diagram > svg.staff{--staff-clip-top-length:calc(var(--staff-width) * var(--staff-clip-top,0) * ${CROP_WIDTH_RATIO});--staff-clip-bottom-length:calc(var(--staff-width) * var(--staff-clip-bottom,0) * ${CROP_WIDTH_RATIO})}`;
+const CSS = `@font-face{font-family:"Noto Music";src:url("/fonts/NotoMusic-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:block}\n${CARD_CSS}\n.movable-do__answer{font-size:calc(clamp(2.5rem,11vw,5rem) * var(--text-scale,1));font-weight:700;color:#fcd34d}\n.movable-do__pitch{font-size:1rem;color:#d1d5db}\n.movable-do__accidental{color:#f9fafb}\n.movable-do-card .diagram > svg.staff{--staff-clip-top-length:calc(var(--staff-width) * var(--staff-clip-top,0) * ${CROP_WIDTH_RATIO});--staff-clip-bottom-length:calc(var(--staff-width) * var(--staff-clip-bottom,0) * ${CROP_WIDTH_RATIO})}`;
 
 export function createMovableDoWebDeckData(): WebDeckData {
+  // The whole tree ships turned off: movable do is an experiment.
   const decks = [
-    { did: ROOT_ID, name: MOVABLE_DO_ROOT },
-    { did: DIRECTION_ID, name: `${MOVABLE_DO_ROOT}::Staff → Solfege` },
+    { did: ROOT_ID, name: MOVABLE_DO_ROOT, hiddenByDefault: true },
+    {
+      did: DIRECTION_ID,
+      name: `${MOVABLE_DO_ROOT}::Staff → Solfege`,
+      hiddenByDefault: true,
+    },
     ...CLEFS.map((clef, index) => ({
       did: DIRECTION_ID + 1 + index,
       name: `${MOVABLE_DO_ROOT}::Staff → Solfege::${CLEF_LABELS[clef]} Clef`,
-      ...(clef === "alto" || clef === "tenor" ? { hiddenByDefault: true } : {}),
+      hiddenByDefault: true,
     })),
   ];
   const notes: WebDeckData["notes"][number][] = [];
@@ -170,7 +173,7 @@ export function createMovableDoWebDeckData(): WebDeckData {
     }
   }
   return {
-    models: [{ mid: MODEL_ID, name: "Music Staff Movable Do", css: CSS, fieldNames: ["Id", "Clef", "Pitch", "Fifths", "Key", "Solfege", "SoundingPitch", "Staff"], templates: [{ name: "Card 1", ord: 0, qfmt: FRONT, afmt: BACK }] }],
+    models: [{ mid: MODEL_ID, name: "Music Staff Movable Do", css: `${CSS}\n${OPTIONAL_KEYBOARD_CSS}`, fieldNames: ["Id", "Clef", "Pitch", "Fifths", "Key", "Solfege", "SoundingPitch", "Staff"], templates: [{ name: "Card 1", ord: 0, qfmt: FRONT, afmt: BACK }] }],
     decks,
     notes,
     cards,

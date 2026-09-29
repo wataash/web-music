@@ -136,6 +136,18 @@ template starts from one circle SVG and uses compact drawing descriptors to
 show the requested notes or highlighted cell, so the JSON has no SVG media.
 The Anki package is optional and keeps static SVGs.
 
+On each card, keep the circle and optional keyboard at the same position and
+size on the front and back. The heading reserves one line even when both text
+fields are empty, as on the back of Cell → All Notes cards. Revealing notes or
+changing a highlighted cell must not move the diagrams. When several note
+spellings share a piano key, stack their labels within that key so every name
+remains legible. Use the same Maestro accidental outline in the heading,
+circle and keyboard; a black key may use a wider label background for long
+spellings such as `B𝄪`.
+On Cell → All Notes cards, leave the heading empty and enlarge the three notes
+inside the revealed cell. The keyboard uses one note-name size per card, so a
+degree label on one key does not make its note smaller than the other key's note.
+
 ```console
 pnpm generate:anki
 ```

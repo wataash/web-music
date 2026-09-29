@@ -193,7 +193,7 @@ describe("Anki deck generation", () => {
     expect(interval.fields[5]).toMatch(/^single\|/);
     expect(WEB_FRONT_TEMPLATE).toContain("data-circle-of-fifths");
     expect(WEB_BACK_TEMPLATE).toContain("circle-of-fifths--single-note");
-    expect(JSON.stringify(deck).length).toBeLessThan(130_000);
+    expect(JSON.stringify(deck).length).toBeLessThan(135_000);
   });
 
   test("writes an inspectable Anki package", async () => {

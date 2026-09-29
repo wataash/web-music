@@ -92,7 +92,8 @@ describe("buildCardDocument", () => {
       css: ".card { color: red; }",
       nightMode: false,
     });
-    expect(doc).toContain('<body class="card"><p>hi</p></body>');
+    expect(doc).toContain('<body class="card"><p>hi</p>');
+    expect(doc).toContain('</script></body>');
     expect(doc).toContain(".card { color: red; }");
   });
 

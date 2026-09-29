@@ -197,6 +197,7 @@ export type DeckCardSettings = Readonly<{
   answerAnchor: AnswerAnchor;
   // Whether the card sounds what it answers with and what a finger lands on.
   sound: boolean;
+  showKeyboard: boolean;
   frontRoot: boolean;
   frontAnswer: boolean;
 }>;
@@ -209,6 +210,7 @@ export const DEFAULT_DECK_CARD_SETTINGS: DeckCardSettings = {
   rotation: 0,
   answerAnchor: "bottom",
   sound: true,
+  showKeyboard: false,
   frontRoot: true,
   frontAnswer: false,
 };
@@ -221,9 +223,11 @@ const SILENT_DECKS = ["Music Staff", "Guitar Fretboard"];
 
 export function defaultDeckCardSettings(deckName: string): DeckCardSettings {
   const top = topDeckName(deckName);
-  return SILENT_DECKS.some((name) => top.startsWith(name))
-    ? { ...DEFAULT_DECK_CARD_SETTINGS, sound: false }
-    : DEFAULT_DECK_CARD_SETTINGS;
+  return {
+    ...DEFAULT_DECK_CARD_SETTINGS,
+    sound: !SILENT_DECKS.some((name) => top.startsWith(name)),
+    showKeyboard: top === "Music Staff (Movable Do)",
+  };
 }
 
 // Kept for the deck at the top of the tree, so the decks under it are set
@@ -380,6 +384,7 @@ function parseDeckCardSettings(
     rotation: clampCardRotation(values.rotation),
     answerAnchor: clampAnswerAnchor(values.answerAnchor),
     sound: readSwitch(values.sound, fallback.sound),
+    showKeyboard: readSwitch(values.showKeyboard, fallback.showKeyboard),
     frontRoot: readSwitch(values.frontRoot, true),
     frontAnswer: readSwitch(values.frontAnswer, false),
   };

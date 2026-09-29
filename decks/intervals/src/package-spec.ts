@@ -38,16 +38,19 @@ export const PACKAGE_SPEC: PackageSpec = {
     ],
     requirements: [{ cardOrd: 0, kind: "all", fieldOrds: [4] }],
   },
+  // Both decks ship turned off: they are experiments.
   decks: [
     {
       id: ROOT_DECK_ID,
       name: ROOT_DECK_NAME,
       description: "Calculate spelled intervals above a root note.",
+      hiddenByDefault: true,
     },
     {
       id: IDENTIFICATION_DECK_ID,
       name: IDENTIFICATION_DECK_NAME,
       description: "Identify a spelled interval from two notes.",
+      hiddenByDefault: true,
     },
   ],
   deckConfig: {

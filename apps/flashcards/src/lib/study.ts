@@ -44,6 +44,7 @@ import {
   undoableOp,
 } from "./undo";
 import { effectiveHiddenDeckNames } from "./deck-hiding";
+import { deckLabel } from "./deck-labels";
 import { compareDeckNames } from "./deck-visibility";
 import { diverseIndex, diversityKind, introductionGroup, supportsDiversity } from "./queue-diversity";
 
@@ -57,6 +58,8 @@ export type DeckCounts = Readonly<{
 
 export type DeckInfo = Readonly<{
   name: string;
+  // What to call the deck in the list: its own segment of the name, tagged if
+  // the deck is still an experiment.
   baseName: string;
   depth: number;
   // Decks a package ships turned off: the reader turns them on from the deck
@@ -216,7 +219,7 @@ export async function listDecksWithCounts(
       );
       return {
         name,
-        baseName: parts[parts.length - 1],
+        baseName: deckLabel(name),
         depth: parts.length - 1,
         hiddenByDefault: hiddenByDefaultByName.get(name) === true,
         ...countsOf(subtree, now, dailyNewLimit(name, now)),

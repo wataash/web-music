@@ -3,5 +3,6 @@
 
 export * from "./model";
 export * from "./keyboard-svg";
+export * from "./optional-keyboard";
 export * from "./key-signature";
 export * from "./staff-svg";

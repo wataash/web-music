@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WEB_FRETBOARD_SCRIPT } from "./fretboard";
+import { KEYBOARD_CSS, WEB_KEYBOARD_SCRIPT } from "./keyboard";
 
 export const MODEL_NAME = "Guitar Fretboard Notes";
 export const ROOT_DECK_NAME = "Guitar Fretboard";
@@ -67,6 +68,7 @@ ${heading(false)}
 </main>
 ${POSITION_LABEL_SCRIPT}
 ${WEB_FRETBOARD_SCRIPT}
+${WEB_KEYBOARD_SCRIPT}
 `.trim();
 
 export const WEB_BACK_TEMPLATE = `
@@ -76,9 +78,12 @@ ${heading(true)}
 </main>
 ${POSITION_LABEL_SCRIPT}
 ${WEB_FRETBOARD_SCRIPT}
+${WEB_KEYBOARD_SCRIPT}
 `.trim();
 
 export const CARD_CSS = `
+${KEYBOARD_CSS}
+
 .card {
   box-sizing: border-box;
   margin: 0;

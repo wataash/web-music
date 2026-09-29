@@ -9,6 +9,7 @@
 import { fretPitch } from "@web-music/practice-ui/guitar";
 export { guitarSemitone, GUITAR_OPEN_STRINGS } from "@web-music/practice-ui/guitar";
 import type { NoteRow } from "./db";
+import { isFretboardCard } from "./fretboard-card";
 import { isGuitarIntervalCard } from "./guitar-interval-selection";
 import { DEFAULT_GUITAR_TUNING, noteTuning, type Tuning } from "./guitar-tuning";
 import { intervalAnswerNote, isIntervalCard } from "./interval-pair-selection";
@@ -99,14 +100,6 @@ export function answerSound(
   if (isFretboardCard(note)) return fretboardAnswerSound(note);
   if (isStaffCard(note)) return staffAnswerSound(note);
   return null;
-}
-
-function isFretboardCard(note: Pick<NoteRow, "tags">): boolean {
-  const tags = note.tags.split(/\s+/);
-  return (
-    tags.includes("direction::position-to-note") ||
-    tags.includes("direction::note-to-positions")
-  );
 }
 
 function isStaffCard(note: Pick<NoteRow, "tags">): boolean {

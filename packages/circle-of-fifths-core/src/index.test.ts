@@ -62,6 +62,9 @@ describe("circle of fifths data", () => {
     expect(formatNoteName("Fb")).toBe("F♭");
     expect(formatNoteName("F##")).toBe("F𝄪");
     expect(formatNoteName("Fbb")).toBe("F𝄫");
+    expect(formatNoteName("f#")).toBe("f♯");
+    expect(() => formatNoteName("H#")).toThrow("invalid note spelling: H#");
+    expect(() => formatNoteName("F###")).toThrow("invalid note spelling: F###");
   });
 
   test("calculates major-key signature counts from note spellings", () => {

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { renderDarkCircleOfFifthsSvg } from "@circle-of-fifths/svg";
+import { OPTIONAL_KEYBOARD_CSS, OPTIONAL_KEYBOARD_SCRIPT } from "@web-music/music-staff-core";
+import { formatNoteName } from "@web-music/music-notation";
+import { cardPrompt, CARD_PROMPT_CSS } from "@web-music/practice-ui/card-prompt";
 
 export const MODEL_NAME = "Circle of Fifths";
 export const ROOT_DECK_NAME = "(Experimental) Circle of Fifths";
@@ -30,22 +33,26 @@ export const FIELD_NAMES = [
   "BackImage",
 ] as const;
 
+function prompt(back: boolean): string {
+  return `{{#Question}}${cardPrompt(back)}{{/Question}}{{^Question}}<div class="prompt-line" data-card-part="text"></div>{{/Question}}`;
+}
+
 export const FRONT_TEMPLATE = `
 <main class="interval-card">
-  <div class="question" data-card-part="text">{{Question}}</div>
+  ${prompt(false)}
   <div class="diagram" data-card-part="board">{{FrontImage}}</div>
 </main>
 `.trim();
 
 export const BACK_TEMPLATE = `
 <main class="interval-card">
-  <div class="question" data-card-part="text">{{Question}}</div>
-  <div class="answer" data-card-part="text">{{Answer}}</div>
+  ${prompt(true)}
   <div class="diagram" data-card-part="board">{{BackImage}}</div>
 </main>
 `.trim();
 
 const WEB_BASE_SVG = renderDarkCircleOfFifthsSvg({
+  glyphs: "text",
   highlightedCells: (["outer", "inner"] as const).flatMap((ring) =>
     Array.from({ length: 12 }, (_, index) => ({ ring, hour: index + 1 })),
   ),
@@ -54,6 +61,7 @@ const WEB_BASE_SVG = renderDarkCircleOfFifthsSvg({
 const WEB_CIRCLE_SCRIPT = `
 <script>
 (() => {
+  const formatNoteName = ${formatNoteName.toString()};
   const host = document.querySelector("[data-circle-of-fifths]");
   if (!(host instanceof HTMLElement)) return;
   host.innerHTML = ${JSON.stringify(WEB_BASE_SVG)};
@@ -80,6 +88,8 @@ const WEB_CIRCLE_SCRIPT = `
     for (const note of notes) {
       if (visible.includes(note.getAttribute("data-note") ?? "")) {
         note.removeAttribute("display");
+        const inner = note.closest(".circle-of-fifths__minor") !== null;
+        note.setAttribute("transform", "scale(" + (inner ? 1.8 : 1.6) + ")");
       }
     }
     return;
@@ -98,12 +108,6 @@ const WEB_CIRCLE_SCRIPT = `
     label.replaceChildren();
   }
   const namespace = "http://www.w3.org/2000/svg";
-  const formatNote = (note) =>
-    note[0] + note.slice(1)
-      .replaceAll("bb", "𝄫")
-      .replaceAll("##", "𝄪")
-      .replaceAll("b", "♭")
-      .replaceAll("#", "♯");
   for (const noteName of visible) {
     const placement = source.get(noteName);
     if (!(placement?.label instanceof SVGElement)) continue;
@@ -125,7 +129,7 @@ const WEB_CIRCLE_SCRIPT = `
     text.setAttribute("class", "circle-of-fifths__spelling");
     text.setAttribute("x", "0");
     text.setAttribute("y", "0");
-    text.textContent = formatNote(noteName);
+    text.textContent = formatNoteName(noteName);
     group.append(text);
     placement.label.append(group);
   }
@@ -133,25 +137,51 @@ const WEB_CIRCLE_SCRIPT = `
 </script>
 `.trim();
 
+// Only note-to-cell questions mark the given pitch. Interval and cell
+// questions keep the keyboard blank until the answer is revealed.
+const WEB_KEYBOARD_NOTES_SCRIPT = `
+<script>
+(() => {
+  const card = document.querySelector("[data-optional-keyboard]");
+  if (!(card instanceof HTMLElement)) return;
+  const drawing = (card.querySelector("[data-drawing]")?.dataset.drawing ?? "").split("|");
+  const given = (card.querySelector(".question")?.textContent ?? "").trim().split(/\\s+/)[0];
+  card.dataset.keyboardNotes = drawing[0] === "single" || drawing[0] === "standard"
+    ? drawing[1] ?? ""
+    : drawing[0] === "empty" && !card.dataset.interval
+      ? given
+      : "";
+  if (card.querySelector(".answer") && card.dataset.interval) {
+    card.dataset.keyboardDegreeNote = (card.querySelector(".answer")?.textContent ?? "").trim();
+    card.dataset.keyboardDegree = card.dataset.interval;
+  }
+})();
+</script>
+`.trim();
+
 export const WEB_FRONT_TEMPLATE = `
-<main class="interval-card">
-  <div class="question" data-card-part="text">{{Question}}</div>
+<main class="interval-card" data-optional-keyboard data-keyboard-labels data-keyboard-notes="" data-interval="{{Interval}}">
+  ${prompt(false)}
   <div class="diagram" data-card-part="board" data-circle-of-fifths data-drawing="{{FrontImage}}"></div>
 </main>
 ${WEB_CIRCLE_SCRIPT}
+${WEB_KEYBOARD_NOTES_SCRIPT}
+${OPTIONAL_KEYBOARD_SCRIPT}
 `.trim();
 
 export const WEB_BACK_TEMPLATE = `
-<main class="interval-card">
-  <div class="question" data-card-part="text">{{Question}}</div>
-  <div class="answer" data-card-part="text">{{Answer}}</div>
+<main class="interval-card" data-optional-keyboard data-keyboard-labels data-keyboard-notes="" data-interval="{{Interval}}">
+  ${prompt(true)}
   <div class="diagram" data-card-part="board" data-circle-of-fifths data-drawing="{{BackImage}}"></div>
 </main>
 ${WEB_CIRCLE_SCRIPT}
+${WEB_KEYBOARD_NOTES_SCRIPT}
+${OPTIONAL_KEYBOARD_SCRIPT}
 `.trim();
 
 export const CARD_CSS = `
 .card {
+  --prompt-font-size: calc(clamp(2rem, 8vw, 3.5rem) * var(--text-scale, 1));
   box-sizing: border-box;
   margin: 0;
   padding: 1rem;
@@ -169,20 +199,11 @@ export const CARD_CSS = `
   gap: 1rem;
 }
 
-.question,
-.answer {
-  font-size: calc(clamp(2rem, 8vw, 3.5rem) * var(--text-scale, 1));
-  font-weight: 700;
-  line-height: 1.2;
-}
+${CARD_PROMPT_CSS}
 
-.answer {
-  color: #fcd34d;
-}
-
-.question:empty,
-.answer:empty {
-  display: none;
+/* Cell answers have no heading text; reserve the front's heading row. */
+.prompt-line {
+  min-height: calc(var(--prompt-font-size) * 1.2);
 }
 
 .diagram img,
@@ -192,3 +213,5 @@ export const CARD_CSS = `
   height: auto;
 }
 `.trim();
+
+export const WEB_CARD_CSS = `${CARD_CSS}\n${OPTIONAL_KEYBOARD_CSS}`;

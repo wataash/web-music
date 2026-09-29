@@ -98,13 +98,16 @@ keyboard is drawn — and the app can size it on its own. `--staff-scale`,
 `--keyboard-scale` and `--answer-scale` are the reader's, set from the app; the
 deck only says what full size means — for the staff, most of the screen's
 width, since a smaller one is a handful of lines with one note to find on
-them. `data-piano-keys` on the document crops the 88-key strip to the keys the
-reader asked for, around the middle of an 88-key piano — the boundary between
-E4 and F4 — rather than around the answer, which the blank keyboard on the
-front would then name. `--keyboard-width` replaces the width
-outright, for a reader who asks for the width of the screen rather than a
-multiple of the deck's own choice, and a keyboard wider than the card scrolls
-where it stands.
+them. The staff and the single-octave keyboards in Music Staff, Circle of
+Fifths, and Guitar Fretboard share `STAFF_BASE_WIDTH` from
+`@web-music/music-staff-core`; each keyboard still has its own scale and can
+use `--keyboard-width` as an override. `data-piano-keys` on the document crops
+the 88-key strip to the keys the reader asked for, around the middle of an
+88-key piano — the boundary between E4 and F4 — rather than around the answer,
+which the blank keyboard on the front would then name. `--keyboard-width`
+replaces the width outright, for a reader who asks for the width of the screen
+rather than a multiple of the deck's own choice, and a keyboard wider than the
+card scrolls where it stands.
 
 A white key is about 145 mm long and 23.5 mm wide, and the drawing keeps that
 proportion, so the 88-key board is shallow rather than a bed of nails. A single

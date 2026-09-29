@@ -117,6 +117,12 @@ export function isFretboardNoteToPositionsCard(
   return note.tags.split(/\s+/).includes("direction::note-to-positions");
 }
 
+export function isFretboardCard(note: Pick<NoteRow, "tags">): boolean {
+  return note.tags.split(/\s+/).some((tag) =>
+    tag === "direction::note-to-positions" || tag === "direction::position-to-note",
+  );
+}
+
 // When the outside strings have the same note name, learning a fret on one
 // teaches the corresponding fret on the other. This deliberately does not
 // group equal inner strings: it represents the familiar symmetry of the two

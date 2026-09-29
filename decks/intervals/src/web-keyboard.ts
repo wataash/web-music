@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { formatNoteName } from "@web-music/music-notation";
+
 export type WebIntervalKeyboardLabel = Readonly<{
   text: string;
   x: number;
@@ -78,14 +80,6 @@ export function drawIntervalKeyboard(
       .replaceAll("♯", "#");
   }
 
-  function formatName(value: string): string {
-    return normalizeName(value)
-      .replaceAll("bb", "𝄫")
-      .replaceAll("##", "𝄪")
-      .replaceAll("b", "♭")
-      .replaceAll("#", "♯");
-  }
-
   function notePitchClass(value: string): number {
     const match = /^([A-G])(bb|##|b|#)?$/.exec(normalizeName(value));
     if (match === null) throw new TypeError(`invalid note: ${value}`);
@@ -160,7 +154,7 @@ export function drawIntervalKeyboard(
   const rootSemitone = rootOctaveFirstSemitone + notePitchClass(rootName);
   const rootMark: Mark = {
     key: keyAtSemitone(rootSemitone),
-    text: formatName(rootName),
+    text: formatNoteName(rootName),
     tone: "given",
   };
   const marks: Mark[] = [];
@@ -168,7 +162,7 @@ export function drawIntervalKeyboard(
     const answerPitchClass = notePitchClass(answerName);
     const below = pitchClass(rootSemitone - answerPitchClass) || 12;
     const above = pitchClass(answerPitchClass - rootSemitone) || 12;
-    const answerText = nameAnswer ? formatName(answerName) : "?";
+    const answerText = nameAnswer ? formatNoteName(answerName) : "?";
     marks.push(
       {
         key: keyAtSemitone(rootSemitone - below),
@@ -375,6 +369,7 @@ export const WEB_INTERVAL_KEYBOARD_SCRIPT = `
   // tsx preserves nested function names through this tiny helper when the
   // drawing function is converted to source code.
   const __name = (target) => target;
+  const formatNoteName = ${formatNoteName.toString()};
   const drawIntervalKeyboard = ${DRAW_INTERVAL_KEYBOARD_SOURCE};
   const roundCardValue = ${roundCardValue.toString()};
   const host = document.querySelector("[data-interval-keyboard]");

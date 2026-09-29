@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
   import { onDestroy, untrack } from "svelte";
 
   import type { CardTap } from "../lib/card-audio";
+  import { recordCardLayoutDebug } from "../lib/card-layout-debug";
   import {
     clampCardOffsetPoint,
     clampCardScale,
@@ -91,6 +92,16 @@ SPDX-License-Identifier: Apache-2.0
     angle: number;
     scale: number;
   }> | null = null;
+  // A finger left on the part after a pinch can keep moving it without
+  // lifting and starting a new pointer gesture.
+  let touchDrag: Readonly<{
+    part: CardPart;
+    identifier: number;
+    fromX: number;
+    fromY: number;
+    offset: CardOffset;
+  }> | null = null;
+  let lastMoveLog = 0;
   // How far the fingers must be twisted before the card turns with them. A
   // quarter of a right angle is more than a hand does by accident and less
   // than one does on purpose.
@@ -151,6 +162,11 @@ SPDX-License-Identifier: Apache-2.0
   function handleTouchStart(event: TouchEvent): void {
     touchedUntil = Date.now() + 700;
     if (positioning) {
+      recordCardLayoutDebug("touchstart", {
+        fingers: event.touches.length,
+        part: partAt(event.touches[0].clientX, event.touches[0].clientY),
+        drag: drag?.part ?? null,
+      });
       startPinch(event);
       return;
     }
@@ -173,6 +189,26 @@ SPDX-License-Identifier: Apache-2.0
   // card itself — the answer was shown by the tap that started the drag.
   function handleTouchMove(event: TouchEvent): void {
     if (positioning) {
+      const touch = [...event.touches].find(({ identifier }) => identifier === touchDrag?.identifier);
+      const root = cardDocument?.documentElement;
+      if (touchDrag !== null && touch !== undefined && root !== undefined) {
+        if (Date.now() - lastMoveLog > 150) {
+          recordCardLayoutDebug("touchmove-after-pinch", {
+            part: touchDrag.part,
+            dx: Math.round(touch.clientX - touchDrag.fromX),
+            dy: Math.round(touch.clientY - touchDrag.fromY),
+          }, false);
+          lastMoveLog = Date.now();
+        }
+        onpartmove?.(
+          touchDrag.part,
+          clampCardOffsetPoint({
+            x: touchDrag.offset.x + (touch.clientX - touchDrag.fromX) / root.clientWidth,
+            y: touchDrag.offset.y + (touch.clientY - touchDrag.fromY) / root.clientHeight,
+          }),
+        );
+        return;
+      }
       pinchTo(event);
       return;
     }
@@ -185,9 +221,30 @@ SPDX-License-Identifier: Apache-2.0
 
   function handleTouchEnd(event: TouchEvent): void {
     for (const touch of event.changedTouches) sliding.delete(touch.identifier);
-    if (pinch === null) return;
-    pinch = null;
-    onpartsettled?.();
+    if (positioning) recordCardLayoutDebug("touchend", {
+      remaining: event.touches.length,
+      pinch: pinch?.part ?? null,
+      touchDrag: touchDrag?.part ?? null,
+    });
+    if (pinch !== null) {
+      const part = pinch.part;
+      pinch = null;
+      const remaining = event.touches.length === 1 ? event.touches[0] : undefined;
+      if (remaining !== undefined) {
+        touchDrag = {
+          part,
+          identifier: remaining.identifier,
+          fromX: remaining.clientX,
+          fromY: remaining.clientY,
+          offset: offsets[part],
+        };
+      } else {
+        onpartsettled?.();
+      }
+    } else if (touchDrag !== null && event.touches.length === 0) {
+      touchDrag = null;
+      onpartsettled?.();
+    }
   }
 
   // A pinch takes the drag's place: the finger that started it is still down,
@@ -198,6 +255,8 @@ SPDX-License-Identifier: Apache-2.0
     const part = partAt(first.clientX, first.clientY);
     if (part === null) return;
     drag = null;
+    touchDrag = null;
+    recordCardLayoutDebug("pinch-start", { part, span: Math.round(span(first, second)), scale: scales[part] });
     pinch = {
       part,
       span: span(first, second),
@@ -258,6 +317,7 @@ SPDX-License-Identifier: Apache-2.0
     const part = partAt(wheel.clientX, wheel.clientY);
     if (part === null) return;
     event.preventDefault();
+    recordCardLayoutDebug("wheel", { part, deltaY: Math.round(wheel.deltaY), scale: scales[part] });
     onpartscale?.(
       part,
       clampCardScale(scales[part] * (wheel.deltaY < 0 ? 1.08 : 1 / 1.08)),
@@ -367,6 +427,15 @@ SPDX-License-Identifier: Apache-2.0
     const target = elementOf(event.target);
     const held = target?.closest("[data-card-part]") ?? null;
     const part = held?.getAttribute("data-card-part") as CardPart | undefined;
+    recordCardLayoutDebug("pointerdown", {
+      pointerType: point.pointerType,
+      part: part ?? null,
+      target: target?.tagName ?? null,
+      x: Math.round(point.clientX),
+      y: Math.round(point.clientY),
+      offsetX: part ? offsets[part].x : null,
+      offsetY: part ? offsets[part].y : null,
+    });
     if (part === undefined || part === null) return;
     drag = {
       part,
@@ -377,13 +446,28 @@ SPDX-License-Identifier: Apache-2.0
     };
     // Held by the element the drag started on, so a finger that outruns the
     // part keeps moving it.
-    held?.setPointerCapture(point.pointerId);
+    try {
+      held?.setPointerCapture(point.pointerId);
+      recordCardLayoutDebug("pointer-capture", {
+        part,
+        captured: held?.hasPointerCapture(point.pointerId) ?? false,
+      });
+    } catch (error) {
+      recordCardLayoutDebug("pointer-capture-error", { part, error: String(error) });
+    }
     event.preventDefault();
   }
 
   function handlePointerMove(event: Event): void {
     const point = event as PointerEvent;
     if (drag === null) {
+      if (positioning && Date.now() - lastMoveLog > 150) {
+        recordCardLayoutDebug("pointermove-no-drag", {
+          pointerType: point.pointerType,
+          part: partAt(point.clientX, point.clientY),
+        }, false);
+        lastMoveLog = Date.now();
+      }
       if (!pressing || point.pointerType === "touch") return;
       const reached = crossed(point.pointerId, point.clientX, point.clientY);
       if (reached.length === 0) return;
@@ -394,6 +478,17 @@ SPDX-License-Identifier: Apache-2.0
     if (point.pointerId !== drag.pointerId) return;
     const root = cardDocument?.documentElement;
     if (root === undefined) return;
+    if (Date.now() - lastMoveLog > 150) {
+      recordCardLayoutDebug("pointermove", {
+        part: drag.part,
+        pointerType: point.pointerType,
+        dx: Math.round(point.clientX - drag.fromX),
+        dy: Math.round(point.clientY - drag.fromY),
+        width: root.clientWidth,
+        height: root.clientHeight,
+      }, false);
+      lastMoveLog = Date.now();
+    }
     onpartmove?.(
       drag.part,
       clampCardOffsetPoint({
@@ -405,6 +500,12 @@ SPDX-License-Identifier: Apache-2.0
 
   function handlePointerUp(event: Event): void {
     const point = event as PointerEvent;
+    if (positioning) recordCardLayoutDebug(event.type, {
+      pointerType: point.pointerType,
+      part: drag?.part ?? null,
+      dx: drag === null ? null : Math.round(point.clientX - drag.fromX),
+      dy: drag === null ? null : Math.round(point.clientY - drag.fromY),
+    });
     pressing = false;
     sliding.delete(point.pointerId);
     if (drag === null || point.pointerId !== drag.pointerId) return;
@@ -451,6 +552,10 @@ SPDX-License-Identifier: Apache-2.0
     stopListening();
     const frame = event.currentTarget as HTMLIFrameElement;
     cardDocument = frame.contentDocument;
+    if (positioning) recordCardLayoutDebug("frame-load", {
+      width: cardDocument?.documentElement.clientWidth ?? 0,
+      height: cardDocument?.documentElement.clientHeight ?? 0,
+    });
     written = cardDocument === null
       ? []
       : Array.from(cardDocument.documentElement.style);

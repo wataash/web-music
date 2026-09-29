@@ -4,6 +4,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { formatNoteName } from "@web-music/music-notation";
 
 import {
   NOTE_TO_POSITIONS_CARDS,
@@ -107,7 +108,7 @@ export async function writeFretboardPreview({
 }
 
 export function normalizeNoteName(note: string): string {
-  return note.replaceAll("b", "♭").replaceAll("#", "♯");
+  return note.replace(/[A-Ga-g](?:bb|##|b|#)?/g, formatNoteName);
 }
 
 function noteFilenamePart(note: string): string {

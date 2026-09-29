@@ -19,6 +19,7 @@ decks they ship with, and the tools that build them.
 - `packages/circle-of-fifths-core/`: circle of fifths note data and geometry
 - `packages/circle-of-fifths-svg/`: React-free circle of fifths SVG renderer
 - `packages/music-staff-core/`: note names and their positions on a staff
+- `packages/music-notation/`: shared accidental/triangle glyphs and note-name formatting
 - `tools/circle-of-fifths-cli/`: CLI that generates a self-contained SVG
 
 ## Development
@@ -44,6 +45,37 @@ pnpm dev:fretboard
 
 The Music Flashcards dev server watches the generated web decks and re-imports
 any `.json` that changes.
+
+Open `/preview` (or **PREVIEW DECKS** in the deck list) to browse a fixed
+Front/Back sample from every populated deck, including Experimental decks.
+Filter by deck name, toggle optional keyboards, and switch between 390px and
+640px card widths. The preview uses the current packaged decks and default
+layouts without importing them or changing study progress or saved settings.
+Empty parent decks are represented by their populated children.
+
+## Card prompts
+
+Intervals and Circle of Fifths share `cardPrompt` and `CARD_PROMPT_CSS` from
+`@web-music/practice-ui/card-prompt` for both web and Anki templates. The two
+equal columns keep the question fixed while `?` is replaced with the answer.
+Set `--prompt-font-size` on the card for deck-specific sizing; keep layout
+rules in the shared module. Browser tests compare front/back question bounds.
+
+## Music notation
+
+Music symbols are defined in `@web-music/music-notation`. Reuse its glyphs
+for HTML cards and static SVGs instead of adding app-specific accidental paths.
+Both `Δ` and `△` use the same triangle shape while retaining their original
+text. Note-name formatting preserves letter case; deck-specific typography,
+positions, and the meaning of uppercase/lowercase notes remain with each deck.
+The `chart` glyph style preserves the slanted iReal-style flat; Flashcards
+and circle diagrams use `engraved` for an upright stem and rounded bowl.
+The engraved style uses Finale Maestro font outlines for accidentals and staff
+clefs, shared by inline symbols, text, full-size staff notation, Circle of
+Fifths, and movable-do settings key signatures. The shared renderer preserves
+staff-relative sizing and placement; the separate iReal-style `chart` glyphs
+remain independent. See the [glyph sources and license](packages/music-notation/SOURCES.md)
+and [staff glyph references](packages/music-staff-core/SOURCES.md).
 
 ## Deck ID policy
 

@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { formatNoteName as formatSharedNoteName } from "@web-music/music-notation";
+
 export type NotePosition = Readonly<{
   hour: number;
   major: readonly string[];
@@ -197,14 +199,6 @@ export const DEFAULT_LAYOUT = {
   minorLabelRadius: 230,
 } as const satisfies DiagramLayout;
 
-const accidentalGlyphs: Readonly<Record<string, string>> = {
-  "": "",
-  b: "♭",
-  bb: "𝄫",
-  "#": "♯",
-  "##": "𝄪",
-};
-
 const naturalMajorFifths: Readonly<Record<string, number>> = {
   C: 0,
   D: 2,
@@ -257,7 +251,7 @@ export function formatNoteName(note: string): string {
     throw new TypeError(`invalid note spelling: ${note}`);
   }
 
-  return note[0] + accidentalGlyphs[note.slice(1)];
+  return formatSharedNoteName(note);
 }
 
 export function fifthsForMajorNote(note: string): number {

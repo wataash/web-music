@@ -94,9 +94,11 @@ async function dragBy(
 
 function deckRow(page: Page, name: string) {
   return page.locator(".deck-row").filter({
-    has: page.locator(".deck-name", { hasText: new RegExp(`^${name}$`) }),
+    has: page.locator(".deck-name").and(page.getByText(name, { exact: true })),
   });
 }
+
+const INTERVALS = "(Experimental) Intervals";
 
 async function openDeckList(page: Page): Promise<void> {
   await page.goto("/");
@@ -170,13 +172,33 @@ async function placeAnswerAt(
   await page.mouse.up();
 }
 
-async function study(page: Page, deck: string): Promise<void> {
+// Experimental labels include a tag that the reviewer's heading omits.
+async function study(page: Page, deck: string, heading = deck): Promise<void> {
   await settleDeckImports(page);
   await deckRow(page, deck).locator(".deck-study").click();
-  await expect(page.getByRole("heading", { name: deck })).toBeVisible();
+  await expect(page.getByRole("heading", { name: heading })).toBeVisible();
   // The reviewer renders before its first card is picked, and answering does
   // nothing until then. The counts arrive with the card.
   await expect(page.locator(".count.new")).not.toHaveText("0");
+}
+
+// Enable through the chooser. The top-level Intervals checkbox comes before
+// the identically labelled one under Circle of Fifths.
+async function showDeck(page: Page, label: string): Promise<void> {
+  await settleDeckImports(page);
+  await page.getByRole("button", { name: "CHOOSE DECKS" }).click();
+  const dialog = page.getByRole("dialog", { name: "Decks" });
+  await dialog
+    .getByRole("checkbox", { name: label, exact: true })
+    .first()
+    .check();
+  await dialog.getByRole("button", { name: "APPLY" }).click();
+  await expect(dialog).toBeHidden();
+}
+
+async function studyIntervals(page: Page): Promise<void> {
+  await showDeck(page, INTERVALS);
+  await study(page, INTERVALS, "Intervals");
 }
 
 test("continues importing after one deck fails", async ({ page }) => {
@@ -302,7 +324,7 @@ test("reveals the answer when the keyboard is tapped", async ({ page }) => {
 
 test("names the keys of an interval on a keyboard", async ({ page, shot }) => {
   await openDeckList(page);
-  await study(page, "Intervals");
+  await studyIntervals(page);
 
   // The front marks the root on the keyboard and names that one key. The
   // answer is not on it yet: a question mark holds the place it will take.
@@ -389,7 +411,7 @@ test("plays the key under the finger, and the answer as it is shown", async ({
 }) => {
   await recordWhatIsPlayed(page);
   await openDeckList(page);
-  await study(page, "Intervals");
+  await studyIntervals(page);
   const card = page.frameLocator('iframe[title="card"]');
 
   // The root, both tapped keys, and the answer are played in order.
@@ -445,7 +467,7 @@ test("plays the root then a correct lower key only once", async ({ page }) => {
     }));
   });
   await openDeckList(page);
-  await study(page, "Intervals");
+  await studyIntervals(page);
   const card = page.frameLocator('iframe[title="card"]');
   const answers = card.locator("rect.is-highlighted");
   const pitches = await answers.evaluateAll((keys) => keys.map((key) => Number(key.getAttribute("data-semitone"))));
@@ -464,7 +486,7 @@ test("plays the root then a correct lower key only once", async ({ page }) => {
 test("keeps enlarged interval keys visible outside their translated row", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1400 });
   await openDeckList(page);
-  await study(page, "Intervals");
+  await studyIntervals(page);
   const card = page.frameLocator('iframe[title="card"]');
   const visible = await card.locator(".keyboard").evaluate((row) => {
     const host = row as HTMLElement;
@@ -508,7 +530,7 @@ test("keeps the staff decks silent until they are asked to sound", async ({
     .toBeGreaterThan(0);
 
   await page.getByTitle("Back").click();
-  await study(page, "Intervals");
+  await studyIntervals(page);
   await page.getByRole("button", { name: "Deck actions" }).click();
   await expect(
     page.getByRole("menuitemcheckbox", { name: "Sound" }),
@@ -518,7 +540,7 @@ test("keeps the staff decks silent until they are asked to sound", async ({
 test("plays every key a finger is drawn along", async ({ page }) => {
   await recordWhatIsPlayed(page);
   await openDeckList(page);
-  await study(page, "Intervals");
+  await studyIntervals(page);
   const card = page.frameLocator('iframe[title="card"]');
   const keys = card.locator("rect.keyboard__white-key");
   // Low in the keys, where no black key lies over them.
@@ -575,7 +597,7 @@ test("chooses what the interval keyboard marks on the front", async ({
   page,
 }) => {
   await openDeckList(page);
-  await study(page, "Intervals");
+  await studyIntervals(page);
   const card = page.frameLocator('iframe[title="card"]');
   const names = card.locator(".key-name");
   await expect(names).toHaveCount(1);
@@ -677,7 +699,7 @@ test("adds more cards from the deck's menu", async ({ page, shot }) => {
   await openDeckList(page);
   // A deck with more unstudied cards than the daily limit, so raising the
   // limit is what decides how many new cards are offered.
-  await study(page, "Intervals");
+  await studyIntervals(page);
   await expect(page.locator(".count.new")).toHaveText("20");
 
   await openStudyMore(page);
@@ -717,7 +739,7 @@ test("offers ten more new cards once the day's are done", async ({
       await answerCard(item, Rating.Good, now);
     }
   });
-  await study(page, "Intervals");
+  await studyIntervals(page);
   const newCount = page.locator(".count.new");
   await expect(newCount).toHaveText("1");
 
@@ -750,14 +772,15 @@ test("picks interval cards out of the frequency grid", async ({
   shot,
 }) => {
   await openDeckList(page);
-  await expect(deckRow(page, "Intervals")).toBeVisible({
+  await showDeck(page, INTERVALS);
+  await expect(deckRow(page, INTERVALS)).toBeVisible({
     timeout: IMPORT_TIMEOUT,
   });
 
   // The flat deck has no subdecks to study one degree at a time.
   await expect(page.locator(".deck-name", { hasText: /^P5$/ })).toHaveCount(0);
 
-  await deckRow(page, "Intervals").locator(".deck-settings").click();
+  await deckRow(page, INTERVALS).locator(".deck-settings").click();
   const dialog = page.getByRole("dialog");
   // Most-used first, both ways: C P5 is the corner cell.
   await expect(dialog.locator("tbody tr").first().locator("th")).toHaveText(
@@ -778,7 +801,7 @@ test("picks interval cards out of the frequency grid", async ({
 
   await dialog.getByRole("button", { name: "APPLY" }).click();
   await expect(dialog).toBeHidden();
-  await expect(deckRow(page, "Intervals").locator(".count.new")).toHaveText(
+  await expect(deckRow(page, INTERVALS).locator(".count.new")).toHaveText(
     "2",
   );
 });
@@ -868,16 +891,25 @@ test("ships the deeper decks turned off", async ({ page, shot }) => {
 
   // The circle of fifths and staff reading with octave numbers are off until
   // they are asked for; nothing on the list says "advanced" any more.
-  const circle = deckRow(page, "\\(Experimental\\) Circle of Fifths");
+  const circle = deckRow(page, "(Experimental) Circle of Fifths");
   await expect(circle).toHaveCount(0);
   await expect(
-    deckRow(page, "Music Staff \\(with Octave Numbers\\)"),
+    deckRow(page, "Music Staff (with Octave Numbers)"),
   ).toHaveCount(0);
   // The clefs only violists and trombonists read ship off too.
   await expect(deckRow(page, "Alto Clef")).toHaveCount(0);
   await expect(deckRow(page, "Tenor Clef")).toHaveCount(0);
   await expect(deckRow(page, "Treble Clef")).toBeVisible();
   await expect(page.getByText("Show advanced decks")).toHaveCount(0);
+
+  // And so do the decks that are still experiments.
+  for (const name of [
+    "Intervals",
+    "Interval Identification",
+    "Music Staff (Movable Do)",
+  ]) {
+    await expect(page.locator(`[data-deck="${name}"]`)).toHaveCount(0);
+  }
 
   // Turning the head of the branch on brings the branch with it.
   await page.getByRole("button", { name: "CHOOSE DECKS" }).click();
@@ -1342,7 +1374,7 @@ test("crops a keyboard larger than the card, centred on it", async ({
   page,
 }) => {
   await openDeckList(page);
-  await study(page, "Intervals");
+  await studyIntervals(page);
   const card = page.frameLocator('iframe[title="card"]');
   const row = card.locator(".diagram.keyboard");
   const drawn = card.locator(".keyboard-frame");
@@ -1476,32 +1508,32 @@ test("closes the deck chooser and the actions sheet with back", async ({
   page,
 }) => {
   await openDeckList(page);
-  await expect(deckRow(page, "Intervals")).toBeVisible({
-    timeout: IMPORT_TIMEOUT,
-  });
+  await showDeck(page, INTERVALS);
+  const intervals = deckRow(page, INTERVALS);
+  await expect(intervals).toBeVisible({ timeout: IMPORT_TIMEOUT });
 
   await page.getByRole("button", { name: "CHOOSE DECKS" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(deckRow(page, "Intervals")).toBeVisible();
+  await expect(intervals).toBeVisible();
 
   // A long press is a right click on the desktop.
-  await deckRow(page, "Intervals").click({ button: "right" });
+  await intervals.click({ button: "right" });
   await expect(page.getByRole("menu")).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("menu")).toBeHidden();
-  await expect(deckRow(page, "Intervals")).toBeVisible();
+  await expect(intervals).toBeVisible();
 
   // The sheet hands over to the settings rather than stacking under them, so
   // one press of back from there lands on the list.
-  await deckRow(page, "Intervals").click({ button: "right" });
+  await intervals.click({ button: "right" });
   await page.getByRole("menuitem", { name: "What to ask" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.goBack();
   await expect(page.getByRole("dialog")).toBeHidden();
   await expect(page.getByRole("menu")).toBeHidden();
-  await expect(deckRow(page, "Intervals")).toBeVisible();
+  await expect(intervals).toBeVisible();
 });
 
 test("sets every clef under the deck being studied", async ({ page, shot }) => {
@@ -1651,12 +1683,21 @@ test("carries the study progress out to a file and back in", async ({
 
 test("restores default deck visibility when a backup has no saved settings", async ({ page }) => {
   await openDeckList(page);
+  // A deck that ships on, turned off by hand: restoring is what puts it back.
+  // Chosen by name rather than by label, since an explicit choice leaves every
+  // other deck on and several of them are a Treble Clef.
+  const trebleClef = page.locator(
+    '[data-deck="Music Staff::Staff → Note::Treble Clef"]',
+  );
   await page.evaluate(() => {
-    localStorage.setItem("music-flashcards:hidden-decks", '["Intervals"]');
+    localStorage.setItem(
+      "music-flashcards:hidden-decks",
+      '["Music Staff::Staff → Note::Treble Clef"]',
+    );
   });
   await page.reload();
   await expect(deckRow(page, "Music Staff")).toBeVisible();
-  await expect(deckRow(page, "Intervals")).toBeHidden();
+  await expect(trebleClef).toHaveCount(0);
 
   await page.getByRole("button", { name: "BACKUP" }).click();
   const dialog = page.getByRole("dialog");
@@ -1671,13 +1712,13 @@ test("restores default deck visibility when a backup has no saved settings", asy
   await dialog.getByRole("button", { name: "RESTORE" }).click();
   await dialog.getByRole("button", { name: "RELOAD" }).click();
 
-  await expect(deckRow(page, "Intervals")).toBeVisible({ timeout: IMPORT_TIMEOUT });
+  await expect(trebleClef).toBeVisible({ timeout: IMPORT_TIMEOUT });
   expect(await page.evaluate(() => localStorage.getItem("music-flashcards:hidden-decks"))).toBeNull();
 });
 
 test("selects 41 interval keys", async ({ page }) => {
   await openDeckList(page);
-  await study(page, "Intervals");
+  await studyIntervals(page);
   await page.getByRole("button", { name: "Deck actions" }).click();
   await page.getByRole("button", { name: "Keyboard keys larger" }).click();
   await page.getByRole("button", { name: "Keyboard keys larger" }).click();
@@ -1691,7 +1732,7 @@ test("captures repeated mobile arrange drags", async ({ page, browserName }) => 
   const session = await page.context().newCDPSession(page);
   await session.send("Emulation.setTouchEmulationEnabled", { enabled: true });
   await openDeckList(page);
-  await study(page, "Intervals");
+  await studyIntervals(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await arrangeCard(page);
   const card = page.frameLocator('iframe[title="card"]');
@@ -1718,6 +1759,71 @@ test("captures repeated mobile arrange drags", async ({ page, browserName }) => 
     await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect.poll(async () => Math.abs((await keyboard.boundingBox())!.y - box.y - dy)).toBeLessThan(2);
   }
+  // After a pinch, the remaining finger should take over as a drag without
+  // requiring the reader to lift it and touch the part again.
+  const box = (await keyboard.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchStart", touchPoints: [{ id: 1, x: x - 20, y }],
+  });
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchStart", touchPoints: [{ id: 1, x: x - 20, y }, { id: 2, x: x + 20, y }],
+  });
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchMove", touchPoints: [{ id: 1, x: x - 30, y }, { id: 2, x: x + 30, y }],
+  });
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchEnd", touchPoints: [{ id: 1, x: x - 30, y }],
+  });
+  const pinched = (await keyboard.boundingBox())!;
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchMove", touchPoints: [{ id: 2, x: x + 30, y: y + 40 }],
+  });
+  await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect.poll(async () => (await keyboard.boundingBox())!.y - pinched.y).toBeCloseTo(40, 0);
+  await session.detach();
+});
+
+test("moves parts after reopening a saved staff layout", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "Native touch input uses CDP");
+  await page.addInitScript(() => {
+    localStorage.setItem("music-flashcards:deck-card-settings", JSON.stringify({
+      "Music Staff": {
+        offsets: { staff: { x: 0, y: 0.4 }, keyboard: { x: 0, y: 0.25 } },
+        staff: 1.5,
+      },
+    }));
+  });
+  const session = await page.context().newCDPSession(page);
+  await session.send("Emulation.setTouchEmulationEnabled", { enabled: true });
+  await openDeckList(page);
+  await study(page, "Bass Clef");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await arrangeCard(page);
+  const card = page.frameLocator('iframe[title="card"]');
+  const staff = card.locator('[data-card-part="staff"]');
+  const before = (await staff.boundingBox())!;
+  const x = before.x + before.width / 2;
+  const y = before.y + before.height / 2;
+  await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y - 50 }] });
+  await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect.poll(async () => (await staff.boundingBox())!.y - before.y).toBeCloseTo(-50, 0);
+  await page.getByRole("button", { name: "DONE" }).click();
+  await arrangeCard(page);
+  const help = page.locator(".layout-help");
+  if (!(await help.evaluate(element => (element as HTMLDetailsElement).open))) {
+    await help.locator("summary").click();
+  }
+  await help.getByRole("button", { name: "Copy debug log" }).click();
+  const log = await help.getByRole("textbox", { name: "Layout debug log" }).inputValue();
+  expect(log).toContain('"action":"open"');
+  expect(log).toContain('"action":"pointerdown"');
+  expect(log).toContain('"action":"pointerup"');
+  await page.getByRole("button", { name: "Reset", exact: true }).click();
+  await help.getByRole("button", { name: /debug log/ }).click();
+  expect(await help.getByRole("textbox", { name: "Layout debug log" }).inputValue()).toContain('"action":"reset-before"');
   await session.detach();
 });
 

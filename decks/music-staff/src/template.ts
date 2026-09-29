@@ -3,6 +3,7 @@
 
 import { CLEF_LABELS, type Clef, type Direction } from "./cards";
 import { renderKeyboardSvg, renderStaffSvg } from "./staff";
+import { STAFF_BASE_WIDTH } from "@web-music/music-staff-core";
 
 export const MODEL_NAME = "Music Staff Notes";
 export const ROOT_DECK_NAME = "Music Staff";
@@ -275,7 +276,8 @@ export const CARD_CSS = `
      width would be drawn taller than the turned card and push the keyboard off
      the end of it. Upright there is height to spare and the bound never
      binds. */
-  --staff-width: calc(min(88vw, 26rem, 62vh) * var(--staff-scale, 1));
+  --staff-base-width: ${STAFF_BASE_WIDTH};
+  --staff-width: calc(var(--staff-base-width) * var(--staff-scale, 1));
 }
 
 .prompt {
@@ -372,10 +374,9 @@ export const CARD_CSS = `
   width: var(--keyboard-width, calc(100% * var(--keyboard-scale, 1)));
 }
 
-/* A single octave has no such trouble, and blown up to the width of the screen
-   it would dwarf the staff. */
+/* Match the staff at default size while keeping both scales independent. */
 .keyboard-frame.keyboard-octave {
-  width: var(--keyboard-width, calc(min(62vw, 18rem) * var(--keyboard-scale, 1)));
+  width: var(--keyboard-width, calc(var(--staff-base-width) * var(--keyboard-scale, 1)));
 }
 
 /* height too, or the SVG keeps the height of its own attribute while the

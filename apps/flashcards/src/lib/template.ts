@@ -1,6 +1,10 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { musicGlyphScript } from "@web-music/music-notation";
+
+const FLASHCARD_GLYPH_SCRIPT = musicGlyphScript("engraved");
+
 // Minimal Anki card-template renderer: {{Field}}, {{#Field}}...{{/Field}},
 // {{^Field}}...{{/Field}}, {{FrontSide}}. Filters ({{text:Field}} etc.) are
 // ignored except that the field name after the last ":" is used. Unknown
@@ -99,6 +103,7 @@ export function buildCardDocument(options: {
   nightMode: boolean;
   keyboardKeys?: number;
   pianoKeys?: number;
+  showKeyboard?: boolean;
   // What an interval keyboard marks on the front. The root is marked unless
   // the reader turned it off; the answer note is handed over only when they
   // asked for it, the front template having no field for it.
@@ -115,6 +120,7 @@ export function buildCardDocument(options: {
   const attributes = [
     ["keyboard-keys", options.keyboardKeys],
     ["piano-keys", options.pianoKeys],
+    ["show-keyboard", options.showKeyboard === true ? "on" : undefined],
     ["interval-root", options.intervalRoot === false ? "off" : undefined],
     ["interval-answer-note", options.intervalAnswerNote],
   ]
@@ -126,7 +132,7 @@ export function buildCardDocument(options: {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<style>
+<style id="card-style">
 html, body { margin: 0; min-height: 100%; }
 /* A tap on a diagram is an answer, never a text selection: a phone that takes
    it for one puts its own menu over the card. */
@@ -176,7 +182,8 @@ html { overflow-x: clip; }
 ${variables === "" ? "" : `:root { ${variables} }\n`}${options.css}
 </style>
 </head>
-<body class="card${nightClasses}">${options.html}</body>
+<body class="card${nightClasses}">${options.html}
+${FLASHCARD_GLYPH_SCRIPT}</body>
 </html>`;
 }
 

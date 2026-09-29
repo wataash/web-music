@@ -10,6 +10,9 @@
   "scripts": {
     "test": "vitest run"
   },
+  "dependencies": {
+    "@web-music/music-notation": "workspace:*"
+  },
   "devDependencies": {
     "vitest": "^4.1.10"
   }

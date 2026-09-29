@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@web-music/ireal": "workspace:*",
+    "@web-music/music-notation": "workspace:*",
     "@web-music/practice-ui": "workspace:*",
     "dexie": "^4.2.0",
     "@web-music/chordwiki": "workspace:*"

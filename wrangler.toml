@@ -9,6 +9,7 @@ routes = [{ pattern = "mf.wataash.com", custom_domain = true }]
 # nobody, so there is no script to run in front of the files.
 [assets]
 directory = "./apps/flashcards/dist"
+not_found_handling = "single-page-application"
 
 [env.chords]
 name = "music-flashcards-chords"

@@ -3,7 +3,11 @@
 
 import { mount } from "svelte";
 
-import App from "./App.svelte";
 import "@web-music/practice-ui/theme.css";
 
-mount(App, { target: document.getElementById("app")! });
+const page = location.pathname.replace(/\/$/, "") === "/preview"
+  ? import("./components/DeckPreview.svelte")
+  : import("./App.svelte");
+void page.then(({ default: App }) => {
+  mount(App, { target: document.getElementById("app")! });
+});

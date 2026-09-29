@@ -14,6 +14,7 @@ describe("movable-do major-key deck", () => {
 
   it("uses the tonic letter for do and the key signature for sounding pitch", () => {
     expect(movableDoAnswer("C5", "C", 0)).toEqual({ solfege: "Do", soundingPitch: "C5" });
+    expect(movableDoAnswer("G4", "C", 0)).toEqual({ solfege: "So", soundingPitch: "G4" });
     expect(movableDoAnswer("F4", "G", 1)).toEqual({ solfege: "Ti", soundingPitch: "F♯4" });
     expect(movableDoAnswer("B3", "B♭", -2)).toEqual({ solfege: "Do", soundingPitch: "B♭3" });
     expect(movableDoAnswer("E4", "B♭", -2)).toEqual({ solfege: "Fa", soundingPitch: "E♭4" });
@@ -41,12 +42,12 @@ describe("movable-do major-key deck", () => {
       expect.any(String), "treble", "B3", "-1", "F", "Fa", "B♭3", "treble|B3",
     ]);
     expect(deck.decks).toHaveLength(6);
+    // The whole tree ships turned off: movable do is an experiment.
+    expect(deck.decks.every(({ hiddenByDefault }) => hiddenByDefault === true)).toBe(true);
     expect(deck.models[0].templates[0].qfmt).toContain("data-major-fifths");
     expect(deck.models[0].templates[0].qfmt).toContain('"bass":{"sharp":');
     expect(deck.models[0].templates[0].qfmt).toContain("viewBox[2] = '320'");
-    expect(deck.models[0].css).toContain("font-size:64px");
     expect(deck.models[0].css).toContain('/fonts/NotoMusic-Regular.ttf');
-    expect(deck.models[0].css).toContain("dominant-baseline:alphabetic");
     expect(deck.models[0].fieldNames).toEqual(["Id", "Clef", "Pitch", "Fifths", "Key", "Solfege", "SoundingPitch", "Staff"]);
     expect(deck.models[0].templates[0].afmt).toContain('data-sounding-pitch="{{SoundingPitch}}"');
     expect(deck.models[0].templates[0].afmt).toContain("navigator.language");

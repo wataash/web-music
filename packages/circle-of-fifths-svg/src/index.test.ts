@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { DEFAULT_LAYOUT } from "@circle-of-fifths/core";
+import { keySignatureAdvance, renderKeySignatureGlyph } from "@web-music/music-staff-core";
+import { renderStaffMusicGlyph, staffMusicGlyphBounds } from "@web-music/music-notation";
 import { describe, expect, test } from "vitest";
 
 import {
@@ -54,13 +56,103 @@ describe("SVG diagram", () => {
     expect(svg.match(/circle-of-fifths__sector/g)).toHaveLength(12);
   });
 
+  test("draws accidentals with shared paths and keeps the source text", () => {
+    const svg = renderCircleOfFifthsSvg({ visibleNotes: ["F#", "Gb", "f##"] });
+
+    expect(svg).toContain('class="glyph sharp"');
+    expect(svg).toContain('d="M288 283');
+    expect(svg.match(/class="glyph [^"]+"/g)).toHaveLength(3);
+    expect(svg.match(/data-music-glyph-enhanced=""/g)).toHaveLength(3);
+    expect(svg).toMatch(/class="circle-of-fifths__accidental"[^>]*>♯<\/text>/);
+    expect(svg).toMatch(/class="circle-of-fifths__accidental"[^>]*>♭<\/text>/);
+    expect(svg).toContain('class="circle-of-fifths__accidental" x="13"');
+    expect(svg).toContain('>𝄪</text>');
+  });
+
+  test.each(["paths", "text"] as const)("uses the shared key signature glyphs in %s mode", (glyphs) => {
+    const model = createDiagramModel({ showKeySignatures: true });
+    const svg = renderCircleOfFifthsSvg({ visibleNotes: [], showKeySignatures: true, glyphs });
+    const signatures = model.keySignatureGroups.flatMap(({ staffs }) =>
+      staffs.flatMap(({ signatures }) => signatures),
+    );
+    const accidentalCount = signatures.reduce((count, signature) => count + signature.accidentals.length, 0);
+    const sharp = signatures.find(({ symbol }) => symbol === "♯")!;
+    const flat = signatures.find(({ symbol }) => symbol === "♭")!;
+
+    expect(svg.match(/class="glyph (?:sharp|flat)"/g)).toHaveLength(accidentalCount);
+    expect(svg.match(/data-music-glyph="[♯♭]"/g)).toHaveLength(accidentalCount);
+    expect(svg).toContain(renderKeySignatureGlyph("♯", sharp.accidentals[0].x, sharp.accidentals[0].y, 6));
+    expect(svg).toContain(renderKeySignatureGlyph("♭", flat.accidentals[0].x, flat.accidentals[0].y, 6));
+    expect(svg).not.toContain("circle-of-fifths__key-accidental");
+    expect(svg).not.toContain("<script");
+  });
+
+  test("uses upright engraved flats in standard and single-note SVGs", () => {
+    const standardSvg = renderCircleOfFifthsSvg({
+      visibleNotes: ["Ab", "ab"],
+      showKeySignatures: true,
+    });
+    const singleNoteSvg = renderCircleOfFifthsSvg({
+      visibleNotes: ["Ab", "ab"],
+      labelLayout: "single-note",
+    });
+
+    expect(standardSvg).toContain('d="M288 283');
+    expect(standardSvg).not.toContain('d="M3.3 1L2.2 15"');
+    expect(singleNoteSvg).toContain('d="M288 283');
+    expect(singleNoteSvg).toMatch(/>A<tspan[^>]*>♭<\/tspan><\/text>/);
+    expect(singleNoteSvg).toMatch(/>a<tspan[^>]*>♭<\/tspan><\/text>/);
+  });
+
+  test("keeps note-label text in browser-enhanced diagrams", () => {
+    const svg = renderCircleOfFifthsSvg({
+      visibleNotes: ["F#", "Gb"],
+      showKeySignatures: true,
+      glyphs: "text",
+    });
+
+    expect(svg).toContain('<text class="circle-of-fifths__accidental" x="13"');
+    expect(svg).toContain('class="glyph sharp"');
+    expect(svg).toContain('class="glyph flat"');
+    expect(svg).not.toContain('class="circle-of-fifths__accidental" data-music-glyph');
+    expect(svg).not.toContain("<script");
+  });
+
+  test.each(["paths", "text"] as const)("uses shared clef shapes in %s mode", (glyphs) => {
+    const svg = renderCircleOfFifthsSvg({ visibleNotes: [], showKeySignatures: true, glyphs });
+
+    expect(svg.match(/class="circle-of-fifths__clef"/g)).toHaveLength(24);
+    expect(svg).toContain(renderStaffMusicGlyph("𝄞", -136, 6, 6));
+    expect(svg).toContain(renderStaffMusicGlyph("𝄢", -136, -6, 6));
+    expect(svg).not.toMatch(/<text[^>]*>[𝄞𝄢]<\/text>/u);
+  });
+
+  test("keeps shared clef outlines inside the outer viewBox", () => {
+    const model = createDiagramModel({ showKeySignatures: true });
+
+    for (const group of model.keySignatureGroups) {
+      for (const staff of group.staffs) {
+        const bounds = staffMusicGlyphBounds(staff.clefGlyph, 6);
+        const pitchY = staff.clef === "bass" ? -6 : 6;
+        expect(group.x - 136 - bounds.width / 2).toBeGreaterThanOrEqual(model.viewBox.x);
+        expect(group.x - 136 + bounds.width / 2).toBeLessThanOrEqual(model.viewBox.x + model.viewBox.width);
+        expect(group.y + staff.y + pitchY + bounds.top).toBeGreaterThanOrEqual(model.viewBox.y);
+        expect(group.y + staff.y + pitchY + bounds.bottom).toBeLessThanOrEqual(model.viewBox.y + model.viewBox.height);
+      }
+    }
+  });
+
   test("renders a reusable dark theme", () => {
-    const svg = renderDarkCircleOfFifthsSvg({ visibleNotes: ["C"] });
+    const svg = renderDarkCircleOfFifthsSvg({ visibleNotes: ["C"], showKeySignatures: true });
 
     expect(svg).toContain('fill="#111827"');
     expect(svg).toContain("stroke: #d1d5db");
     expect(svg).toContain("fill: #f3f4f6");
     expect(svg).toContain('data-note="C"');
+    expect(svg).toContain('.circle-of-fifths__key-signature {\n    fill: #f3f4f6;\n    color: #f3f4f6;');
+    expect(svg).toContain('.circle-of-fifths__clef {\n    color: #f3f4f6;');
+    expect(svg).toContain('fill="currentColor"');
+    expect(DIAGRAM_STYLES).toContain('.circle-of-fifths__clef {\n    color: #000;');
   });
 
   test("models treble and bass key signatures outside all twelve sectors", () => {
@@ -68,6 +160,7 @@ describe("SVG diagram", () => {
     const atEight = model.keySignatureGroups.find(({ hour }) => hour === 8);
     const atNine = model.keySignatureGroups.find(({ hour }) => hour === 9);
     const atFive = model.keySignatureGroups.find(({ hour }) => hour === 5);
+    const atSix = model.keySignatureGroups.find(({ hour }) => hour === 6);
     const atTwelve = model.keySignatureGroups.find(({ hour }) => hour === 12);
 
     expect(model.keySignatureGroups).toHaveLength(12);
@@ -94,10 +187,11 @@ describe("SVG diagram", () => {
       "treble",
       "bass",
     ]);
-    expect(atNine?.staffs[1].signatures[0].accidentals.slice(0, 2)).toEqual([
-      { x: -104, y: -1 },
-      { x: -97, y: -10 },
-    ]);
+    const bassFlats = atNine!.staffs[1].signatures[0].accidentals;
+    expect(bassFlats[0].x).toBe(-104);
+    expect(bassFlats[0].y).toBe(8);
+    expect(bassFlats[1].x - bassFlats[0].x).toBeCloseTo(keySignatureAdvance(6, "reading", "flat"));
+    expect(bassFlats[1].y).toBe(-1);
     expect(
       atNine?.staffs[0].signatures.map(
         ({ fifths, accidentals }) => ({
@@ -123,11 +217,13 @@ describe("SVG diagram", () => {
     ]);
     expect(atEight?.staffs[0].lineEndX).toBe(atEight?.staffs[1].lineEndX);
     expect(atEight!.staffs[0].lineEndX).toBeGreaterThan(atNine!.staffs[0].lineEndX);
+    const bassFlatAtSix = atSix!.staffs[1].signatures.find(({ fifths }) => fifths === -6)!.accidentals.at(-1)!;
+    expect(atSix!.y + atSix!.staffs[1].y + bassFlatAtSix.y + 2).toBeLessThan(model.viewBox.y + model.viewBox.height);
     expect(
       atFive?.staffs[1].signatures
         .find(({ fifths }) => fifths === -7)
         ?.accidentals.map(({ y }) => y),
-    ).toEqual([-1, -10, 2, -7, 5, -4, 8]);
+    ).toEqual([8, -1, 11, 2, 14, 5, 17]);
   });
 
   test("renders outer key signatures only when requested", () => {
@@ -247,12 +343,11 @@ describe("SVG diagram", () => {
 
     expect(svg).toContain("circle-of-fifths--single-note");
     expect(noteLines.every(({ centerWholeNote }) => centerWholeNote)).toBe(true);
-    expect(svg).toContain(
-      '<text class="circle-of-fifths__spelling" x="0" y="0">A♯</text>',
+    expect(svg).toMatch(
+      /class="circle-of-fifths__spelling"[^>]*>A<tspan fill-opacity="0">♯<\/tspan><\/text>/,
     );
-    expect(svg).toContain(
-      '<text class="circle-of-fifths__spelling" x="0" y="0">f𝄪</text>',
-    );
+    expect(svg).toContain('class="glyph sharp"');
+    expect(svg).toMatch(/class="circle-of-fifths__spelling"[^>]*>f<tspan fill-opacity="0">𝄪<\/tspan><\/text>/);
   });
 
   test("rejects multiple notes in one single-note cell", () => {

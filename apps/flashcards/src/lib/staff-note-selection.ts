@@ -183,7 +183,9 @@ export function staffCardVariables(
     );
     return steps.length === 0 ? [] : [staffFrame(clef, steps)];
   });
-  if (crops.length === 0) return {};
+  // Previews (or a card already open when settings change) can show a note
+  // outside the selected range. Never crop away the note actually on screen.
+  crops.push(staffFrame(staffNote.clef, [staffStep(staffNote.clef, staffNote.pitch)]));
   // Every clef frames the same image, so the card's own is the one to cut.
   const full = staffFrame(staffNote.clef);
   const top = Math.min(...crops.map((crop) => crop.top));

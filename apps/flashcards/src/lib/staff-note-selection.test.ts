@@ -152,6 +152,18 @@ describe("staff note selection", () => {
 });
 
 describe("cropping the staff image to the notes in play", () => {
+  it("includes the displayed note even outside the selected range", () => {
+    for (const pitch of ["G2", "D3", "D7"]) {
+      const note = staffNote("treble", pitch);
+      expect(staffCardVariables(note, DEFAULT_STAFF_NOTE_SELECTION)).toEqual(
+        staffCardVariables(note, {
+          ...DEFAULT_STAFF_NOTE_SELECTION,
+          treble: [...DEFAULT_STAFF_NOTE_SELECTION.treble, pitch],
+        }),
+      );
+    }
+  });
+
   it("keeps only the room the chosen notes need, where they sit in the image", () => {
     const card = staffNote("treble", "C4");
     const basic = staffCardVariables(card, DEFAULT_STAFF_NOTE_SELECTION);
@@ -181,8 +193,8 @@ describe("cropping the staff image to the notes in play", () => {
     // High notes reach the top of the frame, low ones the bottom, so the cut
     // is all at the other end.
     expect(high["--staff-clip-top"]).toBe("0");
-    expect(high["--staff-clip-bottom"]).toBe("0.3022");
-    expect(low["--staff-clip-top"]).toBe("0.3175");
+    expect(high["--staff-clip-bottom"]).toBe("0.2917");
+    expect(low["--staff-clip-top"]).toBe("0.2966");
     expect(low["--staff-clip-bottom"]).toBe("0");
   });
 

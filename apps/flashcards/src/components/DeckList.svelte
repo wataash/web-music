@@ -404,6 +404,7 @@ SPDX-License-Identifier: Apache-2.0
     onscroll={scheduleCollapseSpacerRelease}
   >
     <div class="list-toggles">
+      <a class="list-action" href="/preview">PREVIEW DECKS</a>
       <button class="list-action" onclick={openBackup}>BACKUP</button>
       <button class="list-action" onclick={openDeckChooser}>
         CHOOSE DECKS
@@ -661,6 +662,8 @@ SPDX-License-Identifier: Apache-2.0
 
   .list-toggles {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-end;
     gap: 4px;
     min-height: 48px;
@@ -669,6 +672,11 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .list-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    white-space: nowrap;
     min-height: 36px;
     padding: 0 12px;
     border-radius: 4px;

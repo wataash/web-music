@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import { MUSIC_GLYPH_CSS } from "@web-music/music-notation";
   import { onMount, onDestroy, getAllContexts, setContext, untrack } from "svelte";
   import { CHORD_VIEW_CONTEXT, chordViewPersistence, type ChordViewStore } from "../lib/chord-view";
 
@@ -394,6 +395,8 @@ SPDX-License-Identifier: Apache-2.0
     input.value = String(index + 1);
   }
 </script>
+
+<svelte:head><style id="music-glyph-style">{MUSIC_GLYPH_CSS}</style></svelte:head>
 
 <svelte:window onbeforeprint={beforePrint} onafterprint={afterPrint} onkeydown={handleKey} onpopstate={handlePopState} />
 

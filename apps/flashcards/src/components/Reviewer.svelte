@@ -13,6 +13,7 @@ SPDX-License-Identifier: Apache-2.0
   } from "./ExtraStudyDialog.svelte";
   import NoteSettingsDialog from "./NoteSettingsDialog.svelte";
   import { mediaUrls as mediaUrlsFor } from "../lib/db";
+  import { cardLayoutDebugText, recordCardLayoutDebug } from "../lib/card-layout-debug";
   import { effectiveHiddenDeckNames } from "../lib/deck-hiding";
   import {
     isCircleIntervalCard,
@@ -119,7 +120,8 @@ SPDX-License-Identifier: Apache-2.0
     resetDeckFromHistoryState,
     settingsDeckFromHistoryState,
   } from "../lib/navigation";
-  import { isFretboardNoteToPositionsCard } from "../lib/fretboard-card";
+  import { isFretboardCard, isFretboardNoteToPositionsCard } from "../lib/fretboard-card";
+  import { isMovableDoDeck } from "../lib/movable-do-key-selection";
   import { noteTuning, type Tuning } from "../lib/guitar-tuning";
   import { isPianoKeyboardCard, isStaffReadingCard } from "../lib/staff-card";
 
@@ -189,6 +191,8 @@ SPDX-License-Identifier: Apache-2.0
   // finger that is moving it.
   let positioning = $state(false);
   let showLayoutHelp = $state(false);
+  let debugLogText = $state<string | null>(null);
+  let debugLogCopied = $state(false);
   // The last part selected for layout controls.
   let arranged = $state<CardPart | "answer" | null>(null);
   // The screen the answer row is dragged around, so where it is let go can be
@@ -282,6 +286,7 @@ SPDX-License-Identifier: Apache-2.0
   // Everything this mode sets, back to how the deck draws it: where the parts
   // are, how large, which way the card is turned and where it is answered.
   function resetCardParts(): void {
+    logCardLayout("reset-before");
     arranged = null;
     setDeckSettings({
       offsets: DEFAULT_CARD_OFFSETS,
@@ -296,6 +301,42 @@ SPDX-License-Identifier: Apache-2.0
       board: DEFAULT_CARD_SCALES.board,
     };
     saveCardScales(cardScales);
+    recordCardLayoutDebug("reset-after");
+  }
+
+  function logCardLayout(action: string): void {
+    recordCardLayoutDebug(action, {
+      deck: deckName,
+      staffX: deckSettings.offsets.staff.x,
+      staffY: deckSettings.offsets.staff.y,
+      keyboardX: deckSettings.offsets.keyboard.x,
+      keyboardY: deckSettings.offsets.keyboard.y,
+      staffScale: deckSettings.staff,
+      keyboardScale: cardScales.keyboard,
+      rotation,
+    });
+  }
+
+  async function copyCardLayoutDebug(): Promise<void> {
+    debugLogText = cardLayoutDebugText();
+    debugLogCopied = false;
+    try {
+      await navigator.clipboard.writeText(debugLogText);
+      debugLogCopied = true;
+    } catch {
+      // Keep the selectable text visible when clipboard access is denied.
+    }
+  }
+
+  function logOuterPointerDown(event: PointerEvent): void {
+    if (!positioning) return;
+    const target = event.target as Element;
+    recordCardLayoutDebug("outer-pointerdown", {
+      pointerType: event.pointerType,
+      target: target.tagName,
+      toolbar: target.closest(".laying-out") !== null,
+      iframe: target.tagName === "IFRAME",
+    });
   }
 
   function turnCard(steps: 1 | -1): void {
@@ -348,8 +389,10 @@ SPDX-License-Identifier: Apache-2.0
     onDiagram: boolean,
   ): void {
     if (item === null) return;
-    const revealing =
-      onDiagram && phase === "question" && revealAnswerOnDiagramTap;
+    const revealing = phase === "question" && (
+      taps.some((tap) => tap.kind === "key") ||
+      (onDiagram && revealAnswerOnDiagramTap)
+    );
     const answer = revealing ? answerSound(item.note) : null;
     const played = tappedAnswerSound(
       taps,
@@ -459,8 +502,8 @@ SPDX-License-Identifier: Apache-2.0
   // comes first and is in the same place in every deck — under the turn, which
   // is the other row every deck has. What the card draws follows: the staff
   // decks draw a staff and a keyboard; the interval decks draw a keyboard
-  // beside the answer, so there is no staff to size; the guitar deck draws a
-  // fretboard and neither.
+  // beside the answer, so there is no staff to size; the fretboard deck can
+  // also show an optional keyboard.
   // What is left to step from the sheet: how many keys a keyboard draws, and
   // the answer's name. Everything else about the size of a card is pinched on
   // the card itself.
@@ -529,6 +572,14 @@ SPDX-License-Identifier: Apache-2.0
         on: cardScales.minimalAppBar,
         ontoggle: toggleMinimalAppBar,
       },
+      ...(item !== null && (isFretboardCard(item.note) || isMovableDoDeck(deckName) ||
+          deckName === "(Experimental) Circle of Fifths" || deckName.startsWith("(Experimental) Circle of Fifths::"))
+        ? [{
+            label: "Keyboard",
+            on: deckSettings.showKeyboard,
+            ontoggle: () => setDeckSettings({ showKeyboard: !deckSettings.showKeyboard }),
+          }]
+        : []),
     ];
     if (item === null || !isIntervalCard(item.note)) return appBar;
     return [
@@ -567,6 +618,7 @@ SPDX-License-Identifier: Apache-2.0
       nightMode,
       keyboardKeys: deckSettings.keyboardKeys,
       pianoKeys: cardScales.pianoKeys,
+      showKeyboard: deckSettings.showKeyboard,
       // Only the question is the reader's to strip down or fill in; the answer
       // marks what it always marks.
       intervalRoot: phase === "question" ? deckSettings.frontRoot : true,
@@ -761,6 +813,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function openCardLayout(): void {
+    logCardLayout("open");
     openOverDeckActions(historyStateForCardLayout);
     arranged = null;
     try {
@@ -774,6 +827,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function closeCardLayout(): void {
+    logCardLayout("close");
     if (cardLayoutFromHistoryState(history.state) === deckName) {
       history.back();
     } else {
@@ -935,7 +989,7 @@ SPDX-License-Identifier: Apache-2.0
     >
   </header>
 
-  <main class="card-area">
+  <main class="card-area" onpointerdown={logOuterPointerDown}>
     {#if finished}
       <div class="congrats">
         <p class="congrats-title">Done for today</p>
@@ -1004,6 +1058,12 @@ SPDX-License-Identifier: Apache-2.0
         <details class="layout-help" bind:open={showLayoutHelp}>
           <summary>Help</summary>
           <p>Drag to move, pinch to size, twist to turn.</p>
+          <button class="debug-copy" onclick={() => void copyCardLayoutDebug()}>
+            {debugLogCopied ? "Copied debug log" : "Copy debug log"}
+          </button>
+          {#if debugLogText !== null}
+            <textarea aria-label="Layout debug log" readonly value={debugLogText}></textarea>
+          {/if}
         </details>
         {#if arranged !== null}
           <p>
@@ -1455,6 +1515,16 @@ SPDX-License-Identifier: Apache-2.0
     cursor: pointer;
     min-height: 32px;
     align-content: center;
+  }
+
+  .layout-help textarea {
+    box-sizing: border-box;
+    width: 100%;
+    max-height: 25vh;
+    margin-top: 8px;
+    color: #fff;
+    background: #111827;
+    font-size: 11px;
   }
 
   .laying-out button {

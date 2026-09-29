@@ -15,6 +15,7 @@
     "typecheck": "pnpm check"
   },
   "dependencies": {
+    "@web-music/music-notation": "workspace:*",
     "@circle-of-fifths/core": "workspace:*",
     "@circle-of-fifths/svg": "workspace:*",
     "@web-music/music-staff-core": "workspace:*",

@@ -18,8 +18,9 @@ import {
   KEY_SIGNATURE_FONT_FAMILY,
   keySignatureAccidentals,
   keySignatureAdvance,
-  keySignatureGlyphCss,
+  renderKeySignatureGlyph,
 } from "@web-music/music-staff-core";
+import { musicGlyphMetrics, renderMusicGlyphSvg, renderStaffMusicGlyph } from "@web-music/music-notation";
 
 export { formatNumber } from "@circle-of-fifths/core";
 
@@ -29,9 +30,9 @@ export const DEFAULT_DESCRIPTION =
 
 const OUTER_NOTATION_VIEW_BOX = {
   x: -56.5,
-  y: -71.5,
+  y: -81.5,
   width: 1113,
-  height: 1129,
+  height: 1149,
 } as const;
 const KEY_SIGNATURE_MIN_DISTANCE = 480;
 const STAFF_START_X = -150;
@@ -43,7 +44,6 @@ const STAFF_HALF_HEIGHT =
     (STAFF_Y[0] + STAFF_LINE_Y[0])) /
   2;
 const CLEF_X = -136;
-const CLEF_Y = { treble: 12, bass: 18 } as const;
 const SIGNATURE_START_X = -110;
 const SIGNATURE_GAP = 10;
 const EMPTY_SIGNATURE_WIDTH = 18;
@@ -64,6 +64,7 @@ export const DIAGRAM_STYLES = `
   }
   .circle-of-fifths__label {
     fill: #000;
+    color: #000;
     font-family: "Noto Sans", "DejaVu Sans", "Noto Music",
       "Noto Sans Symbols2", sans-serif;
     text-anchor: middle;
@@ -87,18 +88,12 @@ export const DIAGRAM_STYLES = `
   }
   .circle-of-fifths__key-signature {
     fill: #000;
+    color: #000;
     font-family: ${KEY_SIGNATURE_FONT_FAMILY};
     dominant-baseline: central;
   }
   .circle-of-fifths__clef {
-    font-size: 46px;
-    text-anchor: middle;
-  }
-  .circle-of-fifths__clef--bass {
-    font-size: 40px;
-  }
-  .circle-of-fifths__key-accidental {
-    ${keySignatureGlyphCss(6)};
+    color: #000;
   }
   .circle-of-fifths--single-note .circle-of-fifths__major {
     font-size: 88px;
@@ -156,7 +151,6 @@ export type KeySignatureModel = Readonly<{
 export type StaffModel = Readonly<{
   clef: "treble" | "bass";
   clefGlyph: "𝄞" | "𝄢";
-  clefY: number;
   lineEndX: number;
   y: number;
   signatures: readonly KeySignatureModel[];
@@ -201,6 +195,7 @@ export type RenderCircleOfFifthsOptions = CreateDiagramModelOptions &
   Readonly<{
     title?: string;
     description?: string;
+    glyphs?: "paths" | "text";
   }>;
 
 export function createDiagramModel({
@@ -268,6 +263,7 @@ export function renderCircleOfFifthsSvg(
     labelLayout = "standard",
     highlightedCells,
     showKeySignatures,
+    glyphs = "paths",
   }: RenderCircleOfFifthsOptions = {},
 ): string {
   const model = createDiagramModel({
@@ -300,7 +296,7 @@ export function renderCircleOfFifthsSvg(
         `    <line class="circle-of-fifths__line" x1="${formatNumber(inner.x)}" y1="${formatNumber(inner.y)}" x2="${formatNumber(outer.x)}" y2="${formatNumber(outer.y)}"/>`,
     ),
     "  </g>",
-    ...model.sectors.map(renderSector),
+    ...model.sectors.map((sector) => renderSector(sector, glyphs)),
     "</svg>",
     "",
   ].join("\n");
@@ -312,6 +308,7 @@ export function renderDarkCircleOfFifthsSvg(
   return renderCircleOfFifthsSvg(options)
     .replaceAll("stroke: #000;", "stroke: #d1d5db;")
     .replaceAll("fill: #000;", "fill: #f3f4f6;")
+    .replaceAll("color: #000;", "color: #f3f4f6;")
     .replace("fill: #fff2a8;", "fill: #5b4f16;")
     .replace("fill: #ddd;", "fill: #374151;")
     .replace('fill="#fff"/>', 'fill="#111827"/>');
@@ -396,12 +393,13 @@ function createStaffModel(
           x + ACCIDENTAL_WIDTH / 2,
           STAFF_LINE_Y[0],
           STAFF_LINE_Y[1] - STAFF_LINE_Y[0],
+          "reading",
         ),
       } as const;
       const width =
         count === 0
           ? EMPTY_SIGNATURE_WIDTH
-          : (count - 1) * keySignatureAdvance(6) + ACCIDENTAL_WIDTH;
+          : (count - 1) * keySignatureAdvance(6, "reading", fifths < 0 ? "flat" : "sharp") + ACCIDENTAL_WIDTH;
       x += width + SIGNATURE_GAP;
       return signature;
     });
@@ -409,7 +407,6 @@ function createStaffModel(
   return {
     clef,
     clefGlyph: clef === "treble" ? "𝄞" : "𝄢",
-    clefY: CLEF_Y[clef],
     lineEndX: x,
     y,
     signatures,
@@ -544,10 +541,10 @@ function findPlacement(
   return placement;
 }
 
-function renderSector(sector: SectorModel): string {
+function renderSector(sector: SectorModel, glyphs: "paths" | "text"): string {
   return [
     `  <g class="circle-of-fifths__sector" data-hour="${sector.hour}">`,
-    ...sector.labels.map(renderLabel),
+    ...sector.labels.map((label) => renderLabel(label, glyphs)),
     "  </g>",
   ].join("\n");
 }
@@ -565,18 +562,13 @@ function renderKeySignatureGroup(group: KeySignatureGroupModel): string {
 }
 
 function renderStaff(staff: StaffModel): string {
-  const clefClass =
-    staff.clef === "bass"
-      ? "circle-of-fifths__clef circle-of-fifths__clef--bass"
-      : "circle-of-fifths__clef circle-of-fifths__clef--treble";
-
   return [
     `    <g class="circle-of-fifths__staff" data-clef="${staff.clef}" transform="translate(0 ${staff.y})">`,
     ...STAFF_LINE_Y.map(
       (y) =>
         `      <line class="circle-of-fifths__staff-line" x1="${STAFF_START_X}" y1="${y}" x2="${formatNumber(staff.lineEndX)}" y2="${y}"/>`,
     ),
-    `      <text class="${clefClass}" x="${CLEF_X}" y="${staff.clefY}">${staff.clefGlyph}</text>`,
+    `      <g class="circle-of-fifths__clef">${renderStaffMusicGlyph(staff.clefGlyph, CLEF_X, STAFF_LINE_Y[staff.clef === "bass" ? 1 : 3], 6)}</g>`,
     ...staff.signatures.map(renderKeySignature),
     "    </g>",
   ].join("\n");
@@ -585,28 +577,41 @@ function renderStaff(staff: StaffModel): string {
 function renderKeySignature(signature: KeySignatureModel): string {
   return [
     `      <g class="circle-of-fifths__key-signature" data-note="${escapeAttribute(signature.note)}" data-fifths="${signature.fifths}">`,
-    ...signature.accidentals.map(
-      ({ x, y }) =>
-        `        <text class="circle-of-fifths__key-accidental" x="${formatNumber(x)}" y="${formatNumber(y)}">${signature.symbol}</text>`,
+    ...signature.accidentals.map(({ x, y }) =>
+      `        ${renderKeySignatureGlyph(signature.symbol as "♯" | "♭", x, y, 6)}`,
     ),
     "      </g>",
   ].join("\n");
 }
 
-function renderLabel(label: LabelModel): string {
+function renderLabel(label: LabelModel, glyphs: "paths" | "text"): string {
   return [
     `    <g class="circle-of-fifths__label circle-of-fifths__${label.role}" data-role="${label.role}" data-notes="${escapeAttribute(label.notes.join(" "))}" transform="translate(${formatNumber(label.x)} ${formatNumber(label.y)})">`,
-    ...label.noteLines.map(renderNoteLine),
+    ...label.noteLines.map((note) => renderNoteLine(note, glyphs)),
     "    </g>",
   ].join("\n");
 }
 
-function renderNoteLine(note: NoteLine): string {
+function renderNoteLine(note: NoteLine, glyphs: "paths" | "text"): string {
+  const metrics = glyphs === "paths" ? musicGlyphMetrics(note.accidental, "engraved") : undefined;
   const basicHighlight = note.basic
     ? `        <rect class="circle-of-fifths__basic-highlight" x="${note.centerWholeNote ? -75 : -35}" y="${formatNumber(note.y - (note.centerWholeNote ? 52.5 : 17))}" width="${note.centerWholeNote ? 150 : 70}" height="${note.centerWholeNote ? 105 : 34}" rx="${note.centerWholeNote ? 8 : 3}" aria-hidden="true"/>`
     : undefined;
 
   if (note.centerWholeNote) {
+    if (metrics) {
+      const fontSize = note.letter === note.letter.toUpperCase() ? 88 : 84;
+      const glyphWidth = fontSize * metrics.width;
+      const letterWidth = fontSize * (LETTER_ADVANCES[note.letter] ?? 0.62);
+      const start = -(letterWidth + glyphWidth) / 2;
+      return [
+        `      <g class="circle-of-fifths__note" data-note="${escapeAttribute(note.source)}">`,
+        basicHighlight,
+        `        <text class="circle-of-fifths__spelling" x="${formatNumber(start)}" y="${formatNumber(note.y)}" text-anchor="start" data-music-glyph="${note.accidental}" data-music-glyph-enhanced="">${escapeText(note.letter)}<tspan fill-opacity="0">${note.accidental}</tspan></text>`,
+        `        ${renderMusicGlyphSvg(note.accidental, { glyphStyle: "engraved", x: start + letterWidth, y: note.y, fontSize, alignY: "center", decorative: true })}`,
+        "      </g>",
+      ].filter((line) => line !== undefined).join("\n");
+    }
     return [
       `      <g class="circle-of-fifths__note" data-note="${escapeAttribute(note.source)}">`,
       basicHighlight,
@@ -617,9 +622,11 @@ function renderNoteLine(note: NoteLine): string {
       .join("\n");
   }
 
-  const accidental = note.accidental
-    ? `\n        <text class="circle-of-fifths__accidental" x="${note.accidentalX}" y="${formatNumber(note.y)}">${escapeText(note.accidental)}</text>`
-    : "";
+  const accidental = metrics
+    ? `\n        <text class="circle-of-fifths__accidental" x="${note.accidentalX}" y="${formatNumber(note.y)}" data-music-glyph="${note.accidental}" data-music-glyph-enhanced="" fill-opacity="0">${note.accidental}</text>\n        ${renderMusicGlyphSvg(note.accidental, { glyphStyle: "engraved", x: note.accidentalX, y: note.y, fontSize: 30, alignY: "center", decorative: true })}`
+    : note.accidental
+      ? `\n        <text class="circle-of-fifths__accidental" x="${note.accidentalX}" y="${formatNumber(note.y)}">${escapeText(note.accidental)}</text>`
+      : "";
   return [
     `      <g class="circle-of-fifths__note" data-note="${escapeAttribute(note.source)}">`,
     basicHighlight,
@@ -629,6 +636,12 @@ function renderNoteLine(note: NoteLine): string {
     .filter((line) => line !== undefined)
     .join("\n");
 }
+
+// Approximate Noto Sans advances used only to center enlarged single spellings.
+const LETTER_ADVANCES: Readonly<Record<string, number>> = {
+  A: 0.72, B: 0.88, C: 0.70, D: 0.75, E: 0.63, F: 0.59, G: 0.77,
+  a: 0.61, b: 0.63, c: 0.55, d: 0.63, e: 0.61, f: 0.39, g: 0.63,
+};
 
 function escapeText(value: string): string {
   return value

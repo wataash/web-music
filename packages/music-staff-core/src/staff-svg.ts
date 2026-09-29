@@ -5,6 +5,7 @@
 // card-sized images the deck ships and the thumbnails the app shows beside a
 // note's name, so a diagram can never disagree with the card it describes.
 
+import { renderStaffMusicGlyph, staffMusicGlyphBounds } from "@web-music/music-notation";
 import {
   CLEF_LABELS,
   CLEF_RANGES,
@@ -27,7 +28,7 @@ import {
   keySignatureAccidentalForNote,
   keySignatureAccidentals,
   keySignatureAdvance,
-  keySignatureGlyphCss,
+  renderKeySignatureGlyph,
 } from "./key-signature";
 
 export type StaffPalette = Readonly<{
@@ -142,15 +143,6 @@ const CLEF_ANCHOR_SPACES = {
   tenor: 2,
 } as const satisfies Record<Clef, number>;
 
-// How far each glyph reaches from its baseline, in staff spaces, so a drawing
-// can be cropped to what it actually covers. Measured from the same font.
-const CLEF_GLYPH_REACH = {
-  treble: { top: 5.34, bottom: -1.59 },
-  bass: { top: 3.6, bottom: 0.4 },
-  alto: { top: 4.05, bottom: -0.04 },
-  tenor: { top: 4.05, bottom: -0.04 },
-} as const satisfies Record<Clef, Readonly<{ top: number; bottom: number }>>;
-
 export type StaffSvgInput = Readonly<{
   clef: Clef;
   // Omit to draw an empty staff, which is the question for note-to-staff
@@ -183,6 +175,14 @@ export function clefBaselineY(geometry: StaffGeometry, clef: Clef): number {
   );
 }
 
+function clefPitchY(geometry: StaffGeometry, clef: Clef): number {
+  return staffStepY(geometry, 2 * (CLEF_REFERENCES[clef].line - 1));
+}
+
+function renderClef(geometry: StaffGeometry, clef: Clef): string {
+  return `<g class="staff__clef" data-clef="${clef}" color="${geometry.palette.note}">${renderStaffMusicGlyph(CLEF_GLYPHS[clef], geometry.clefX, clefPitchY(geometry, clef), geometry.lineGap, "start")}</g>`;
+}
+
 // The box a staff is drawn in: the staff itself, the clef glyph, and the room
 // the given notes need above and below it. Given no notes it frames the whole
 // range a clef can carry, which is what the deck media uses; given the notes a
@@ -192,8 +192,8 @@ export function staffFrame(
   steps?: readonly number[],
   geometry: StaffGeometry = CARD_STAFF_GEOMETRY,
 ): Readonly<{ top: number; height: number }> {
-  const clefBaseline = clefBaselineY(geometry, clef);
-  const reach = CLEF_GLYPH_REACH[clef];
+  const clefAnchor = clefPitchY(geometry, clef);
+  const reach = staffMusicGlyphBounds(CLEF_GLYPHS[clef], geometry.lineGap);
   const covered = steps ?? [LOWEST_STAFF_STEP, HIGHEST_STAFF_STEP];
   const noteTops = covered.map(
     (step) => staffStepY(geometry, step) - geometry.noteHeadRadiusY,
@@ -203,12 +203,12 @@ export function staffFrame(
   );
   const top = Math.min(
     geometry.topLineY,
-    clefBaseline - reach.top * geometry.lineGap,
+    clefAnchor + reach.top,
     ...noteTops,
   );
   const bottom = Math.max(
     bottomLineY(geometry),
-    clefBaseline - reach.bottom * geometry.lineGap,
+    clefAnchor + reach.bottom,
     ...noteBottoms,
   );
   return {
@@ -269,7 +269,7 @@ export function renderStaffRowSvg({
   const signatureWidth = keyFifths === undefined || keyFifths === 0
     ? 0
     : geometry.lineGap * 1.5 +
-      Math.abs(keyFifths) * keySignatureAdvance(geometry.lineGap, "reading");
+      Math.abs(keyFifths) * keySignatureAdvance(geometry.lineGap, "reading", keyFifths < 0 ? "flat" : "sharp");
   const on = new Set(selected);
   const notes = pitches.map((pitch, index) => ({
     pitch,
@@ -308,7 +308,7 @@ export function renderStaffRowSvg({
       const tonic = key === undefined ? undefined : key.tonic[0];
       const solfege = tonic === undefined
         ? undefined
-        : ["Do", "Re", "Mi", "Fa", "Sol", "La", "Ti"][
+        : ["Do", "Re", "Mi", "Fa", "So", "La", "Ti"][
             (diatonicIndex(parsed) -
               diatonicIndex({ note: tonic as Pitch["note"], octave: parsed.octave }) +
               7) % 7
@@ -335,7 +335,7 @@ export function renderStaffRowSvg({
     ` aria-label="${CLEF_LABELS[clef]} clef${key ? `, ${escapeXml(key.tonic)} major` : ""} notes">`,
     `<style>${staffStyles(geometry)}${staffRowStyles(geometry, interactive)}</style>`,
     lines,
-    `<text class="staff__clef" data-clef="${clef}" x="${geometry.clefX}" y="${clefBaselineY(geometry, clef)}">${CLEF_GLYPHS[clef]}</text>`,
+    renderClef(geometry, clef),
     keyFifths === undefined ? "" : renderRowKeySignature(clef, keyFifths, geometry, clefColumnWidth),
     columns,
     "</svg>",
@@ -347,13 +347,10 @@ function renderRowKeySignature(clef: Clef, fifths: number, geometry: StaffGeomet
     clef, fifths, clefColumnWidth + geometry.lineGap * 0.7,
     geometry.topLineY, geometry.lineGap, "reading",
   );
-  const glyphCss = escapeXml(keySignatureGlyphCss(
-    geometry.lineGap, "reading", fifths > 0 ? "sharp" : "flat",
-  ));
   const glyphs = signature.accidentals.map(({ x, y }) =>
-    `<text x="${round(x)}" y="${round(y)}" style="${glyphCss}">${signature.symbol}</text>`,
+    renderKeySignatureGlyph(signature.symbol as "♯" | "♭", x, y, geometry.lineGap),
   ).join("");
-  return `<g class="staff__key-signature" aria-hidden="true" fill="${geometry.palette.note}">${glyphs}</g>`;
+  return `<g class="staff__key-signature" aria-hidden="true" color="${geometry.palette.note}">${glyphs}</g>`;
 }
 
 // The clef glyph's own column, which no note is placed in.
@@ -453,7 +450,7 @@ export function renderStaffSvg({
     `<style>${staffStyles(geometry)}</style>`,
     background,
     lines,
-    `<text class="staff__clef" data-clef="${clef}" x="${geometry.clefX}" y="${clefBaselineY(geometry, clef)}">${CLEF_GLYPHS[clef]}</text>`,
+    renderClef(geometry, clef),
     ledgerLines,
     noteHead,
     labelText,
@@ -480,7 +477,6 @@ function staffStyles(geometry: StaffGeometry): string {
   const { palette } = geometry;
   return [
     `.staff__line,.staff__ledger-line{stroke:${palette.line};stroke-width:${geometry.lineWidth};stroke-linecap:round}`,
-    `.staff__clef{fill:${palette.note};font-family:"Noto Music","Noto Sans Symbols2","DejaVu Sans",sans-serif;font-size:${geometry.lineGap * 4}px}`,
     `.staff__note-head{fill:${palette.note}}`,
     `.staff__answer{fill:${palette.label};font-family:"Noto Sans","DejaVu Sans",sans-serif;font-size:${geometry.answerFontSize}px;font-weight:700;text-anchor:middle}`,
   ].join("");

@@ -8,21 +8,21 @@ import { renderStaffRowSvg } from "./staff-svg";
 describe("keyed staff row", () => {
   // Expected degrees for C D E F G A B, independently listed for each key.
   const degreesByFifths: Record<number, readonly string[]> = {
-    7: ["Do", "Re", "Mi", "Fa", "Sol", "La", "Ti"],
-    6: ["Sol", "La", "Ti", "Do", "Re", "Mi", "Fa"],
-    5: ["Re", "Mi", "Fa", "Sol", "La", "Ti", "Do"],
-    4: ["La", "Ti", "Do", "Re", "Mi", "Fa", "Sol"],
-    3: ["Mi", "Fa", "Sol", "La", "Ti", "Do", "Re"],
-    2: ["Ti", "Do", "Re", "Mi", "Fa", "Sol", "La"],
-    1: ["Fa", "Sol", "La", "Ti", "Do", "Re", "Mi"],
-    0: ["Do", "Re", "Mi", "Fa", "Sol", "La", "Ti"],
-    [-1]: ["Sol", "La", "Ti", "Do", "Re", "Mi", "Fa"],
-    [-2]: ["Re", "Mi", "Fa", "Sol", "La", "Ti", "Do"],
-    [-3]: ["La", "Ti", "Do", "Re", "Mi", "Fa", "Sol"],
-    [-4]: ["Mi", "Fa", "Sol", "La", "Ti", "Do", "Re"],
-    [-5]: ["Ti", "Do", "Re", "Mi", "Fa", "Sol", "La"],
-    [-6]: ["Fa", "Sol", "La", "Ti", "Do", "Re", "Mi"],
-    [-7]: ["Do", "Re", "Mi", "Fa", "Sol", "La", "Ti"],
+    7: ["Do", "Re", "Mi", "Fa", "So", "La", "Ti"],
+    6: ["So", "La", "Ti", "Do", "Re", "Mi", "Fa"],
+    5: ["Re", "Mi", "Fa", "So", "La", "Ti", "Do"],
+    4: ["La", "Ti", "Do", "Re", "Mi", "Fa", "So"],
+    3: ["Mi", "Fa", "So", "La", "Ti", "Do", "Re"],
+    2: ["Ti", "Do", "Re", "Mi", "Fa", "So", "La"],
+    1: ["Fa", "So", "La", "Ti", "Do", "Re", "Mi"],
+    0: ["Do", "Re", "Mi", "Fa", "So", "La", "Ti"],
+    [-1]: ["So", "La", "Ti", "Do", "Re", "Mi", "Fa"],
+    [-2]: ["Re", "Mi", "Fa", "So", "La", "Ti", "Do"],
+    [-3]: ["La", "Ti", "Do", "Re", "Mi", "Fa", "So"],
+    [-4]: ["Mi", "Fa", "So", "La", "Ti", "Do", "Re"],
+    [-5]: ["Ti", "Do", "Re", "Mi", "Fa", "So", "La"],
+    [-6]: ["Fa", "So", "La", "Ti", "Do", "Re", "Mi"],
+    [-7]: ["Do", "Re", "Mi", "Fa", "So", "La", "Ti"],
   };
 
   it("renders all 15 major signatures, named notes, and movable do", () => {
@@ -38,11 +38,9 @@ describe("keyed staff row", () => {
       });
       expect(svg).toContain(`Treble clef, ${tonic} major notes`);
       expect(svg.match(/class="staff__key-signature"/g)).toHaveLength(1);
-      const signature = svg.split('<g class="staff__key-signature"')[1]?.split("</g>")[0] ?? "";
-      expect(signature.match(/<text/g) ?? []).toHaveLength(Math.abs(fifths));
+      expect(svg.match(/class="glyph (?:sharp|flat)"/g) ?? []).toHaveLength(Math.abs(fifths));
       if (fifths !== 0) {
-        expect(signature).toContain('font-family:&quot;Noto Music&quot;');
-        expect(signature).not.toContain('font-family:"Noto Music"');
+        expect(svg).toContain(fifths > 0 ? 'd="M170 -314' : 'd="M26 433');
       }
       const actualDegrees = [...svg.matchAll(/class="staff__solfege"[^>]*>([^<]+)<\/text>/g)]
         .map(([, degree]) => degree);
@@ -63,7 +61,7 @@ describe("keyed staff row", () => {
     });
     expect(svg).toContain("Treble clef, C major notes");
     expect(svg).toContain(">Do</text>");
-    expect(svg).toContain(">Sol</text>");
+    expect(svg).toContain(">So</text>");
     expect(svg).toContain(">Ti</text>");
     expect(svg).not.toContain("staff__key-signature");
   });

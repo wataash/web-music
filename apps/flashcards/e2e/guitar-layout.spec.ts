@@ -7,7 +7,39 @@ import {
   WEB_BACK_TEMPLATE,
 } from "../../../decks/guitar-fretboard/src/template";
 import { buildCardDocument, renderTemplate } from "../src/lib/template";
+import { boardMedia, createDeckNotes } from "../../../decks/guitar-intervals/src/web-deck";
+import {
+  BACK_TEMPLATE as INTERVAL_BACK_TEMPLATE,
+  CARD_CSS as INTERVAL_CARD_CSS,
+} from "../../../decks/guitar-intervals/src/template";
 import { expect, test } from "./fixtures";
+
+test("keeps an altered interval label on one line", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  const note = createDeckNotes().find(({ id }) => id === "r6-s5-f3")!;
+  const media = boardMedia();
+  const answerBoard = note.fields[7].replace(media.filename, `data:image/svg+xml,${encodeURIComponent(media.content as string)}`);
+  await page.setContent(buildCardDocument({
+    html: renderTemplate(INTERVAL_BACK_TEMPLATE, { AnswerBoard: answerBoard }),
+    css: INTERVAL_CARD_CSS,
+    nightMode: true,
+  }));
+  const answer = page.locator(".fret-name.answer");
+  await expect(answer).toHaveText("♭13 m6 A5");
+  const box = await answer.boundingBox();
+  expect(box).not.toBeNull();
+  const glyph = await answer.locator(".glyph.flat").boundingBox();
+  expect(glyph).not.toBeNull();
+  expect(await answer.locator(".glyph.flat").evaluate(el => getComputedStyle(el).display)).toBe("inline-block");
+  expect(glyph!.x).toBeGreaterThan(box!.x);
+  expect(glyph!.x + glyph!.width).toBeLessThan(box!.x + box!.width);
+  expect(glyph!.y).toBeGreaterThanOrEqual(box!.y);
+  expect(glyph!.y + glyph!.height).toBeLessThanOrEqual(box!.y + box!.height);
+  const fontSize = await answer.evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+  expect(box!.height).toBeLessThan(fontSize * 1.6);
+  expect(await answer.evaluate(el => getComputedStyle(el).whiteSpace)).toBe("nowrap");
+  await page.screenshot({ path: testInfo.outputPath("guitar-flat-label.png") });
+});
 
 for (const rotated of [false, true]) {
   test(`keeps an open-string answer aligned with its front (${rotated ? "rotated" : "upright"})`, async ({ page, shot }) => {

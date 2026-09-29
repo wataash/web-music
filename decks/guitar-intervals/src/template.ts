@@ -94,8 +94,8 @@ export const CARD_CSS = `
   );
 }
 
-.fret-window-board img,
-.fret-window-board svg {
+.fret-window-board > img,
+.fret-window-board > svg {
   display: block;
   width: 100%;
   height: auto;

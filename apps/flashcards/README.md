@@ -23,10 +23,11 @@ bundled web decks and schedules them with FSRS.
   so a tree can be turned off and one deck in it studied. Nothing is deleted, and a deck that is still in the list
   still counts and asks everything its own settings allow. `RESET TO DEFAULT`
   goes back to the decks the packages ship on
-- A package can ship a deck turned off — `(Experimental) Circle of Fifths`,
-  `Music Staff (with Octave Numbers)`, and the alto and tenor clefs are — and
-  those are what the list starts without. They are ordinary decks otherwise: `CHOOSE DECKS` turns them on,
-  and turning the head of the branch on brings the branch with it
+- Experimental decks (Circle of Fifths, Movable Do, Intervals and Interval
+  Identification) start hidden, as do `Music Staff (with Octave Numbers)` and
+  the alto and tenor clefs. `CHOOSE DECKS` can enable them. The Experimental
+  labels for Movable Do and the two interval decks are display-only; their
+  stored names, progress and settings stay unchanged.
 - For the circle of fifths `Note → Cell` and `Intervals` decks, the notes to
   study can be chosen as Basic / Advanced / Esoteric, or picked individually
 - Intervals is one flat deck of every root and degree — m2 through M7, `d7` and
@@ -41,6 +42,12 @@ bundled web decks and schedules them with FSRS.
   accidental. The same selection applies to Interval Identification
 - Interval Identification asks for the simple interval, answering `M3` to
   `C → E`
+- Guitar Fretboard offers a `Keyboard` switch in the study menu, off by
+  default and shared by both directions. Position → Note marks the key only
+  after revealing the answer; Note → Positions marks the given note on both sides.
+- Movable Do starts with its keyboard on; Circle of Fifths starts with it off.
+  Both offer the same `Keyboard` switch. Tapping a piano key reveals the answer
+  in any deck, even with sound disabled.
 - Guitar Intervals draws a guitar neck around a root marked `1` and asks what
   degree another position plays above it, answering with every name for that
   distance — `m3 ♯9`, say. There are no fret numbers: the board is drawn around

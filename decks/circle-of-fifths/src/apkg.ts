@@ -37,6 +37,7 @@ import {
   OUTER_NOTE_TO_CELL_DECK_NAME,
   ROOT_DECK_NAME,
   WEB_BACK_TEMPLATE,
+  WEB_CARD_CSS,
   WEB_FRONT_TEMPLATE,
 } from "./template";
 
@@ -303,7 +304,7 @@ export function createWebDeckData(
       {
         mid: MODEL_ID,
         name: MODEL_NAME,
-        css: CARD_CSS,
+        css: WEB_CARD_CSS,
         fieldNames: FIELD_NAMES,
         templates: [
           {

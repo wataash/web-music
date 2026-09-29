@@ -103,6 +103,10 @@ describe("interval deck generation", () => {
       ROOT_DECK_NAME,
       IDENTIFICATION_DECK_NAME,
     ]);
+    // Both decks ship turned off: they are experiments.
+    expect(
+      deck.decks.every(({ hiddenByDefault }) => hiddenByDefault === true),
+    ).toBe(true);
     const calculationDid = deck.decks[0].did;
     expect(
       deck.cards.every(({ did }) => did === calculationDid || did === deck.decks[1].did),

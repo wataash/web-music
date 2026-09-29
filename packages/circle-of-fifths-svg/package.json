@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@circle-of-fifths/core": "workspace:*",
+    "@web-music/music-notation": "workspace:*",
     "@web-music/music-staff-core": "workspace:*"
   },
   "devDependencies": {

@@ -251,6 +251,36 @@ describe("stepping a size", () => {
 });
 
 describe("what each deck draws its own way", () => {
+  it("defaults Movable Do keyboards on while preserving explicit off settings", () => {
+    const name = "Music Staff (Movable Do)::Staff → Solfege";
+    expect(deckCardSettings({}, name).showKeyboard).toBe(true);
+    expect(deckCardSettings(loadCardSettingsByDeck(memoryStorage({
+      "music-flashcards:deck-card-settings": JSON.stringify({
+        "Music Staff (Movable Do)": { sound: true },
+      }),
+    })), name).showKeyboard).toBe(true);
+    expect(deckCardSettings({}, "(Experimental) Circle of Fifths").showKeyboard).toBe(false);
+    const storage = memoryStorage();
+    saveCardSettingsByDeck(withDeckCardSettings({}, name, {
+      ...defaultDeckCardSettings(name), showKeyboard: false,
+    }), storage);
+    expect(deckCardSettings(loadCardSettingsByDeck(storage), name).showKeyboard).toBe(false);
+  });
+
+  it("keeps the optional fretboard keyboard off until enabled and shares it across directions", () => {
+    const storage = memoryStorage();
+    const name = "Guitar Fretboard::Position → Note";
+    expect(deckCardSettings({}, name).showKeyboard).toBe(false);
+    const enabled = withDeckCardSettings({}, name, {
+      ...defaultDeckCardSettings(name),
+      showKeyboard: true,
+    });
+    saveCardSettingsByDeck(enabled, storage);
+    expect(deckCardSettings(loadCardSettingsByDeck(storage), "Guitar Fretboard::Note → Positions").showKeyboard).toBe(true);
+    expect(deckCardSettings(loadCardSettingsByDeck(storage), "Music Staff").showKeyboard).toBe(false);
+    expect(withDeckCardSettings(enabled, name, defaultDeckCardSettings(name))).toEqual({});
+  });
+
   it("keeps the staff, the keys, the places, the turn and the marks per deck", () => {
     const storage = memoryStorage();
     const turned = withDeckCardSettings({}, "Guitar Intervals::Fifths", {

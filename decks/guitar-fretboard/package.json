@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@web-music/music-notation": "workspace:*",
     "@web-music/anki-apkg": "workspace:*",
+    "@web-music/music-staff-core": "workspace:*",
     "jszip": "^3.10.1",
     "@web-music/practice-ui": "workspace:*"
   },

@@ -11,9 +11,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@web-music/practice-ui": "workspace:*",
     "@circle-of-fifths/core": "workspace:*",
     "@circle-of-fifths/svg": "workspace:*",
     "@web-music/anki-apkg": "workspace:*",
+    "@web-music/music-staff-core": "workspace:*",
+    "@web-music/music-notation": "workspace:*",
     "jszip": "^3.10.1"
   },
   "devDependencies": {

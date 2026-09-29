@@ -7,11 +7,10 @@ SPDX-License-Identifier: Apache-2.0
   import {
     CLEF_GLYPHS,
     MAJOR_KEYS_BY_SIGNATURE,
-    ROW_STAFF_GEOMETRY,
-    clefBaselineY,
     keySignatureAccidentals,
-    keySignatureGlyphCss,
+    renderKeySignatureGlyph,
   } from "@web-music/music-staff-core";
+  import { renderStaffMusicGlyph } from "@web-music/music-notation";
   import StaffScaleReference from "./StaffScaleReference.svelte";
 
   const CENTER = 200;
@@ -21,10 +20,7 @@ SPDX-License-Identifier: Apache-2.0
   const TOP_LINE = 18;
   const LINE_GAP = 8;
   const STAFF_LINES = [0, 1, 2, 3, 4].map((index) => TOP_LINE + index * LINE_GAP);
-  const TREBLE_BASELINE = clefBaselineY(
-    { ...ROW_STAFF_GEOMETRY, topLineY: TOP_LINE, lineGap: LINE_GAP },
-    "treble",
-  );
+  const TREBLE_GLYPH = renderStaffMusicGlyph(CLEF_GLYPHS.treble, 24, TOP_LINE + 3 * LINE_GAP, LINE_GAP, "start");
 
   function sectorPath(hour: number, inner: number, outer: number): string {
     const angle = hour * 30;
@@ -51,7 +47,6 @@ SPDX-License-Identifier: Apache-2.0
       y: point.y,
       scale: compact ? 0.32 : 0.4,
       signature: keySignatureAccidentals("treble", key.fifths, 65, TOP_LINE, LINE_GAP, "reading"),
-      glyphCss: keySignatureGlyphCss(LINE_GAP, "reading", key.fifths > 0 ? "sharp" : "flat"),
     };
   });
 
@@ -104,9 +99,9 @@ SPDX-License-Identifier: Apache-2.0
           {#each STAFF_LINES as y}
             <line x1="7" x2="123" y1={y} y2={y} stroke="currentColor" stroke-width="1" />
           {/each}
-          <text x="24" y={TREBLE_BASELINE} class="clef">{CLEF_GLYPHS.treble}</text>
+          {@html TREBLE_GLYPH}
           {#each key.signature.accidentals as accidental}
-            <text x={accidental.x} y={accidental.y} style={key.glyphCss}>{key.signature.symbol}</text>
+            {@html renderKeySignatureGlyph(key.fifths > 0 ? "♯" : "♭", accidental.x, accidental.y, LINE_GAP)}
           {/each}
         </g>
       </g>
@@ -136,7 +131,6 @@ SPDX-License-Identifier: Apache-2.0
   .key-cell:focus-visible .sector { stroke: var(--count-new); stroke-width: 4; }
   .selected-outlines { fill: none; stroke: var(--count-new); stroke-width: 2.5; pointer-events: none; }
   .tonic { fill: currentColor; font-size: 15px; font-weight: 700; }
-  .clef { font-family: "Noto Music", "Noto Sans Symbols2", "DejaVu Sans", sans-serif; font-size: 32px; }
   .hub { fill: var(--surface); stroke: var(--divider); stroke-width: 1.5; }
   .count { fill: currentColor; font-size: 20px; font-weight: 700; }
   .count-label { fill: var(--on-surface-muted); font-size: 12px; }

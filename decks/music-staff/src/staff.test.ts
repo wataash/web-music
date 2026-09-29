@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, test } from "vitest";
+import { renderStaffMusicGlyph } from "../../../packages/music-notation/src/index";
 
 import { CLEFS } from "./cards";
 import {
@@ -65,10 +66,11 @@ describe("staff SVG", () => {
         pitch: clef === "treble" ? "G4" : clef === "bass" ? "F3" : "C4",
       });
       expect(svg).toContain(
-        `<text class="staff__clef" data-clef="${clef}" x="26" y="${clefBaselineY(clef)}">${CLEF_GLYPHS[clef]}</text>`,
+        `<g class="staff__clef" data-clef="${clef}"`,
       );
-      expect(svg).toContain('font-family:"Noto Music"');
-      expect(svg).toContain(`font-size:${STAFF.lineGap * 4}px`);
+      const step = { treble: 2, bass: 6, alto: 4, tenor: 6 }[clef];
+      expect(svg).toContain(renderStaffMusicGlyph(CLEF_GLYPHS[clef], 26, staffStepY(step), STAFF.lineGap, "start"));
+      expect(svg).not.toContain('font-family:"Noto Music"');
     }
   });
 

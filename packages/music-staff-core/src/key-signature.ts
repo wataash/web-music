@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Clef, NoteLetter } from "./model";
+import { renderStaffMusicGlyph } from "@web-music/music-notation";
 
 // Keep the original twelve first: the movable-do deck uses these positions
 // for stable card IDs. The three enharmonic keys were added afterward.
@@ -55,17 +56,19 @@ const SIGNATURE_STEPS = {
 const REFERENCE_LINE_GAP = 6;
 const SIGNATURE_METRICS = {
   compact: {
-    advance: 7,
-    sharp: { fontSize: 18, baselineOffset: -7 },
-    flat: { fontSize: 18, baselineOffset: -7 },
+    advance: { sharp: 7, flat: 7 },
+    sharp: { baselineOffset: -7 },
+    flat: { baselineOffset: -7 },
   },
   reading: {
-    advance: 5,
-    // Noto Music: both signs are about 2.25 staff spaces tall. With an
-    // alphabetic baseline, align the sharp's centre and the flat's bowl
-    // to the pitch, independently of the font's overall vertical metrics.
-    sharp: { fontSize: 16.5, baselineOffset: 2.9 },
-    flat: { fontSize: 24, baselineOffset: 2 },
+    advance: {
+      sharp: 48 / 42.75 * REFERENCE_LINE_GAP,
+      flat: 42 / 42.75 * REFERENCE_LINE_GAP,
+    },
+    // Preserve the positions once used by text glyphs; renderKeySignatureGlyph
+    // converts their baselines back to pitches for the Maestro outlines.
+    sharp: { baselineOffset: 2.9 },
+    flat: { baselineOffset: 2 },
   },
 } as const;
 
@@ -107,7 +110,7 @@ export function keySignatureAccidentals(
   return {
     symbol,
     accidentals: Array.from({ length: Math.abs(fifths) }, (_, index) => ({
-      x: firstX + index * metrics.advance * scale,
+      x: firstX + index * metrics.advance[sign] * scale,
       y:
         topLineY + (8 - steps[index]) * lineGap / 2 +
         metrics[sign].baselineOffset * scale,
@@ -121,28 +124,30 @@ function validateFifths(fifths: number): void {
   }
 }
 
-export function keySignatureGlyphCss(
-  lineGap: number,
-  layout: KeySignatureLayout = "compact",
-  sign: KeySignatureSign = "sharp",
-): string {
-  if (!(lineGap > 0)) {
-    throw new RangeError(`lineGap must be positive: ${lineGap}`);
-  }
-  return [
-    `font-family:${KEY_SIGNATURE_FONT_FAMILY}`,
-    `font-size:${SIGNATURE_METRICS[layout][sign].fontSize * lineGap / REFERENCE_LINE_GAP}px`,
-    "text-anchor:middle",
-    `dominant-baseline:${layout === "reading" ? "alphabetic" : "central"}`,
-  ].join(";");
-}
-
 export function keySignatureAdvance(
   lineGap: number,
   layout: KeySignatureLayout = "compact",
+  sign: KeySignatureSign = "sharp",
 ): number {
   if (!(lineGap > 0)) {
     throw new RangeError(`lineGap must be positive: ${lineGap}`);
   }
-  return SIGNATURE_METRICS[layout].advance * lineGap / REFERENCE_LINE_GAP;
+  return SIGNATURE_METRICS[layout].advance[sign] * lineGap / REFERENCE_LINE_GAP;
+}
+
+/** Render a reading-size accidental at the pitch encoded by the legacy text baseline. */
+export function renderKeySignatureGlyph(
+  symbol: "♯" | "♭",
+  x: number,
+  y: number,
+  lineGap: number,
+  className = "",
+): string {
+  if (!(lineGap > 0)) {
+    throw new RangeError(`lineGap must be positive: ${lineGap}`);
+  }
+  const sign = symbol === "♯" ? "sharp" : "flat";
+  const pitchY = y - SIGNATURE_METRICS.reading[sign].baselineOffset * lineGap / REFERENCE_LINE_GAP;
+  const markup = renderStaffMusicGlyph(symbol, x, pitchY, lineGap);
+  return `<g${className ? ` class="${className}"` : ""} data-music-glyph="${symbol}">${markup}</g>`;
 }
