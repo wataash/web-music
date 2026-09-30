@@ -29,6 +29,7 @@
   },
   "exports": {
     "./web-deck": "./src/web-deck.ts",
+    "./fretboard": "./src/fretboard.ts",
     "./cards": "./src/cards.ts"
   }
 }

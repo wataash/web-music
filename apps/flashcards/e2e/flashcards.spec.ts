@@ -1574,8 +1574,10 @@ test("chooses a clef's notes on the staff itself", async ({ page, shot }) => {
   await study(page, "Treble Clef");
   await openNoteSettings(page);
 
-  // Every note the clef can carry, drawn on one staff and named under it.
-  const notes = page.locator("[data-pitch]");
+  // Every note the clef can carry, drawn on one staff and named under it. The
+  // folded scale reference below draws a staff of its own.
+  const chooser = ":not(details *)";
+  const notes = page.locator(`[data-pitch]${chooser}`);
   await expect(notes).toHaveCount(33);
   const count = page.locator(".selected-count");
   await expect(count).toHaveText("19 / 33 selected");
@@ -1583,7 +1585,7 @@ test("chooses a clef's notes on the staff itself", async ({ page, shot }) => {
   await shot("staff-note-settings");
 
   // A tap anywhere in a note's column turns it on or off.
-  const d3 = page.locator('[data-pitch="D3"]');
+  const d3 = page.locator(`[data-pitch="D3"]${chooser}`);
   await expect(d3).toHaveAttribute("aria-checked", "false");
   await d3.click();
   await expect(d3).toHaveAttribute("aria-checked", "true");
@@ -1591,7 +1593,7 @@ test("chooses a clef's notes on the staff itself", async ({ page, shot }) => {
   await expect(page.getByRole("radio", { name: "Custom" })).toBeChecked();
   await shot("staff-note-chosen");
 
-  const g3 = page.locator('[data-pitch="G3"]');
+  const g3 = page.locator(`[data-pitch="G3"]${chooser}`);
   await g3.click();
   await expect(g3).toHaveAttribute("aria-checked", "false");
   await expect(count).toHaveText("19 / 33 selected");
@@ -1599,11 +1601,11 @@ test("chooses a clef's notes on the staff itself", async ({ page, shot }) => {
   // And what was tapped is what is studied.
   await page.getByRole("button", { name: "APPLY" }).click();
   await openNoteSettings(page);
-  await expect(page.locator('[data-pitch="D3"]')).toHaveAttribute(
+  await expect(page.locator(`[data-pitch="D3"]${chooser}`)).toHaveAttribute(
     "aria-checked",
     "true",
   );
-  await expect(page.locator('[data-pitch="G3"]')).toHaveAttribute(
+  await expect(page.locator(`[data-pitch="G3"]${chooser}`)).toHaveAttribute(
     "aria-checked",
     "false",
   );

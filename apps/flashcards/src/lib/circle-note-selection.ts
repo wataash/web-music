@@ -15,6 +15,8 @@ import type { NoteRow } from "./db";
 
 export const CIRCLE_NOTE_TO_CELL_DECK =
   "(Experimental) Circle of Fifths::Note → Cell";
+export const CIRCLE_CELL_TO_NOTES_DECK =
+  "(Experimental) Circle of Fifths::Cell → All Notes";
 export const CIRCLE_INTERVALS_DECK =
   "(Experimental) Circle of Fifths::(Experimental) Intervals";
 
@@ -204,6 +206,15 @@ export function circleNoteDeckSetting(
     };
   }
   return null;
+}
+
+// Cell → All Notes asks every spelling of a cell, so there is nothing to
+// narrow; its gear offers the whole circle to read instead.
+export function circleCellDeckSetting(
+  deckName: string,
+): Readonly<{ deckLabel: string }> | null {
+  if (!deckName.startsWith(`${CIRCLE_CELL_TO_NOTES_DECK}::`)) return null;
+  return { deckLabel: deckName.slice(CIRCLE_CELL_TO_NOTES_DECK.length + 2) };
 }
 
 function sortedNotes(ring: CircleRing): readonly string[] {

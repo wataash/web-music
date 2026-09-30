@@ -6,13 +6,17 @@ SPDX-License-Identifier: Apache-2.0
   import { untrack } from "svelte";
 
   import CircleNoteSettings from "./CircleNoteSettings.svelte";
+  import CircleReference from "./CircleReference.svelte";
   import FretboardNoteSettings from "./FretboardNoteSettings.svelte";
+  import FretboardReference from "./FretboardReference.svelte";
   import GuitarIntervalSettings from "./GuitarIntervalSettings.svelte";
   import InstrumentSettings from "./InstrumentSettings.svelte";
+  import IntervalAnswerReference from "./IntervalAnswerReference.svelte";
   import IntervalPairSettings from "./IntervalPairSettings.svelte";
   import MovableDoKeySettings from "./MovableDoKeySettings.svelte";
   import SettingsDialog from "./SettingsDialog.svelte";
   import StaffNoteSettings from "./StaffNoteSettings.svelte";
+  import StaffScaleReference from "./StaffScaleReference.svelte";
   import type {
     CircleNoteSelection,
     CircleNoteSettingsScope,
@@ -92,8 +96,19 @@ SPDX-License-Identifier: Apache-2.0
     target.kind === "movable-do-keys" || (target.kind === "staff" && target.setting.movableDo === true),
   ));
   const sections = $derived(targets.filter((target) =>
-    target.kind !== "guitar-instrument" && target.kind !== "movable-do-keys",
+    target.kind !== "guitar-instrument" && target.kind !== "movable-do-keys" && target.kind !== "circle-cells",
   ));
+  // One reference per kind of deck, after the sections: the answers the decks
+  // being set can ask for, with those the draft leaves out drawn faint.
+  const targetKinds = $derived(new Set(targets.map(({ kind }) => kind)));
+  const fretboardReference = $derived(targetKinds.has("fretboard-note") || targetKinds.has("guitar-instrument"));
+  const circleReference = $derived(targets.some((target) =>
+    target.kind === "circle-cells" || (target.kind === "circle" && target.setting.scope === "note-to-cell"),
+  ));
+  // Movable Do's own reference, with its solfege, is in its key settings.
+  const letterStaffClef = $derived(targets.flatMap((target) =>
+    target.kind === "staff" && target.setting.movableDo !== true ? [target.setting.clef] : [],
+  )[0]);
 
   const SCOPE_FIELDS = {
     "note-to-cell": "noteToCell",
@@ -122,11 +137,10 @@ SPDX-License-Identifier: Apache-2.0
   // each kind once, however many decks under the one being studied asked for
   // it.
   function apply(): void {
-    const kinds = new Set(targets.map(({ kind }) => kind));
-    if (kinds.has("staff")) onstaffnoteselectionchange(staff);
+    if (targetKinds.has("staff")) onstaffnoteselectionchange(staff);
     if (movableDoDecks) onmovabledokeyselectionchange(movableDoKeys);
-    if (kinds.has("interval")) onintervalpairselectionchange(intervalPairs);
-    if (kinds.has("fretboard-note")) {
+    if (targetKinds.has("interval")) onintervalpairselectionchange(intervalPairs);
+    if (targetKinds.has("fretboard-note")) {
       onfretboardnoteselectionchange(fretboardNotes);
     }
     // Before the shapes turned off by hand, which are kept per instrument:
@@ -134,7 +148,7 @@ SPDX-License-Identifier: Apache-2.0
     if (guitarDecks && !sameTuning(guitarTuning, noteSelections.guitarTuning)) {
       onguitartuningchange(guitarTuning);
     }
-    if (kinds.has("guitar-interval")) {
+    if (targetKinds.has("guitar-interval")) {
       onfretwindowchange(fretWindow);
       onguitardifficultychange(guitarDifficulty);
       onguitaroverrideschange(guitarOverrides);
@@ -230,6 +244,21 @@ SPDX-License-Identifier: Apache-2.0
       {/if}
     </div>
   {/each}
+  {#if targetKinds.has("interval")}
+    <IntervalAnswerReference selection={new Set(intervalPairs)} />
+  {/if}
+  {#if fretboardReference}
+    <FretboardReference
+      tuning={guitarTuning}
+      selection={targetKinds.has("fretboard-note") ? fretboardNotes : undefined}
+    />
+  {/if}
+  {#if circleReference}
+    <CircleReference />
+  {/if}
+  {#if letterStaffClef !== undefined}
+    <StaffScaleReference solfege={false} initialClef={letterStaffClef} />
+  {/if}
 </SettingsDialog>
 
 <style>

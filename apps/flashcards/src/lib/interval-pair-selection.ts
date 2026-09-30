@@ -39,6 +39,8 @@ export type IntervalPairCell = Readonly<{
   count: number;
   // False where the answer would need a triple accidental: no card exists.
   available: boolean;
+  // The note the card answers with, as the card writes it; empty for a gap.
+  answer: string;
 }>;
 
 export type IntervalDeckSetting = Readonly<{ deckLabel: string }>;
@@ -75,6 +77,16 @@ const ROOTS: readonly string[] = ACCIDENTALS.flatMap((accidental) =>
 // The lowest and highest spellings the deck writes: F𝄫 through B𝄪.
 const LOWEST_FIFTHS = fifthsForMajorNote(ROOTS[0]);
 const HIGHEST_FIFTHS = fifthsForMajorNote(ROOTS[ROOTS.length - 1]);
+
+const LETTERS_BY_FIFTHS = "FCGDAEB";
+
+// The spelling `fifths` steps from C along the circle of fifths: F is -1, and
+// every seven steps either way adds a sharp or a flat.
+function noteAtFifths(fifths: number): string {
+  const letter = LETTERS_BY_FIFTHS[(((fifths + 1) % 7) + 7) % 7];
+  const accidentals = Math.floor((fifths + 1) / 7);
+  return letter + (accidentals < 0 ? "b" : "#").repeat(Math.abs(accidentals));
+}
 
 function hasCard(root: string, degree: IntervalDegreeRow): boolean {
   const fifths = fifthsForMajorNote(root) + degree.fifths;
@@ -117,6 +129,9 @@ export const INTERVAL_PAIR_CELLS: readonly (readonly IntervalPairCell[])[] =
       degree: degree.id,
       count: irealPairCount(note, degree.id),
       available: hasCard(note, degree),
+      answer: hasCard(note, degree)
+        ? formatNoteName(noteAtFifths(fifthsForMajorNote(note) + degree.fifths))
+        : "",
     })),
   );
 

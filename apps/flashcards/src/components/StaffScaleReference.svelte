@@ -10,17 +10,23 @@ SPDX-License-Identifier: Apache-2.0
     renderStaffRowSvg,
     type Clef,
   } from "@web-music/music-staff-core";
+  import ReferenceSection from "./ReferenceSection.svelte";
   import { ALL_STAFF_NOTES } from "../lib/staff-note-selection";
 
+  // Movable Do names each note by its degree in the key; the other staff
+  // decks by its letter.
+  let { solfege = true, initialClef = "treble" }: { solfege?: boolean; initialClef?: Clef } = $props();
+
   let keyFifths = $state(0);
-  let clef = $state<Clef>("treble");
+  // svelte-ignore state_referenced_locally
+  let clef = $state<Clef>(initialClef);
 
   const staffRow = $derived(
     renderStaffRowSvg({
       clef,
       pitches: ALL_STAFF_NOTES[clef],
       keyFifths,
-      showSolfege: true,
+      showSolfege: solfege,
       interactive: false,
       columnWidth: 44,
       nameHeight: 40,
@@ -28,8 +34,7 @@ SPDX-License-Identifier: Apache-2.0
   );
 </script>
 
-<details class="scale-reference">
-  <summary>Scale reference</summary>
+<ReferenceSection title="Scale reference">
   <div class="controls">
     <select aria-label="Reference key" bind:value={keyFifths}>
       {#each MAJOR_KEYS_BY_SIGNATURE as key (key.fifths)}
@@ -45,21 +50,9 @@ SPDX-License-Identifier: Apache-2.0
   <div class="staff-scroll">
     {@html staffRow}
   </div>
-</details>
+</ReferenceSection>
 
 <style>
-  .scale-reference {
-    margin-top: 16px;
-    border: 1px solid var(--divider);
-    border-radius: 8px;
-  }
-
-  summary {
-    padding: 14px;
-    cursor: pointer;
-    font-weight: 500;
-  }
-
   .controls {
     display: flex;
     flex-wrap: wrap;

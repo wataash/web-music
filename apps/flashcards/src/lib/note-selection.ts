@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  circleCellDeckSetting,
   circleNoteDeckSetting,
   includesCircleNoteCard,
   type CircleNoteDeckSetting,
@@ -70,6 +71,8 @@ export function isGuitarDeckTarget(target: DeckSettingsTarget): boolean {
 // Which settings panel a deck's gear opens, or null when it has no gear.
 export type DeckSettingsTarget =
   | Readonly<{ kind: "circle"; setting: CircleNoteDeckSetting }>
+  // A deck with nothing to narrow, whose gear offers only a reference.
+  | Readonly<{ kind: "circle-cells"; setting: Readonly<{ deckLabel: string }> }>
   | Readonly<{ kind: "fretboard-note"; setting: Readonly<{ deckLabel: string }> }>
   | Readonly<{ kind: "guitar-interval"; setting: Readonly<{ deckLabel: string }> }>
   // A guitar deck with nothing of its own to narrow: its gear offers the
@@ -84,6 +87,8 @@ export function deckSettingsTarget(
 ): DeckSettingsTarget | null {
   const circle = circleNoteDeckSetting(deckName);
   if (circle !== null) return { kind: "circle", setting: circle };
+  const circleCells = circleCellDeckSetting(deckName);
+  if (circleCells !== null) return { kind: "circle-cells", setting: circleCells };
   const interval = intervalDeckSetting(deckName);
   if (interval !== null) return { kind: "interval", setting: interval };
   const fretboard = fretboardNoteDeckSetting(deckName);
