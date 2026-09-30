@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import type { Snippet } from "svelte";
   // What a deck row offers on a long press, and what the reviewer's ⋮ opens.
   // A sheet rather than a row of buttons: it costs no width in the deck list,
   // where the counts already take most of it.
@@ -19,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     arrange,
     onreset,
     onclose,
+    children,
   }: {
     deckLabel: string;
     // The last operation, named, and the one undoing it would put back —
@@ -56,6 +58,7 @@ SPDX-License-Identifier: Apache-2.0
     arrange?: Readonly<{ onopen: () => void }>;
     onreset?: () => void;
     onclose: () => void;
+    children?: Snippet;
   } = $props();
 
   function handleKey(event: KeyboardEvent): void {
@@ -76,6 +79,7 @@ SPDX-License-Identifier: Apache-2.0
 >
   <div class="sheet" role="menu" tabindex="-1" aria-label={`${deckLabel} actions`}>
     <p class="deck-label">{deckLabel}</p>
+    {#if children}{@render children()}{/if}
     {#if undo}
       <button class="action" role="menuitem" onclick={undo.onchoose}>
         <span class="icon" aria-hidden="true">↶</span>{undo.label}

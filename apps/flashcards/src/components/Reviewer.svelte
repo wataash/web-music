@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 
   import CardFrame from "./CardFrame.svelte";
   import DeckActionsSheet from "@web-music/practice-ui/DeckActionsSheet.svelte";
+  import NoteFontSelect from "./NoteFontSelect.svelte";
+  import { noteFontPreference } from "../lib/note-font.svelte";
+  import { noteFontCss } from "../lib/note-font-css";
   import ResetProgressDialog from "./ResetProgressDialog.svelte";
   import ExtraStudyDialog, {
     type ExtraStudySelection,
@@ -614,7 +617,7 @@ SPDX-License-Identifier: Apache-2.0
           });
     return buildCardDocument({
       html: resolveMediaReferences(html, mediaUrls),
-      css: item.model.css,
+      css: item.model.css + noteFontCss(noteFontPreference.value),
       nightMode,
       keyboardKeys: deckSettings.keyboardKeys,
       pianoKeys: cardScales.pianoKeys,
@@ -1201,7 +1204,9 @@ SPDX-License-Identifier: Apache-2.0
     switches={cardSwitches}
     onreset={() => void openResetDialog()}
     onclose={closeDeckActions}
-  />
+  >
+    <NoteFontSelect menu />
+  </DeckActionsSheet>
 {/if}
 
 {#if resetOpen}

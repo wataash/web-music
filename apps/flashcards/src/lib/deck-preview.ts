@@ -7,6 +7,8 @@ import { compareDeckNames } from "./deck-visibility";
 import { DEFAULT_FRET_WINDOW, fretWindowVariables } from "./guitar-interval-selection";
 import { DEFAULT_STAFF_NOTE_SELECTION, staffCardVariables } from "./staff-note-selection";
 import { buildCardDocument, renderTemplate, resolveMediaReferences } from "./template";
+import type { NoteFont } from "./note-font.svelte";
+import { noteFontCss } from "./note-font-css";
 
 export type DeckPreviewRow = Readonly<{
   deckName: string;
@@ -45,7 +47,7 @@ export function representativeCards(data: DeckData): DeckPreviewRow[] {
 }
 
 /** A standalone iframe document; no database, storage, or object URL lifetime. */
-export function previewDocument(row: DeckPreviewRow, back: boolean, showKeyboard: boolean): string {
+export function previewDocument(row: DeckPreviewRow, back: boolean, showKeyboard: boolean, noteFont?: NoteFont): string {
   const fields = Object.fromEntries(row.model.fieldNames.map((name, index) =>
     [name, row.note.fields[index] ?? ""],
   ));
@@ -62,7 +64,7 @@ export function previewDocument(row: DeckPreviewRow, back: boolean, showKeyboard
   }));
   return buildCardDocument({
     html: resolveMediaReferences(html, mediaUrls),
-    css: row.model.css,
+    css: row.model.css + noteFontCss(noteFont),
     nightMode: true,
     keyboardKeys: DEFAULT_DECK_CARD_SETTINGS.keyboardKeys,
     pianoKeys: DEFAULT_CARD_SCALES.pianoKeys,

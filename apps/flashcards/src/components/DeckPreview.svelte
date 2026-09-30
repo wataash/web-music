@@ -4,6 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import NoteFontSelect from "./NoteFontSelect.svelte";
+  import { noteFontPreference } from "../lib/note-font.svelte";
   import { changedBundledDeckEntries, fetchBundledDeck } from "../lib/bundled-decks";
   import { changedDevDeckEntries, fetchDevDeck } from "../lib/dev-decks";
   import { representativeCards, previewDocument } from "../lib/deck-preview";
@@ -48,6 +50,7 @@ SPDX-License-Identifier: Apache-2.0
     <h1>Deck preview</h1>
     <p>One fixed sample per deck, including Experimental decks. Default card layouts; study progress and saved settings are unchanged.</p>
     <div class="controls">
+      <NoteFontSelect />
       <label>Filter decks <input type="search" bind:value={query} /></label>
       <label>Card width
         <select bind:value={width}>
@@ -75,7 +78,7 @@ SPDX-License-Identifier: Apache-2.0
               <h3>{back ? "Back" : "Front"}</h3>
               <iframe
                 title={`${label(row.deckName)} — ${back ? "Back" : "Front"}`}
-                srcdoc={previewDocument(row, back, showKeyboard)}
+                srcdoc={previewDocument(row, back, showKeyboard, noteFontPreference.value)}
                 loading="lazy"
                 sandbox="allow-scripts"
               ></iframe>

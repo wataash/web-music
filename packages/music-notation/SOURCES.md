@@ -1,5 +1,35 @@
 # Music notation glyph sources
 
+## Flashcards note fonts
+
+The self-hosted regular and bold WOFF2 files in
+[`apps/flashcards/src/lib/fonts/`](../../apps/flashcards/src/lib/fonts/) are
+subsets of the following installed fonts. Each was generated with Debian's
+`/usr/bin/pyftsubset` using `--flavor=woff2`, `--unicodes=U+0020-007E`,
+and `--layout-features='*'` (ASCII letters, digits, and punctuation). Accidentals
+are rendered separately as SVG glyphs.
+
+| WOFF2 files | Installed originals | SHA-256 of originals (regular, bold) | License |
+| --- | --- | --- | --- |
+| `termes-{regular,bold}.woff2` | `/usr/share/texmf/fonts/opentype/public/tex-gyre/texgyretermes-{regular,bold}.otf` | `cc3fe7c707b81428d23d54df3eadd9228a2bf6a4d43125d94df56f5f63134659`, `2fb3e952065fa153c7e4e64e04b98b9d79225739b6025aa3f0f0782d299ff61e` | GUST Font License |
+| `heros-{regular,bold}.woff2` | `/usr/share/texmf/fonts/opentype/public/tex-gyre/texgyreheros-{regular,bold}.otf` | `6ae1a09d5a940367b7aaaa91ee8bd8a2c333bfe193e7096e23f931357d62081f`, `b170162835f4efc288886dd4231406dc47e19b614cf4416836635599d44a7d60` | GUST Font License |
+| `roboto-{regular,bold}.woff2` | `/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-{Regular,Bold}.ttf` | `797e35f7f5d6020a5c6ea13b42ecd668bcfb3bbc4baa0e74773527e5b6cb3174`, `36f3709dea3e3ce3c6aedc058079e55980825f898f1e901d091c73c40de8bab1` | Apache License 2.0 |
+
+The TeX Gyre license and both upstream manifests are copied from
+`/usr/share/texmf/doc/fonts/tex-gyre/` into
+[`apps/flashcards/public/licenses/`](../../apps/flashcards/public/licenses/).
+The manifests contain the Termes and Heros copyright notices. The Roboto
+copyright notice (2015 Google Inc.) in
+[`Roboto-NOTICE.txt`](../../apps/flashcards/public/licenses/Roboto-NOTICE.txt)
+comes from `/usr/share/doc/fonts-roboto-unhinted/copyright`; its Apache 2.0
+license text is copied from `/usr/share/common-licenses/Apache-2.0` into the
+same public licenses directory.
+
+The LaTeX Project Public License 1.3c referenced by the GUST license is
+included verbatim as `LPPL-1.3c.tex`. The WOFF2 files are converted, subsetted
+derivatives. The default note font is Termes; readers can choose Roboto or
+Heros in the global Note font setting.
+
 The shared `engraved` note-name accidentals are extracted from Finale Maestro
 Text; staff accidentals and clefs are extracted from Finale Maestro. Both
 fonts are distributed by MakeMusic, Inc. under the SIL Open Font License
