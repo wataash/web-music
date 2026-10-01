@@ -40,7 +40,7 @@ pnpm dev:fretboard
 ```
 
 - Music Flashcards: <http://localhost:17381>
-- Circle of Fifths Playground: <http://localhost:17382>
+- Circle of Fifths Playground: <http://localhost:17383>
 - Fretboard app: <http://localhost:18427>
 
 The Music Flashcards dev server watches the generated web decks and re-imports

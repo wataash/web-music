@@ -1,9 +1,8 @@
 # Music notation glyph sources
 
-## Flashcards note fonts
+## Note fonts
 
-The self-hosted regular and bold WOFF2 files in
-[`apps/flashcards/src/lib/fonts/`](../../apps/flashcards/src/lib/fonts/) are
+The self-hosted regular and bold WOFF2 files in [`src/fonts/`](src/fonts/) are
 subsets of the following installed fonts. Each was generated with Debian's
 `/usr/bin/pyftsubset` using `--flavor=woff2`, `--unicodes=U+0020-007E`,
 and `--layout-features='*'` (ASCII letters, digits, and punctuation). Accidentals
@@ -23,12 +22,15 @@ copyright notice (2015 Google Inc.) in
 [`Roboto-NOTICE.txt`](../../apps/flashcards/public/licenses/Roboto-NOTICE.txt)
 comes from `/usr/share/doc/fonts-roboto-unhinted/copyright`; its Apache 2.0
 license text is copied from `/usr/share/common-licenses/Apache-2.0` into the
-same public licenses directory.
+same public licenses directory. The Circle of Fifths Playground embeds the same
+fonts and glyphs and ships the same files in
+[`apps/circle-of-fifths-playground/public/licenses/`](../../apps/circle-of-fifths-playground/public/licenses/).
 
 The LaTeX Project Public License 1.3c referenced by the GUST license is
 included verbatim as `LPPL-1.3c.tex`. The WOFF2 files are converted, subsetted
 derivatives. The default note font is Termes; readers can choose Roboto or
-Heros in the global Note font setting.
+Heros in the Flashcards Note font setting and the Circle of Fifths Playground,
+whose exported SVGs embed the chosen font.
 
 The shared `engraved` note-name accidentals are extracted from Finale Maestro
 Text; staff accidentals and clefs are extracted from Finale Maestro. Both

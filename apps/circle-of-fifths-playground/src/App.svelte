@@ -11,11 +11,13 @@ SPDX-License-Identifier: Apache-2.0
   import Controls from "./components/Controls.svelte";
   import Preview from "./components/Preview.svelte";
   import {
-    DEFAULT_SETTINGS,
     renderOptionsFor,
     searchFromSettings,
     settingsFromSearch,
-    splitNotes,
+    cellAt,
+    toggleCell,
+    toggleNote,
+    visibleNotesFor,
     type PlaygroundSettings,
   } from "./lib/settings";
 
@@ -23,8 +25,9 @@ SPDX-License-Identifier: Apache-2.0
     settingsFromSearch(window.location.search),
   );
   let copyStatus = $state<"idle" | "copied" | "failed">("idle");
+  let editing = $state(false);
 
-  const result = $derived.by(() => {
+  function render(settings: PlaygroundSettings): { svg: string; error: string | null } {
     try {
       const render =
         settings.theme === "dark"
@@ -37,25 +40,19 @@ SPDX-License-Identifier: Apache-2.0
         error: error instanceof Error ? error.message : String(error),
       };
     }
-  });
+  }
 
-  const summary = $derived(
-    settings.noteMode === "all"
-      ? "All notes"
-      : settings.noteMode === "one-per-cell"
-        ? "One note per cell"
-      : settings.noteMode === "custom"
-        ? `${splitNotes(settings.customNotes).length} notes`
-        : `${settings.noteMode[0].toUpperCase()}${settings.noteMode.slice(1)}`,
-  );
+  const result = $derived(render(settings));
+  // Editing draws every spelling, so a hidden one can be tapped back.
+  const preview = $derived(editing ? render({ ...settings, noteMode: "all" }) : result);
+  const shown = $derived.by(() => {
+    const visible = visibleNotesFor(settings);
+    return visible === undefined ? undefined : new Set(visible);
+  });
 
   function changeSettings(next: PlaygroundSettings): void {
     settings = next;
     syncUrl();
-  }
-
-  function reset(): void {
-    changeSettings({ ...DEFAULT_SETTINGS, highlightedCells: [] });
   }
 
   function syncUrl(): void {
@@ -85,44 +82,43 @@ SPDX-License-Identifier: Apache-2.0
   }
 </script>
 
-<svelte:head>
-  <title>{settings.title} — Playground</title>
-  <meta name="description" content={settings.description} />
-</svelte:head>
+<!-- What prints is the diagram itself, not the faint spellings of editing. -->
+<svelte:window onbeforeprint={() => (editing = false)} />
+
+<header class="app-header">
+  <h1>Circle of Fifths</h1>
+  <div class="header-actions">
+    <button class="bar-button" type="button" onclick={copyUrl}>
+      {copyStatus === "copied"
+        ? "Copied"
+        : copyStatus === "failed"
+          ? "Copy failed"
+          : "Copy settings URL"}
+    </button>
+    <button
+      class="bar-button"
+      type="button"
+      disabled={result.error !== null}
+      onclick={downloadSvg}
+    >Export SVG</button>
+  </div>
+</header>
 
 <main>
-  <header class="app-header">
-    <div>
-      <h1>Circle of Fifths</h1>
-    </div>
-    <div class="header-actions">
-      <button class="secondary-button" type="button" onclick={copyUrl}>
-        {copyStatus === "copied"
-          ? "Copied"
-          : copyStatus === "failed"
-            ? "Copy failed"
-            : "Copy settings URL"}
-      </button>
-      <button
-        class="primary-button"
-        type="button"
-        disabled={result.error !== null}
-        onclick={downloadSvg}
-      >Export SVG</button>
-    </div>
-  </header>
-
   <div class="workspace">
-    <Controls {settings} onchange={changeSettings} />
+    <Controls {settings} onchange={changeSettings} bind:editing />
     <section class="canvas" aria-label="Circle of fifths preview">
-      <div class="canvas-header">
-        <div>
-          <span class="status-dot" class:error-dot={result.error !== null}></span>
-          <span>{result.error ? "Invalid settings" : summary}</span>
-        </div>
-        <button class="reset-button" type="button" onclick={reset}>Reset</button>
-      </div>
-      <Preview svg={result.svg} error={result.error} />
+      <Preview
+        svg={preview.svg}
+        error={preview.error}
+        {editing}
+        {shown}
+        ontoggle={(note) => changeSettings(toggleNote(settings, note))}
+        ontap={(x, y) => {
+          const cell = cellAt(settings, x, y);
+          if (cell !== null) changeSettings(toggleCell(settings, cell));
+        }}
+      />
     </section>
   </div>
 </main>

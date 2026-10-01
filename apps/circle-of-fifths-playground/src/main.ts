@@ -3,6 +3,8 @@
 
 import { mount } from "svelte";
 
+import "@web-music/practice-ui/theme.css";
+
 import App from "./App.svelte";
 import "./app.css";
 

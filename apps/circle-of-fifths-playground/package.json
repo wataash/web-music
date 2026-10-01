@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@circle-of-fifths/core": "workspace:*",
-    "@circle-of-fifths/svg": "workspace:*"
+    "@circle-of-fifths/svg": "workspace:*",
+    "@web-music/music-notation": "workspace:*",
+    "@web-music/practice-ui": "workspace:*"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.0",

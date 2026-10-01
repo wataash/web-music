@@ -3,65 +3,54 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import type { DiagramRing, HighlightedCell } from "@circle-of-fifths/svg";
-
-  import type {
-    NoteMode,
-    PlaygroundSettings,
-    Theme,
+  import {
+    DEFAULT_SETTINGS,
+    FONTS,
+    RANGES,
+    type Font,
+    type NoteMode,
+    type Outside,
+    type PlaygroundSettings,
+    type Theme,
   } from "../lib/settings";
 
   let {
     settings,
     onchange,
+    editing = $bindable(false),
   }: {
     settings: PlaygroundSettings;
     onchange: (settings: PlaygroundSettings) => void;
+    editing?: boolean;
   } = $props();
 
-  const hours = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
-  const rings = [
-    { value: "outer", label: "Major" },
-    { value: "inner", label: "Minor" },
-  ] as const;
   const noteModes = [
-    { value: "all", label: "All" },
     { value: "basic", label: "Basic" },
-    { value: "one-per-cell", label: "One/cell" },
-    { value: "none", label: "None" },
-    { value: "custom", label: "Custom" },
+    { value: "single", label: "♯/♭" },
+    { value: "all", label: "All" },
   ] as const satisfies readonly { value: NoteMode; label: string }[];
 
   function update(patch: Partial<PlaygroundSettings>): void {
     onchange({ ...settings, ...patch });
   }
-
-  function toggleCell(ring: DiagramRing, hour: number): void {
-    const selected = hasCell(ring, hour);
-    const highlightedCells = selected
-      ? settings.highlightedCells.filter(
-          (cell) => cell.ring !== ring || cell.hour !== hour,
-        )
-      : [...settings.highlightedCells, { ring, hour } satisfies HighlightedCell];
-    update({ highlightedCells });
-  }
-
-  function hasCell(ring: DiagramRing, hour: number): boolean {
-    return settings.highlightedCells.some(
-      (cell) => cell.ring === ring && cell.hour === hour,
-    );
-  }
-
-  function changeLabelLayout(labelLayout: "standard" | "single-note"): void {
-    update({
-      labelLayout,
-      ...(labelLayout === "single-note" &&
-      (settings.noteMode === "all" || settings.noteMode === "basic")
-        ? { noteMode: "one-per-cell" as const }
-        : {}),
-    });
-  }
 </script>
+
+{#snippet slider(key: keyof typeof RANGES, label: string, unit: string, step = 1)}
+  <label class="field-row">
+    <span class="field-label">{label}</span>
+    <span class="size-field">
+      <input
+        type="range"
+        min={RANGES[key].min}
+        max={RANGES[key].max}
+        {step}
+        value={settings[key]}
+        oninput={(event) => update({ [key]: event.currentTarget.valueAsNumber })}
+      />
+      <output>{settings[key]}{unit}</output>
+    </span>
+  </label>
+{/snippet}
 
 <aside class="controls" aria-label="Diagram controls">
   <section>
@@ -83,18 +72,38 @@ SPDX-License-Identifier: Apache-2.0
     </div>
 
     <label class="field-row">
-      <span class="field-label">Label layout</span>
+      <span class="field-label">Font</span>
       <select
-        value={settings.labelLayout}
-        onchange={(event) =>
-          changeLabelLayout(
-            event.currentTarget.value as "standard" | "single-note",
-          )}
+        value={settings.font}
+        onchange={(event) => update({ font: event.currentTarget.value as Font })}
       >
-        <option value="standard">Standard</option>
-        <option value="single-note">Single note</option>
+        {#each FONTS as font (font.id)}
+          <option value={font.id}>{font.label}</option>
+        {/each}
       </select>
     </label>
+
+    {@render slider("labelSize", "Font size", "px")}
+
+    {@render slider("ringWidth", "Ring width", "%")}
+
+    <div class="field-row">
+      <span class="field-label">Outermost</span>
+      <div class="segmented">
+        {#each ["sharps", "flats"] as outside}
+          <button
+            class:active={settings.outside === outside}
+            type="button"
+            aria-pressed={settings.outside === outside}
+            onclick={() => update({ outside: outside as Outside })}
+          >
+            {outside === "sharps" ? "Sharps" : "Flats"}
+          </button>
+        {/each}
+      </div>
+    </div>
+
+    {@render slider("spiral", "Spiral", "%", 10)}
 
     <label class="check-row">
       <input
@@ -105,87 +114,54 @@ SPDX-License-Identifier: Apache-2.0
       />
       <span>Show key signatures</span>
     </label>
+    {#if settings.showKeySignatures}
+      {@render slider("signatureSize", "Key signature size", "%", 10)}
+    {/if}
   </section>
 
   <section>
-    <h2>Visible notes</h2>
+    <h2>Notes and cells</h2>
     <div class="note-modes" role="group" aria-label="Visible note preset">
       {#each noteModes as mode}
         <button
           class:active={settings.noteMode === mode.value}
           type="button"
           aria-pressed={settings.noteMode === mode.value}
-          disabled={settings.labelLayout === "single-note" &&
-            (mode.value === "all" || mode.value === "basic")}
           onclick={() => update({ noteMode: mode.value })}
         >
           {mode.label}
         </button>
       {/each}
     </div>
-    {#if settings.labelLayout === "single-note"}
-      <p class="field-hint">Single note requires at most one note per cell.</p>
-    {/if}
-    {#if settings.noteMode === "custom"}
-      <label class="stacked-field">
-        <span>Notes</span>
-        <textarea
-          rows="4"
-          placeholder="C G D A"
-          value={settings.customNotes}
-          spellcheck="false"
-          oninput={(event) => update({ customNotes: event.currentTarget.value })}
-        ></textarea>
-      </label>
-    {/if}
+    <div class="edit-row">
+      <button
+        class="secondary-button"
+        class:active={editing}
+        type="button"
+        aria-pressed={editing}
+        onclick={() => (editing = !editing)}
+      >{editing ? "Done" : "Edit"}</button>
+      {#if editing && settings.highlightedCells.length > 0}
+        <button class="text-button" type="button" onclick={() => update({ highlightedCells: [] })}>Clear highlights</button>
+      {/if}
+    </div>
+    <p class="field-hint">
+      {#if editing}
+        Tap a note to show or hide it, or elsewhere in a cell to highlight it.
+      {:else if settings.noteMode === "custom"}
+        {settings.customNotes.length} notes picked by hand
+      {/if}
+    </p>
   </section>
 
   <section>
-    <div class="section-title-row">
-      <h2>Highlight cells</h2>
-      {#if settings.highlightedCells.length > 0}
-        <button
-          class="text-button"
-          type="button"
-          onclick={() => update({ highlightedCells: [] })}
-        >Clear</button>
-      {/if}
-    </div>
-    <div class="cell-grid">
-      <span></span>
-      {#each hours as hour}<span class="hour-label">{hour}</span>{/each}
-      {#each rings as ring}
-        <span class="ring-label">{ring.label}</span>
-        {#each hours as hour}
-          <button
-            class:active={hasCell(ring.value, hour)}
-            type="button"
-            aria-label={`${ring.label}, ${hour} o'clock`}
-            aria-pressed={hasCell(ring.value, hour)}
-            onclick={() => toggleCell(ring.value, hour)}
-          ></button>
-        {/each}
-      {/each}
-    </div>
+    <button
+      class="text-button"
+      type="button"
+      onclick={() => {
+        editing = false;
+        onchange(DEFAULT_SETTINGS);
+      }}
+    >Reset all settings</button>
   </section>
-
-  <details>
-    <summary>Accessible text</summary>
-    <label class="stacked-field">
-      <span>Title</span>
-      <input
-        type="text"
-        value={settings.title}
-        oninput={(event) => update({ title: event.currentTarget.value })}
-      />
-    </label>
-    <label class="stacked-field">
-      <span>Description</span>
-      <textarea
-        rows="3"
-        value={settings.description}
-        oninput={(event) => update({ description: event.currentTarget.value })}
-      ></textarea>
-    </label>
-  </details>
 </aside>

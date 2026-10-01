@@ -1,0 +1,8 @@
+Roboto font software
+Copyright 2015 Google Inc.
+Licensed under the Apache License, Version 2.0.
+
+Source: /usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Regular.ttf
+        /usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Bold.ttf
+Copyright and license attribution: /usr/share/doc/fonts-roboto-unhinted/copyright
+Full license text: Apache-2.0.txt

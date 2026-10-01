@@ -69,6 +69,12 @@ importers:
       '@circle-of-fifths/svg':
         specifier: workspace:*
         version: link:../../packages/circle-of-fifths-svg
+      '@web-music/music-notation':
+        specifier: workspace:*
+        version: link:../../packages/music-notation
+      '@web-music/practice-ui':
+        specifier: workspace:*
+        version: link:../../packages/practice-ui
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.0

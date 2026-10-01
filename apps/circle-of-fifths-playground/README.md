@@ -8,7 +8,7 @@ URL, and the rendered self-contained SVG can be downloaded.
 pnpm dev:circle-of-fifths
 ```
 
-Open <http://localhost:17382>.
+Open <http://localhost:17383>.
 
 Checks for this app:
 

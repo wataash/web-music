@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: true,
     allowedHosts: (loadEnv(mode, process.cwd(), "DEV_").DEV_ALLOWED_HOSTS ?? "").split(",").map(host => host.trim()).filter(Boolean),
-    port: 17382,
+    port: 17383,
     strictPort: true,
   },
   plugins: [svelte()],

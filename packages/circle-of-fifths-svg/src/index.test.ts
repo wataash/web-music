@@ -273,6 +273,78 @@ describe("SVG diagram", () => {
     );
   });
 
+  test("highlights the basic spelling only beside its neighbours", () => {
+    for (const labelLayout of ["standard", "single-note"] as const) {
+      const svg = renderCircleOfFifthsSvg({ visibleNotes: ["C", "a"], labelLayout });
+      expect(svg).not.toContain('class="circle-of-fifths__basic-highlight"');
+    }
+    expect(
+      renderCircleOfFifthsSvg({ visibleNotes: ["C", "B#"] })
+        .match(/class="circle-of-fifths__basic-highlight"/g),
+    ).toHaveLength(1);
+  });
+
+  test("sizes labels, centring a lone spelling whole", () => {
+    const svg = renderCircleOfFifthsSvg({ visibleNotes: ["C", "Bb", "B#"], labelSize: 60 });
+    expect(svg).toContain("font-size: 60px;");
+    // B♭ alone: letter and accidental centred together, not the letter alone.
+    expect(svg).toMatch(/data-note="Bb">\s*<text class="circle-of-fifths__spelling" x="-/);
+    // C beside B♯: the highlight and line spacing grow with the size.
+    expect(svg).toContain('<rect class="circle-of-fifths__basic-highlight" x="-70" y="4" width="140" height="68" rx="6"');
+  });
+
+  test("lines a cell's spellings up along the radius", () => {
+    const y = (svg: string, note: string) => Number(
+      new RegExp(`data-note="${note}">[\\s\\S]*?<text[^>]* y="(-?[\\d.]+)"`).exec(svg)![1],
+    );
+    const sharps = renderCircleOfFifthsSvg({ labelStacking: "sharps-outside" });
+    const flats = renderCircleOfFifthsSvg({ labelStacking: "flats-outside" });
+    // At twelve the rim is up, so the outermost spelling has the least y.
+    expect(y(sharps, "B#")).toBeLessThan(y(sharps, "C"));
+    expect(y(sharps, "C")).toBeLessThan(y(sharps, "Dbb"));
+    expect(y(flats, "Dbb")).toBeLessThan(y(flats, "B#"));
+    expect(sharps.match(/class="circle-of-fifths__basic-highlight"/g)).toHaveLength(26);
+  });
+
+  test("drifts each cell along the radius by its place on the line of fifths", () => {
+    const at = (svg: string, note: string) => {
+      const match = new RegExp(`data-note="${note}">[\\s\\S]*?<text[^>]* x="(-?[\\d.]+)" y="(-?[\\d.]+)"`).exec(svg)!;
+      return { x: Number(match[1]), y: Number(match[2]) };
+    };
+    const options = { visibleNotes: ["C", "bb", "g#"], labelStacking: "sharps-outside" } as const;
+    const flat = renderCircleOfFifthsSvg(options);
+    const spiral = renderCircleOfFifthsSvg({ ...options, labelSpiral: 1 });
+    // C, at the middle of the line of fifths, stays put; at seven o'clock the
+    // rim is down and left, at five down and right.
+    expect(at(spiral, "C")).toEqual(at(flat, "C"));
+    expect(at(spiral, "bb").y).toBeLessThan(at(flat, "bb").y);
+    expect(at(spiral, "g#").y).toBeGreaterThan(at(flat, "g#").y);
+    expect(renderCircleOfFifthsSvg({ ...options, labelSpiral: 1, labelStacking: "vertical" }))
+      .toBe(renderCircleOfFifthsSvg({ ...options, labelStacking: "vertical" }));
+  });
+
+  test("scales the key signatures, keeping them clear of the rim", () => {
+    const svg = renderCircleOfFifthsSvg({ showKeySignatures: true, keySignatureScale: 1.5 });
+    expect(svg).toMatch(/class="circle-of-fifths__key-signature-group" data-hour="12" transform="translate\([^)]*\) scale\(1\.5\)"/);
+    const [x, y, width, height] = /viewBox="([^"]*)"/.exec(svg)![1].split(" ").map(Number);
+    expect(x).toBeLessThan(-56.5);
+    expect(y).toBeLessThan(-81.5);
+    expect(width).toBeGreaterThan(1113);
+    expect(height).toBeGreaterThan(1149);
+  });
+
+  test("moves large key signatures apart until neighbours clear", () => {
+    const groups = createDiagramModel({ showKeySignatures: true, keySignatureScale: 3 }).keySignatureGroups;
+    const box = ({ x, y, scale, staffs }: (typeof groups)[number]) => ({
+      left: x - 150 * scale, right: x + staffs[0].lineEndX * scale, top: y - 37 * scale, bottom: y + 37 * scale,
+    });
+    groups.forEach((group, index) => {
+      const a = box(group);
+      const b = box(groups[(index + 1) % groups.length]);
+      expect(a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom).toBe(false);
+    });
+  });
+
   test("renders an empty circle when visibleNotes is empty", () => {
     const svg = renderCircleOfFifthsSvg({ visibleNotes: [] });
 

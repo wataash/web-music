@@ -1,12 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-export const NOTE_FONTS = [
-  { id: "termes", label: "TeX Gyre Termes" },
-  { id: "roboto", label: "Roboto" },
-  { id: "heros", label: "TeX Gyre Heros" },
-] as const;
-export type NoteFont = typeof NOTE_FONTS[number]["id"];
+import { NOTE_FONTS, type NoteFont } from "@web-music/music-notation/note-fonts";
+
+export { NOTE_FONTS, type NoteFont };
 const STORAGE_KEY = "music-flashcards:note-font";
 export function parseNoteFont(value: unknown): NoteFont {
   return NOTE_FONTS.find(font => font.id === value)?.id ?? "termes";

@@ -97,41 +97,27 @@ const WEB_CIRCLE_SCRIPT = `
   if (drawing[0] !== "single") return;
 
   svg.classList.add("circle-of-fifths--single-note");
-  const source = new Map(notes.map((note) => [
+  const labels = new Map(notes.map((note) => [
     note.getAttribute("data-note") ?? "",
-    {
-      label: note.parentElement,
-      basic: note.querySelector(".circle-of-fifths__basic-highlight") !== null,
-    },
+    note.parentElement,
   ]));
   for (const label of svg.querySelectorAll(".circle-of-fifths__label")) {
     label.replaceChildren();
   }
   const namespace = "http://www.w3.org/2000/svg";
   for (const noteName of visible) {
-    const placement = source.get(noteName);
-    if (!(placement?.label instanceof SVGElement)) continue;
+    const label = labels.get(noteName);
+    if (!(label instanceof SVGElement)) continue;
     const group = document.createElementNS(namespace, "g");
     group.setAttribute("class", "circle-of-fifths__note");
     group.setAttribute("data-note", noteName);
-    if (placement.basic) {
-      const rect = document.createElementNS(namespace, "rect");
-      rect.setAttribute("class", "circle-of-fifths__basic-highlight");
-      rect.setAttribute("x", "-75");
-      rect.setAttribute("y", "-52.5");
-      rect.setAttribute("width", "150");
-      rect.setAttribute("height", "105");
-      rect.setAttribute("rx", "8");
-      rect.setAttribute("aria-hidden", "true");
-      group.append(rect);
-    }
     const text = document.createElementNS(namespace, "text");
     text.setAttribute("class", "circle-of-fifths__spelling");
     text.setAttribute("x", "0");
     text.setAttribute("y", "0");
     text.textContent = formatNoteName(noteName);
     group.append(text);
-    placement.label.append(group);
+    label.append(group);
   }
 })();
 </script>

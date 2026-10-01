@@ -13,6 +13,7 @@
     "build:fretboard": "pnpm --dir apps/fretboard build",
     "preview:fretboard": "wrangler dev --env fretboard --port 18427",
     "deploy:fretboard": "wrangler deploy --env fretboard",
+    "deploy:fifths": "wrangler deploy --env fifths",
     "build": "pnpm generate:decks && pnpm stage:decks && pnpm --dir apps/flashcards build && pnpm --dir apps/chords build && pnpm --dir apps/circle-of-fifths-playground build && pnpm --dir apps/fretboard build && pnpm --dir tools/circle-of-fifths-cli build",
     "build:flashcards": "pnpm generate:decks && pnpm stage:decks && pnpm --dir apps/flashcards build",
     "build:circle-of-fifths": "pnpm --dir apps/circle-of-fifths-playground build",
