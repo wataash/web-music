@@ -345,6 +345,10 @@ describe("SVG diagram", () => {
     });
   });
 
+  test("leaves the basic spellings unboxed when asked", () => {
+    expect(renderCircleOfFifthsSvg({ markBasicNotes: false })).not.toContain('class="circle-of-fifths__basic-highlight"');
+  });
+
   test("renders an empty circle when visibleNotes is empty", () => {
     const svg = renderCircleOfFifthsSvg({ visibleNotes: [] });
 

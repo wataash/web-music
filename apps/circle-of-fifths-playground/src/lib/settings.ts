@@ -98,6 +98,7 @@ export function renderOptionsFor(
     labelSize: settings.labelSize,
     labelStacking: `${settings.outside}-outside`,
     labelSpiral: settings.spiral / 100,
+    markBasicNotes: false,
     radii: radiiFor(settings),
     highlightedCells: settings.highlightedCells,
     showKeySignatures: settings.showKeySignatures,

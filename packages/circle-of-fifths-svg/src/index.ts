@@ -231,6 +231,8 @@ export type CreateDiagramModelOptions = Readonly<{
    * its spellings' place on the line of fifths, 1 giving a spiral of fifths.
    */
   labelSpiral?: number;
+  /** Box the basic spelling in a cell showing others too (default true). */
+  markBasicNotes?: boolean;
   /** Size of the key signatures against their default, which keep clear of the rim. */
   keySignatureScale?: number;
   /** Radii of the rim, the circle between the rings and the hole; labels sit midway. */
@@ -253,6 +255,7 @@ export function createDiagramModel({
   labelSize,
   labelStacking = "vertical",
   labelSpiral = 0,
+  markBasicNotes = true,
   radii,
   highlightedCells = [],
   showKeySignatures = false,
@@ -284,7 +287,7 @@ export function createDiagramModel({
     };
   });
 
-  const labelOptions = { labelLayout, labelSize, labelStacking, labelSpiral };
+  const labelOptions = { labelLayout, labelSize, labelStacking, labelSpiral, markBasicNotes };
   const keySignatureGroups = showKeySignatures
     ? createKeySignatureGroups(keySignatureScale)
     : [];
@@ -584,11 +587,12 @@ function createHighlightedCellModels(
 function createLabelModel(
   placement: LabelPlacement,
   visibleNotes: ReadonlySet<string> | undefined,
-  { labelLayout, labelSize, labelStacking, labelSpiral }: Readonly<{
+  { labelLayout, labelSize, labelStacking, labelSpiral, markBasicNotes }: Readonly<{
     labelLayout: LabelLayout;
     labelSize: number | undefined;
     labelStacking: LabelStacking;
     labelSpiral: number;
+    markBasicNotes: boolean;
   }>,
 ): LabelModel {
   const notes =
@@ -638,7 +642,7 @@ function createLabelModel(
         accidental: formattedNote.slice(1),
         accidentalX,
         // The highlight tells the basic spelling from its neighbours.
-        basic: notes.length > 1 && isBasicNote(placement.role, note),
+        basic: markBasicNotes && notes.length > 1 && isBasicNote(placement.role, note),
         centerWholeNote,
         fontSize: labelSize ?? (labelLayout === "standard" ? 30 : formattedNote[0] === formattedNote[0].toUpperCase() ? 88 : 84),
         ...radial
