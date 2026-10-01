@@ -1,8 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { readFileSync } from "node:fs";
-
+import { formatNote, INTERVAL_CARDS } from "intervals-anki/cards";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -53,19 +52,13 @@ describe("interval pair grid", () => {
     expect(cell("Cb d7")?.answer).toBe("");
   });
 
-  it("writes each cell's answer as the bundled deck does", () => {
-    const deck = JSON.parse(readFileSync(
-      new URL("../../public/decks/intervals.json", import.meta.url), "utf8",
-    )).deck as { notes: { fields: string[] }[] };
-    const answers = new Map(deck.notes
-      .filter(({ fields }) => fields[1] === "interval")
-      .map(({ fields }) => [`${fields[2]} ${fields[3]}`, fields[5]]));
-    const labels = new Map(INTERVAL_DEGREE_ROWS.map(({ id, label }) => [id, label]));
+  it("writes each cell's answer as the deck generator does", () => {
+    const answers = new Map(INTERVAL_CARDS.map(({ root, interval, answer }) =>
+      [`${root} ${interval.id}`, formatNote(answer)]));
     const cells = INTERVAL_PAIR_CELLS.flat().filter(({ available }) => available);
     expect(cells).toHaveLength(answers.size);
     for (const cell of cells) {
-      const root = INTERVAL_ROOT_ROWS.find(({ note }) => note === cell.root)?.label;
-      expect(cell.answer, cell.key).toBe(answers.get(`${root} ${labels.get(cell.degree)}`));
+      expect(cell.answer, cell.key).toBe(answers.get(cell.key));
     }
   });
 

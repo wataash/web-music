@@ -4,6 +4,9 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
+  "exports": {
+    "./cards": "./src/cards.ts"
+  },
   "scripts": {
     "generate": "tsx src/web-cli.ts",
     "generate:anki": "tsx src/cli.ts",

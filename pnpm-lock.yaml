@@ -137,6 +137,9 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
+      intervals-anki:
+        specifier: workspace:*
+        version: link:../../decks/intervals
       svelte:
         specifier: ^5.55.0
         version: 5.56.9(@typescript-eslint/types@8.65.0)

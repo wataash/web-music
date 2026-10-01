@@ -1842,7 +1842,7 @@ test("positions the circle before the answer document loads", async ({ page }) =
     // DOMContentLoaded precedes the iframe's load handler, where live layout
     // updates are installed. Capture the layout before that handler can fix it.
     document.addEventListener("DOMContentLoaded", () => {
-      const board = document.querySelector("[data-circle-of-fifths] svg");
+      const board = document.querySelector("[data-circle-of-fifths] svg.circle-of-fifths");
       if (board === null) return;
       const root = document.documentElement;
       root.dataset.initialLayout = JSON.stringify({
@@ -1861,13 +1861,14 @@ test("positions the circle before the answer document loads", async ({ page }) =
   await page.locator('[data-deck="(Experimental) Circle of Fifths"] .deck-study').click();
   await page.setViewportSize({ width: 390, height: 844 });
   const card = page.frameLocator('iframe[title="card"]');
-  await expect(card.locator("[data-circle-of-fifths] svg")).toBeVisible();
+  await expect(card.locator("[data-circle-of-fifths] svg.circle-of-fifths")).toBeVisible();
+  // Cell cards have no answer heading; the back document re-adds the capture.
+  await card.locator("html").evaluate((root) => delete (root as HTMLElement).dataset.initialLayout);
   await page.getByRole("button", { name: "SHOW ANSWER" }).click();
-  await expect(card.locator(".answer")).toHaveCount(1);
   await expect(card.locator("html")).toHaveAttribute("data-initial-layout", /25vh/);
   const layout = await card.locator("html").evaluate((root) => ({
     initial: JSON.parse((root as HTMLElement).dataset.initialLayout!),
-    y: root.querySelector("[data-circle-of-fifths] svg")!.getBoundingClientRect().y,
+    y: root.querySelector("[data-circle-of-fifths] svg.circle-of-fifths")!.getBoundingClientRect().y,
   }));
   expect(layout.initial.textScale).toBe("1.3");
   expect(layout.initial.y).toBeCloseTo(layout.y, 1);
