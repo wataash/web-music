@@ -692,11 +692,12 @@ test("names a fretboard position's degree, in a window of frets", async ({
   await expect(dialog.locator("#fret-reach-right")).toHaveValue("1");
   await expect.poll(boardWidth).toBeGreaterThan(wide);
 
-  // RESET goes back to the three frets each way the deck ships with.
-  await dialog.getByRole("button", { name: /^RESET/ }).click();
+  // Each side resets independently to the three frets the deck ships with.
+  await dialog.getByRole("button", { name: "Reset Frets below the root to default", exact: true }).click();
+  await dialog.getByRole("button", { name: "Reset Frets above the root to default", exact: true }).click();
   await expect(dialog.locator("#fret-reach-left")).toHaveValue("3");
   await expect(dialog.locator("#fret-reach-right")).toHaveValue("3");
-  await expect(dialog.getByRole("button", { name: /^RESET/ })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: /^Reset Frets .* to default$/ })).toHaveCount(0);
 
   // Cancelling puts the board back rather than leaving it on the dragged one.
   await dialog.getByRole("button", { name: "CANCEL" }).click();
@@ -1768,6 +1769,7 @@ test("captures repeated mobile arrange drags", async ({ page, browserName }) => 
   await arrangeCard(page);
   const card = page.frameLocator('iframe[title="card"]');
   const keyboard = card.locator('[data-card-part="keyboard"]');
+  await expect(card.locator("html")).toHaveAttribute("data-positioning", "");
   await keyboard.evaluate((element) => {
     element.addEventListener("gotpointercapture", (event) => {
       if (event.target === element) element.setAttribute("data-captured", "yes");
@@ -1812,7 +1814,8 @@ test("captures repeated mobile arrange drags", async ({ page, browserName }) => 
     type: "touchMove", touchPoints: [{ id: 2, x: x + 30, y: y + 40 }],
   });
   await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  await expect.poll(async () => (await keyboard.boundingBox())!.y - pinched.y).toBeCloseTo(40, 0);
+  // Saved offsets use thousandths of the card size, so allow two CSS pixels.
+  await expect.poll(async () => Math.abs((await keyboard.boundingBox())!.y - pinched.y - 40)).toBeLessThan(2);
   await session.detach();
 });
 
@@ -1840,7 +1843,7 @@ test("moves parts after reopening a saved staff layout", async ({ page, browserN
   await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
   await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y - 50 }] });
   await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  await expect.poll(async () => (await staff.boundingBox())!.y - before.y).toBeCloseTo(-50, 0);
+  await expect.poll(async () => Math.abs((await staff.boundingBox())!.y - before.y + 50)).toBeLessThan(2);
   await page.getByRole("button", { name: "DONE" }).click();
   await arrangeCard(page);
   const help = page.locator(".layout-help");
@@ -2046,7 +2049,7 @@ test("saves individual guitar exclusions and asks only the remaining shape", asy
 
 for (const [shape, answer, references] of [
   ["r6-s5-b2", "m3 ♯9", ["9"]],
-  ["r6-s5-f1", "♯11 d5 A4", ["11 P4", "P5"]],
+  ["r6-s5-f1", "♯11(A4) d5", ["11 P4", "P5"]],
 ] as const) {
   test(`places faint guitar references next to ${answer}`, async ({ page, shot }) => {
     await page.addInitScript((shape) => {

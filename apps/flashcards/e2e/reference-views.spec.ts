@@ -96,7 +96,7 @@ test("guitar fretboard: chosen fret count persists and sizes both card sides", a
 
 test("circle of fifths: cell decks offer every spelling on the circle", async ({ page, shot }) => {
   await page.goto("/");
-  await showDecks(page, ["(Experimental) Circle of Fifths"]);
+  await showDecks(page, ["(Experimental) Cell → All Notes"]);
   const reference = await openReference(
     page,
     "(Experimental) Circle of Fifths::Cell → All Notes::Outer (Major) Cell → Notes",

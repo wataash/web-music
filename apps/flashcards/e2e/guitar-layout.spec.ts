@@ -25,7 +25,7 @@ test("keeps an altered interval label on one line", async ({ page }, testInfo) =
     nightMode: true,
   }));
   const answer = page.locator(".fret-name.answer");
-  await expect(answer).toHaveText("♭13 m6 A5");
+  await expect(answer).toHaveText("♭13(m6) A5");
   const box = await answer.boundingBox();
   expect(box).not.toBeNull();
   const glyph = await answer.locator(".glyph.flat").boundingBox();
@@ -79,7 +79,7 @@ for (const rotated of [false, true]) {
     const back = await show(WEB_BACK_TEMPLATE, "back");
     await expect(card.locator(".position-answer")).toBeVisible();
     await expect(card.locator(".position-answer")).toHaveText("6-0 6-12");
-    await expect(card.locator('.fretboard__target[data-fret="24"]')).toHaveCount(1);
+    await expect(card.locator('.fretboard__target[data-string="6"][data-fret="24"]')).toHaveCount(1);
     expect(back).toEqual(front);
   });
 }
