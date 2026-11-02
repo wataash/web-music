@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import { PROGRESSION_SELECTION_KEY, parseProgressionSelection, type ProgressionSelection } from "./lib/progression-selection";
+  import { DIATONIC_SELECTION_KEY, parseDiatonicSelections, type DiatonicSelections } from "./lib/diatonic-selection";
   import { onMount } from "svelte";
 
   import DeckList from "./components/DeckList.svelte";
@@ -39,6 +41,9 @@ SPDX-License-Identifier: Apache-2.0
   } from "./lib/circle-note-selection";
   import {
     DEFAULT_FRETBOARD_NOTE_SELECTION,
+    DEFAULT_FRETBOARD_FRET_COUNT,
+    FRETBOARD_FRET_COUNT_KEY,
+    parseFretboardFretCount,
     parseFretboardNotes,
   } from "./lib/fretboard-card";
   import {
@@ -61,6 +66,10 @@ SPDX-License-Identifier: Apache-2.0
     DEFAULT_STAFF_NOTE_SELECTION,
     parseStaffNoteSelection,
     type StaffNoteSelection,
+    type MovableDoStaffSelections,
+    parseMovableDoStaffSelections,
+    loadMovableDoStaffSelections,
+    MOVABLE_DO_STAFF_SELECTION_KEY,
   } from "./lib/staff-note-selection";
   import { DEFAULT_MOVABLE_DO_KEYS, parseMovableDoKeys } from "./lib/movable-do-key-selection";
   import {
@@ -140,7 +149,10 @@ SPDX-License-Identifier: Apache-2.0
   let staffNoteSelection = $state<StaffNoteSelection>(
     DEFAULT_STAFF_NOTE_SELECTION,
   );
+  let movableDoStaff = $state<MovableDoStaffSelections>(parseMovableDoStaffSelections(null));
   let movableDoKeys = $state<readonly number[]>(DEFAULT_MOVABLE_DO_KEYS);
+  let progressionSelection = $state(parseProgressionSelection(null));
+  let diatonicSelections = $state(parseDiatonicSelections(null));
   let intervalPairSelection = $state<readonly string[]>(
     DEFAULT_INTERVAL_PAIR_SELECTION,
   );
@@ -151,6 +163,7 @@ SPDX-License-Identifier: Apache-2.0
   let fretboardNoteSelection = $state<readonly string[]>(
     DEFAULT_FRETBOARD_NOTE_SELECTION,
   );
+  let fretboardFretCount = $state(DEFAULT_FRETBOARD_FRET_COUNT);
   const circleNoteSelections = $derived<CircleNoteSelections>({
     noteToCell: noteToCellSelection,
     intervals: intervalSelection,
@@ -158,13 +171,17 @@ SPDX-License-Identifier: Apache-2.0
   const noteSelections = $derived<NoteSelections>({
     circle: circleNoteSelections,
     fretboardNotes: new Set(fretboardNoteSelection),
+    fretboardFretCount,
     fretWindow,
     guitarDifficulty,
     guitarOverrides,
     guitarTuning,
     intervalPairs: new Set(intervalPairSelection),
     staff: staffNoteSelection,
+    movableDoStaff,
     movableDoKeys: new Set(movableDoKeys),
+    diatonic: diatonicSelections,
+    progressions: progressionSelection,
   });
   let devSyncRunning = false;
   let devSyncAll = false;
@@ -274,13 +291,15 @@ SPDX-License-Identifier: Apache-2.0
     void refresh();
   }
 
-  function setStaffNoteSelection(selection: StaffNoteSelection): void {
+  function setStaffNoteSelection(selection: StaffNoteSelection, solfege: MovableDoStaffSelections): void {
+    movableDoStaff = solfege;
     staffNoteSelection = selection;
     try {
       localStorage.setItem(
         STAFF_NOTE_SELECTION_KEY,
         JSON.stringify(selection),
       );
+      localStorage.setItem(MOVABLE_DO_STAFF_SELECTION_KEY, JSON.stringify(solfege));
     } catch {
       // The preference is optional when storage is unavailable.
     }
@@ -294,6 +313,17 @@ SPDX-License-Identifier: Apache-2.0
     } catch {
       // The preference is optional when storage is unavailable.
     }
+    void refresh();
+  }
+
+  function setProgressionSelection(selection: ProgressionSelection): void {
+    progressionSelection = parseProgressionSelection(selection);
+    try { localStorage.setItem(PROGRESSION_SELECTION_KEY, JSON.stringify(progressionSelection)); } catch { /* Optional preference. */ }
+    void refresh();
+  }
+  function setDiatonicSelections(selection: DiatonicSelections): void {
+    diatonicSelections = parseDiatonicSelections(selection);
+    try { localStorage.setItem(DIATONIC_SELECTION_KEY, JSON.stringify(diatonicSelections)); } catch { /* Optional preference. */ }
     void refresh();
   }
 
@@ -368,6 +398,16 @@ SPDX-License-Identifier: Apache-2.0
         FRETBOARD_NOTE_SELECTION_KEY,
         JSON.stringify(selection),
       );
+    } catch {
+      // The preference is optional when storage is unavailable.
+    }
+    void refresh();
+  }
+
+  function setFretboardFretCount(value: number): void {
+    fretboardFretCount = parseFretboardFretCount(value);
+    try {
+      localStorage.setItem(FRETBOARD_FRET_COUNT_KEY, JSON.stringify(fretboardFretCount));
     } catch {
       // The preference is optional when storage is unavailable.
     }
@@ -626,6 +666,11 @@ SPDX-License-Identifier: Apache-2.0
     } catch {
       staffNoteSelection = DEFAULT_STAFF_NOTE_SELECTION;
     }
+    movableDoStaff = loadMovableDoStaffSelections(localStorage, staffNoteSelection);
+    try {
+      diatonicSelections = parseDiatonicSelections(JSON.parse(localStorage.getItem(DIATONIC_SELECTION_KEY) ?? "null"));
+    } catch { diatonicSelections = parseDiatonicSelections(null); }
+    try { progressionSelection = parseProgressionSelection(JSON.parse(localStorage.getItem(PROGRESSION_SELECTION_KEY) ?? "null")); } catch { progressionSelection = parseProgressionSelection(null); }
     try {
       const saved = localStorage.getItem(MOVABLE_DO_KEYS_KEY);
       if (saved !== null) movableDoKeys = parseMovableDoKeys(JSON.parse(saved));
@@ -653,6 +698,12 @@ SPDX-License-Identifier: Apache-2.0
       }
     } catch {
       fretboardNoteSelection = DEFAULT_FRETBOARD_NOTE_SELECTION;
+    }
+    try {
+      const saved = localStorage.getItem(FRETBOARD_FRET_COUNT_KEY);
+      if (saved !== null) fretboardFretCount = parseFretboardFretCount(JSON.parse(saved));
+    } catch {
+      fretboardFretCount = DEFAULT_FRETBOARD_FRET_COUNT;
     }
     try {
       const saved = localStorage.getItem(GUITAR_TUNING_KEY);
@@ -719,6 +770,7 @@ SPDX-License-Identifier: Apache-2.0
     onclose={closeReviewer}
     oncirclenoteselectionchange={setCircleNoteSelection}
     onfretboardnoteselectionchange={setFretboardNoteSelection}
+    onfretboardfretcountchange={setFretboardFretCount}
     onfretwindowchange={setFretWindow}
     onguitardifficultychange={setGuitarDifficulty}
     onguitaroverrideschange={setGuitarOverrides}
@@ -726,6 +778,8 @@ SPDX-License-Identifier: Apache-2.0
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}
     onmovabledokeyselectionchange={setMovableDoKeys}
+    ondiatonicselectionchange={setDiatonicSelections}
+    onprogressionselectionchange={setProgressionSelection}
   />
 {:else}
   <DeckList
@@ -755,6 +809,7 @@ SPDX-License-Identifier: Apache-2.0
     onhiddendecknameschange={setHiddenDeckNames}
     oncirclenoteselectionchange={setCircleNoteSelection}
     onfretboardnoteselectionchange={setFretboardNoteSelection}
+    onfretboardfretcountchange={setFretboardFretCount}
     onfretwindowchange={setFretWindow}
     onguitardifficultychange={setGuitarDifficulty}
     onguitaroverrideschange={setGuitarOverrides}
@@ -762,6 +817,8 @@ SPDX-License-Identifier: Apache-2.0
     onintervalpairselectionchange={setIntervalPairSelection}
     onstaffnoteselectionchange={setStaffNoteSelection}
     onmovabledokeyselectionchange={setMovableDoKeys}
+    ondiatonicselectionchange={setDiatonicSelections}
+    onprogressionselectionchange={setProgressionSelection}
     ondismisserror={() => (error = null)}
     ondismissnotice={() => (notice = null)}
   />

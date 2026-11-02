@@ -161,6 +161,24 @@ describe("parsing a backup file", () => {
 });
 
 describe("merging a backup into what is already here", () => {
+  it.each([[30, 10], [10, 30], [30, 30]])(
+    "keeps only the newest incoming state for a repeated key (%s, %s)",
+    (first, second) => {
+      const incoming = [state("repeated", first), state("repeated", second)];
+      expect(statesToWrite([], incoming)).toEqual([state("repeated", 30)]);
+      expect(statesToWrite([state("repeated", 20)], incoming)).toEqual([
+        state("repeated", 30),
+      ]);
+      expect(statesToWrite([state("repeated", 40)], incoming)).toEqual([]);
+    },
+  );
+
+  it("discards database row IDs before adding incoming reviews", () => {
+    const incoming = { ...review("new-event"), id: 1 };
+    expect(reviewsToAdd(new Set(), [incoming])).toEqual([review("new-event")]);
+    expect(incoming.id).toBe(1);
+  });
+
   it("writes the cards the file knows better, and keeps the newer local ones", () => {
     const local = [state("kept", 20), state("replaced", 5)];
     const incoming = [

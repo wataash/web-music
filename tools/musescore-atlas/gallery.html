@@ -1,0 +1,239 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com> -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Music notation examples</title>
+<style>
+/* @shared-theme */
+html, body { height: auto; min-height: 100%; }
+body { line-height: 1.5; }
+.appbar {
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 16px;
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
+}
+h1 { margin: 0; font-size: 20px; font-weight: 500; }
+.tools, .count, .grid, footer { max-width: 1200px; margin: 0 auto; }
+.about { margin-top: 8px; color: var(--on-surface-muted); font-size: 13px; }
+.about p { margin-top: 8px; font-size: 13px; }
+.status { margin-top: 8px; overflow-wrap: anywhere; }
+.error { color: var(--ease-again); }
+.tools {
+  display: block;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--divider);
+  background: var(--surface);
+}
+.tools label { display: grid; gap: 4px; flex: 1 1 200px; min-width: 0; font-size: 12px; color: var(--on-surface-muted); }
+input, select {
+  width: 100%; min-width: 0; height: 44px;
+  padding: 8px 12px; font: inherit; font-size: 14px;
+  border: 1px solid var(--divider); border-radius: 4px;
+  color: var(--on-surface); background: var(--surface);
+}
+button { min-height: 44px; padding: 0 12px; border-radius: 4px; color: var(--text-accent); font-size: 14px; font-weight: 500; }
+button:hover { background: var(--bg); }
+a { color: var(--text-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .thumb:focus-visible, summary:focus-visible { outline: 2px solid var(--text-accent); outline-offset: 3px; }
+.count { padding: 12px 16px; color: var(--on-surface-muted); font-size: 13px; }
+.grid { padding: 0 16px; background: var(--surface); }
+.card {
+  display: block; padding: 16px 0; border-bottom: 1px solid var(--divider);
+}
+.head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 4px; }
+h2 { margin: 0; font-size: 16px; font-weight: 500; }
+.profile { color: var(--on-surface-muted); font-size: 13px; }
+.thumb { display: block; width: 100%; height: 320px; object-fit: contain; background: white; border: 1px solid var(--divider); cursor: zoom-in; }
+.actions { display: flex; align-content: start; flex-wrap: wrap; gap: 4px 20px; padding-top: 4px; font-size: 13px; }
+.actions a { display: inline-flex; align-items: center; min-height: 36px; }
+.card details { min-width: 0; }
+.card details { padding: 10px 0; border-top: 1px solid var(--divider); font-size: 13px; }
+summary { cursor: pointer; }
+ol { padding-left: 24px; line-height: 1.8; }
+.note { margin: 0; padding: 8px 0; color: var(--on-surface-muted); font-size: 12px; }
+.pager { display: flex; flex-wrap: wrap; gap: 4px; }
+.empty { padding: 24px 0; }
+footer { padding: 24px 16px; color: var(--on-surface-muted); font-size: 12px; }
+footer p { margin: 0; }
+dialog { width: min(96vw, 1600px); max-width: 96vw; max-height: 96dvh; padding: 16px; border: 0; border-radius: 12px; color: var(--on-surface); background: var(--surface); box-shadow: 0 12px 32px rgb(0 0 0 / 0.4); }
+dialog::backdrop { background: rgb(0 0 0 / 0.6); }
+.modal-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 12px; }
+.modal-title { flex: 1 1 240px; font-size: 16px; font-weight: 500; }
+.modal-tools { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.canvas { max-height: 76dvh; overflow: auto; }
+dialog img { display: block; max-width: none; height: auto; background: white; }
+@media (max-width: 640px) {
+  .head { display: block; }
+  .profile { margin-top: 4px; }
+  .thumb { height: 220px; }
+  .card details { padding: 10px 0; }
+}
+.search-row { display: flex; gap: 8px; align-items: center; }
+.search-row input { flex: 1; max-width: 560px; }
+.search-row button { flex: none; }
+[hidden] { display: none !important; }
+.tag-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.tag { min-height: 36px; padding: 4px 12px; border: 1px solid var(--divider); border-radius: 4px; font-size: 14px; font-weight: 400; background: var(--surface); }
+.tag[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.extra-tag { display: contents; }
+.view-options { margin-top: 12px; font-size: 13px; color: var(--on-surface-muted); }
+.view-options label { display: grid; max-width: 360px; margin-top: 8px; }
+.sample-tags { display: flex; flex-wrap: wrap; gap: 0 8px; margin-bottom: 8px; }
+.sample-tags .tag { min-height: 28px; padding: 0 2px; border: 0; font-size: 12px; }
+.card > .sample-details { width: fit-content; max-width: 100%; border: 0; padding: 4px 0; }
+.sample-details[open] { width: 100%; padding-bottom: 8px; }
+.detail-downloads { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
+.detail-downloads a { display: inline-flex; align-items: center; min-height: 36px; }
+.font-list { color: var(--on-surface-muted); overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .tag-filters .tag { font-size: 13px; padding: 4px 10px; }
+}
+
+</style>
+<header class="appbar"><h1>Music notation examples</h1></header>
+
+<div class="tools" id="filters">
+<div class="search-row"><input id="search" type="search" aria-label="Search" placeholder="Search chords, symbols or fonts"><button id="reset" hidden>Clear filters</button></div>
+<div id="tags" class="tag-filters" role="group" aria-label="Filter by tag"></div>
+<details class="view-options"><summary>Choose fonts & settings</summary><label for="profile">Fonts & settings<select id="profile" aria-label="Fonts and settings"><option value="">All fonts & settings</option></select></label></details>
+</div>
+<div id="count" class="count" aria-live="polite"></div><main id="grid" class="grid"></main><footer><details class="about"><summary>About these examples</summary><p>These examples are rendered by MuseScore. Input strings may differ from the rendered notation.</p><div id="status" class="status">Loading…</div><a href="manifest.json">All metadata (JSON)</a></details></footer>
+<dialog id="viewer" aria-label="Score preview"><div class="modal-head"><div id="modal-title" class="modal-title"></div><div class="modal-tools"><button id="zoom-out" aria-label="Zoom out">−</button><span id="zoom" aria-live="polite">100%</span><button id="zoom-in" aria-label="Zoom in">＋</button><button id="close">Close</button></div></div><div class="canvas"><img id="full" alt="Enlarged score example"></div></dialog>
+<script>
+const $ = selector => document.querySelector(selector);
+const primaryTags = ['Chords', 'Notes', 'Rests', 'Clefs', 'Time signatures', 'Accidentals', 'Dynamics', 'Articulations & ornaments', 'Text'];
+let entries = [], activeTag = '', zoom = 1;
+function node(tag, text, cls) {
+  const element = document.createElement(tag);
+  if (text !== undefined) element.textContent = text;
+  if (cls) element.className = cls;
+  return element;
+}
+function link(text, path) {
+  const element = node('a', text);
+  element.href = path;
+  element.target = '_blank';
+  element.rel = 'noopener';
+  return element;
+}
+function selectTag(value, fromSample = false) {
+  activeTag = activeTag === value ? '' : value;
+  if (fromSample) {
+    $('#search').value = '';
+    $('#profile').value = '';
+    $('.view-options').open = false;
+  }
+  render();
+  if (fromSample) {
+    const button = [...$('#tags').querySelectorAll('button')].find(button => button.dataset.tag === activeTag);
+    button?.focus({ preventScroll: true });
+    window.scrollTo(0, $('#filters').offsetTop);
+  }
+}
+function tagButton(value, fromSample = false) {
+  const button = node('button', value ? (fromSample ? `#${value}` : value) : 'All', 'tag');
+  button.type = 'button';
+  button.dataset.tag = value;
+  if (fromSample) button.setAttribute('aria-label', `Filter by ${value}`);
+  else button.setAttribute('aria-pressed', String(value === activeTag));
+  button.onclick = () => selectTag(value, fromSample);
+  return button;
+}
+function updateTags() {
+  const extra = $('#extra-tag');
+  extra.replaceChildren();
+  if (activeTag && !primaryTags.includes(activeTag)) extra.append(tagButton(activeTag));
+  for (const button of $('#tags').querySelectorAll('button')) button.setAttribute('aria-pressed', String(button.dataset.tag === activeTag));
+}
+function setZoom(value) {
+  zoom = Math.max(.5, Math.min(4, value));
+  $('#full').style.width = `${zoom * 100}%`;
+  $('#zoom').textContent = `${Math.round(zoom * 100)}%`;
+}
+function view(entry, page) {
+  setZoom(1);
+  $('#modal-title').textContent = `${entry.category} / ${entry.profile} / Page ${page + 1}`;
+  $('#full').src = entry.svg[page];
+  $('#viewer').showModal();
+}
+function sampleDetails(entry) {
+  const details = node('details', undefined, 'sample-details');
+  details.append(node('summary', 'Details'));
+  const files = node('div', undefined, 'detail-downloads');
+  for (const [label, path] of [
+    ['MSCZ', entry.mscz], ['MSCX', entry.mscx], ['Source XML', entry.input],
+    ['Rendering style (MSS)', entry.actualStyle], ['JSON', `${entry.profileId}/${entry.categoryId}.json`]
+  ]) files.append(link(label, path));
+  details.append(files, node('p', `Fonts used: ${entry.pdfFonts.join(', ')}`, 'font-list'));
+  const inputs = node('details'), list = node('ol');
+  inputs.append(node('summary', `Input examples (${entry.samples.length})`));
+  for (const sample of entry.samples) list.append(node('li', sample));
+  inputs.append(list);
+  details.append(inputs);
+  if (entry.kind === 'text') details.append(node('p', 'Missing characters may use fallback fonts.', 'note'));
+  return details;
+}
+function render() {
+  const query = $('#search').value.trim().toLowerCase(), profile = $('#profile').value;
+  const visible = entries.filter(entry => (!activeTag || entry.tags.includes(activeTag)) && (!profile || entry.profile === profile) &&
+    [entry.category, entry.profile, ...entry.tags, ...entry.samples, ...entry.pdfFonts].join(' ').toLowerCase().includes(query));
+  updateTags();
+  $('#reset').hidden = !(query || profile || activeTag);
+  $('.view-options > summary').textContent = profile ? `Fonts & settings: ${profile}` : 'Choose fonts & settings';
+  $('#count').textContent = `${visible.length} examples${activeTag ? ` tagged “${activeTag}”` : ''}`;
+  $('#grid').replaceChildren();
+  for (const entry of visible) {
+    const card = node('article', undefined, 'card'), head = node('div', undefined, 'head');
+    head.append(node('h2', entry.category), node('div', entry.profile, 'profile'));
+    const tags = node('div', undefined, 'sample-tags');
+    for (const tag of entry.tags) tags.append(tagButton(tag, true));
+    const image = node('img', undefined, 'thumb');
+    image.src = entry.png[0]; image.loading = 'lazy'; image.alt = `${entry.category}: ${entry.profile}`;
+    image.tabIndex = 0; image.setAttribute('role', 'button');
+    image.onclick = () => view(entry, 0);
+    image.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); view(entry, 0); } };
+    const actions = node('div', undefined, 'actions');
+    for (const [label, path] of [['PNG', entry.png[0]], ['SVG', entry.svg[0]], ['PDF', entry.pdf]]) actions.append(link(label, path));
+    card.append(head, tags, image, actions, sampleDetails(entry));
+    if (entry.png.length > 1) {
+      const pages = node('div', undefined, 'pager');
+      entry.png.forEach((_, index) => { const button = node('button', `Page ${index + 1}`); button.onclick = () => view(entry, index); pages.append(button); });
+      card.append(pages);
+    }
+    $('#grid').append(card);
+  }
+  if (!visible.length) $('#grid').append(node('p', 'No matching examples.', 'empty'));
+}
+async function init() {
+  try {
+    const response = await fetch('manifest.json');
+    if (!response.ok) throw Error(`HTTP ${response.status}`);
+    const manifest = await response.json();
+    entries = manifest.entries;
+    $('#status').textContent = `${manifest.version} / ${manifest.sheetCount} sheets · ${manifest.sampleCount} input examples / Generated ${manifest.generatedAt.slice(0, 10)}`;
+    for (const tag of ['', ...primaryTags]) $('#tags').append(tagButton(tag));
+    $('#tags').append(node('span', undefined, 'extra-tag'));
+    $('.extra-tag').id = 'extra-tag';
+    for (const profile of new Set(entries.map(entry => entry.profile))) {
+      const option = node('option', profile); option.value = profile; $('#profile').append(option);
+    }
+    for (const selector of ['#search', '#profile']) $(selector).addEventListener('input', render);
+    $('#reset').onclick = () => { activeTag = ''; $('#search').value = ''; $('#profile').value = ''; $('.view-options').open = false; render(); };
+    render();
+  } catch (error) {
+    $('#status').textContent = `Failed to load: ${error.message}`;
+    $('.about').open = true;
+    $('#status').setAttribute('role', 'alert');
+  }
+}
+$('#zoom-in').onclick = () => setZoom(zoom + .5);
+$('#zoom-out').onclick = () => setZoom(zoom - .5);
+$('#close').onclick = () => $('#viewer').close();
+$('#viewer').onclick = event => { if (event.target === $('#viewer')) $('#viewer').close(); };
+init();
+
+</script></html>

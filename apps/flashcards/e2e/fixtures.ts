@@ -13,6 +13,8 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import type { Locator } from "@playwright/test";
+
 import { expect, test as base } from "@playwright/test";
 
 // Beside the app rather than under the tests, and outside `test-results/`.
@@ -71,3 +73,9 @@ export const test = base.extend<ScreenshotFixtures>({
 });
 
 export { expect };
+
+// Settings share the row's context menu; no permanent icon occupies name space.
+export async function openDeckSettings(row: Locator): Promise<void> {
+  await row.click({ button: "right" });
+  await row.page().getByRole("menuitem", { name: "What to ask", exact: true }).click();
+}

@@ -46,6 +46,9 @@ let currentStep: UndoStep | null = null;
 // Most recent first, so the cap is a truncation.
 let undoSteps: UndoStep[] = [];
 let redoSteps: UndoStep[] = [];
+let historyWork: Promise<void> = Promise.resolve();
+let historyRequests = 0;
+let historyGeneration = 0;
 const listeners = new Set<() => void>();
 
 export type UndoStatus = Readonly<{ undo: UndoOp | null; redo: UndoOp | null }>;
@@ -67,6 +70,7 @@ function notify(): void {
 // the queue holds before-images of, and undoing to them afterwards would put
 // the reader back somewhere they never were.
 export function clearUndoQueue(): void {
+  historyGeneration += 1;
   currentStep = null;
   undoSteps = [];
   redoSteps = [];
@@ -80,6 +84,10 @@ export async function undoableOp<T>(
   body: () => Promise<T>,
 ): Promise<T> {
   if (currentStep) return body();
+  if (historyRequests > 0) {
+    await historyWork;
+    return undoableOp(op, body);
+  }
   const step: UndoStep = { op, changes: [] };
   currentStep = step;
   try {
@@ -174,22 +182,45 @@ async function applyChanges(
   return reverse;
 }
 
-export async function undo(): Promise<UndoOp | null> {
-  const step = undoSteps[0];
-  if (!step) return null;
-  undoSteps = undoSteps.slice(1);
-  redoSteps = [...redoSteps, { op: step.op, changes: await revert(step) }];
-  notify();
-  return step.op;
+export function undo(): Promise<UndoOp | null> {
+  return moveHistory("undo");
 }
 
-export async function redo(): Promise<UndoOp | null> {
-  const step = redoSteps.at(-1);
-  if (!step) return null;
-  redoSteps = redoSteps.slice(0, -1);
-  undoSteps = [{ op: step.op, changes: await revert(step) }, ...undoSteps];
-  notify();
-  return step.op;
+export function redo(): Promise<UndoOp | null> {
+  return moveHistory("redo");
+}
+
+// Keyboard repeats may arrive before a database transaction finishes. Apply
+// them in order and move the history entry only after its writes succeed.
+function moveHistory(direction: "undo" | "redo"): Promise<UndoOp | null> {
+  // An operation still being recorded has not committed its before-images.
+  if (currentStep) return Promise.resolve(null);
+  const generation = historyGeneration;
+  historyRequests += 1;
+  const work = historyWork.then(async () => {
+    if (generation !== historyGeneration) return null;
+    const step = direction === "undo" ? undoSteps[0] : redoSteps.at(-1);
+    if (!step) return null;
+    const changes = await revert(step);
+    // A restore may have invalidated this history while the writes ran.
+    if (generation !== historyGeneration) return null;
+    const reverse = { op: step.op, changes };
+    if (direction === "undo") {
+      undoSteps = undoSteps.slice(1);
+      redoSteps = [...redoSteps, reverse];
+    } else {
+      redoSteps = redoSteps.slice(0, -1);
+      undoSteps = [reverse, ...undoSteps];
+    }
+    notify();
+    return step.op;
+  });
+  // A rejected write must not prevent the next request from retrying it.
+  historyWork = work.then(
+    () => { historyRequests -= 1; },
+    () => { historyRequests -= 1; },
+  );
+  return work;
 }
 
 // A step that moved nothing but a daily limit has no rows to put back, and so

@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import { deckPathLabel } from "../lib/deck-labels";
   import SettingsDialog from "./SettingsDialog.svelte";
   import type { ResetPreview } from "../lib/study";
 
@@ -34,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
   onapply={onconfirm}
   {oncancel}
 >
-  <p class="scope-name">{deckName}</p>
+  <p class="scope-name">{deckPathLabel(deckName)}</p>
 
   <dl class="counts">
     <div>
@@ -99,7 +100,7 @@ SPDX-License-Identifier: Apache-2.0
   .warning,
   .note {
     margin: 16px 0 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .warning {

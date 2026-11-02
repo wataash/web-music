@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "generate": "tsx src/web-cli.ts",
+    "generate": "tsx src/web-cli.ts && tsx src/harmony-cli.ts",
     "generate:anki": "tsx src/cli.ts",
     "preview": "tsx src/preview-cli.ts",
     "test": "vitest run",

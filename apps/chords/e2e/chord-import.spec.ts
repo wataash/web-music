@@ -9,6 +9,51 @@ import { readFileSync } from "node:fs";
 const song = (title: string, music: string, key = "C") => `${title}=Example==Swing=${key}==1r34LbKcu7${scramble(music)}==120=2`;
 const url = "irealb://" + encodeURIComponent(song("Import One", "*AC-69|G7#11", "C-") + "===" + song("Import Two", "D^9(A7b9)|C*-^*", "C#-") + "===Test Playlist");
 
+for (const recovery of ["reload", "import"] as const) {
+test(`keeps saved progress when the chart library temporarily fails to load (${recovery})`, async ({ page }, testInfo) => {
+  await page.goto("/");
+  await openLibrary(page);
+  await importLink(page, url);
+  await expect(page.getByRole("status").filter({ hasText: "Added 2 songs" })).toBeVisible();
+  await closeLibrary(page);
+  await page.getByLabel("Song key", { exact: true }).selectOption("D");
+  await page.getByRole("button", { name: "Next chord", exact: true }).click();
+  await expect(page.getByLabel("Chord number", { exact: true })).toHaveValue("2");
+  const saved = await page.evaluate(() => localStorage.getItem("chord-practice-progress"));
+
+  await page.addInitScript(() => {
+    const open = IDBFactory.prototype.open;
+    IDBFactory.prototype.open = function (...args: Parameters<IDBFactory["open"]>) {
+      if (args[0] === "music-flashcards-chord-library" && sessionStorage.getItem("fail-library")) {
+        throw new DOMException("Temporary storage failure", "UnknownError");
+      }
+      return open.apply(this, args);
+    };
+  });
+  await page.evaluate(() => sessionStorage.setItem("fail-library", "true"));
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText("Could not load saved charts");
+  // The sample remains usable, but must not replace the unavailable library's progress.
+  await page.getByRole("button", { name: "Next chord", exact: true }).click();
+  await expect(page.getByLabel("Chord number", { exact: true })).toHaveValue("2");
+  expect(await page.evaluate(() => localStorage.getItem("chord-practice-progress"))).toBe(saved);
+
+  await page.evaluate(() => sessionStorage.removeItem("fail-library"));
+  if (recovery === "reload") await page.reload();
+  else {
+    await openLibrary(page);
+    await importLink(page, url);
+    await expect(page.getByRole("status").filter({ hasText: "Added 2 songs" })).toBeVisible();
+    await closeLibrary(page);
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  }
+  await expect(page.getByRole("button", { name: "Choose song", exact: true })).toHaveText(/Import One/);
+  await expect(page.getByLabel("Song key", { exact: true })).toHaveValue("D");
+  await expect(page.getByLabel("Chord number", { exact: true })).toHaveValue("2");
+  await page.screenshot({ path: testInfo.outputPath("recovered-progress.png") });
+});
+}
+
 test("imports, searches, transposes, persists and deletes iReal songs", async ({ page }) => {
   await page.goto("/");
   await openLibrary(page);

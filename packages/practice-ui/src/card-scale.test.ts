@@ -43,6 +43,24 @@ function memoryStorage(initial: Record<string, string> = {}) {
 }
 
 describe("card scales", () => {
+  it("restores centred key counts and carries over existing octave settings", () => {
+    expect(defaultDeckCardSettings("Music Staff (Movable Do)::Staff → Solfege::Treble Clef").referenceKeyboardKeys).toBe(25);
+    expect(defaultDeckCardSettings("Guitar Fretboard").referenceKeyboardKeys).toBe(13);
+    for (const [stored, expected] of [[{}, 25], [{ keyboardOctaves: 1 }, 13], [{ keyboardOctaves: 4 }, 49], [{ keyboardOctaves: 99 }, 25], [{ referenceKeyboardKeys: 15 }, 15], [{ referenceKeyboardKeys: 14 }, 15], [{ referenceKeyboardKeys: 100 }, 49]]) {
+      const storage = memoryStorage({ "music-flashcards:deck-card-settings": JSON.stringify({ "Music Staff (Movable Do)": stored }) });
+      expect(deckCardSettings(loadCardSettingsByDeck(storage), "Music Staff (Movable Do)").referenceKeyboardKeys).toBe(expected);
+    }
+  });
+  it("restores independent fretboard height and bounds stored values", () => {
+    for (const [value, expected] of [[1.5, 1.5], [100, 2], [0, 0.5], ["invalid", 1]] as const) {
+      const storage = memoryStorage({
+        "music-flashcards:deck-card-settings": JSON.stringify({ "Guitar Fretboard": { boardHeight: value } }),
+      });
+      const settings = deckCardSettings(loadCardSettingsByDeck(storage), "Guitar Fretboard::Note → Positions");
+      expect(settings.boardHeight).toBe(expected);
+      expect(cardLiveVariables(DEFAULT_CARD_SCALES, settings)["--board-height-scale"]).toBe(String(expected));
+    }
+  });
   it("steps the piano through the sizes a keyboard is built in", () => {
     expect(stepPianoKeys(88, -1)).toBe(76);
     expect(stepPianoKeys(49, -1)).toBe(49);
@@ -122,6 +140,7 @@ describe("card scales", () => {
       "--staff-scale": "0.7",
       "--keyboard-scale": "1",
       "--board-scale": "1",
+      "--board-height-scale": "1",
       "--answer-scale": "1.2",
     });
     // Either board can be asked for the width of the screen instead, which is

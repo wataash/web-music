@@ -3,7 +3,7 @@
 
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "./fixtures";
+import { expect, test, openDeckSettings } from "./fixtures";
 
 const IMPORT_TIMEOUT = 30_000;
 
@@ -47,7 +47,7 @@ test("draws both guitar decks for the chosen instrument and keeps each instrumen
   const map = dialog.getByRole("region", { name: "Question map" });
 
   // The map redraws for the instrument being chosen, before it is applied.
-  await intervals.getByRole("button", { name: "What Guitar Intervals asks" }).click();
+  await openDeckSettings(intervals);
   await expect(preset).toHaveValue("guitar-6");
   await expect(map.getByRole("table")).toHaveCount(6);
   await expect(dialog).toContainText("118 / 220 shapes selected");
@@ -62,7 +62,7 @@ test("draws both guitar decks for the chosen instrument and keeps each instrumen
     "Guitar Fretboard": ["64 59 55 50 45 40"],
   });
 
-  await intervals.getByRole("button", { name: "What Guitar Intervals asks" }).click();
+  await openDeckSettings(intervals);
   await preset.selectOption("bass-4");
   await dialog.getByRole("button", { name: "APPLY" }).click();
   await expect.poll(() => storedTunings(page), { timeout: IMPORT_TIMEOUT }).toEqual({
@@ -72,7 +72,7 @@ test("draws both guitar decks for the chosen instrument and keeps each instrumen
   await expect(page.locator(".importing")).toHaveCount(0, { timeout: IMPORT_TIMEOUT });
 
   // Every guitar deck's gear offers the same instrument.
-  await deckRow(page, "Position → Note").getByRole("button", { name: "What Position → Note asks" }).click();
+  await openDeckSettings(deckRow(page, "Position → Note"));
   await expect(preset).toHaveValue("bass-4");
   await expect(dialog.getByRole("slider", { name: "Learning range" })).toHaveCount(0);
   await dialog.getByRole("button", { name: "CANCEL" }).click();
@@ -110,7 +110,7 @@ test("draws both guitar decks for the chosen instrument and keeps each instrumen
   });
 
   // Back on a guitar, the bass's answer is not the guitar's progress.
-  await intervals.getByRole("button", { name: "What Guitar Intervals asks" }).click();
+  await openDeckSettings(intervals);
   await preset.selectOption("guitar-6");
   await dialog.getByRole("button", { name: "APPLY" }).click();
   await expect.poll(() => storedTunings(page), { timeout: IMPORT_TIMEOUT }).toEqual({
@@ -119,7 +119,7 @@ test("draws both guitar decks for the chosen instrument and keeps each instrumen
   });
   await expect(page.locator(".importing")).toHaveCount(0, { timeout: IMPORT_TIMEOUT });
   await expect(intervals.locator(".count.learn")).toHaveText("0");
-  await intervals.getByRole("button", { name: "What Guitar Intervals asks" }).click();
+  await openDeckSettings(intervals);
   await expect(dialog).toContainText("118 / 220 shapes selected");
   await dialog.getByRole("button", { name: "CANCEL" }).click();
 });

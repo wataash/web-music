@@ -18,6 +18,7 @@ import { BOARD_COLUMNS, labelPosition, renderBoardSvg } from "./board";
 import {
   MAX_FRET_REACH,
   STANDARD_TUNING,
+  DEGREE_LABELS,
   formatOffset,
   guitarIntervalCards,
   type GuitarIntervalCard,
@@ -56,7 +57,7 @@ export function createDeckNotes(tuning: Tuning = STANDARD_TUNING): readonly Pack
   const namespace = packageNamespace(tuning);
   const board = boardMedia(tuning).filename;
   return cards.map((card) => {
-    const answer = card.names.join(" ");
+    const answer = DEGREE_LABELS[card.semitones];
     return {
       id: card.id,
       guid: stablePackageGuid(namespace, card.id),

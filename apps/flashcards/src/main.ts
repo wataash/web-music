@@ -4,6 +4,7 @@
 import { mount } from "svelte";
 
 import "@web-music/practice-ui/theme.css";
+import "./typography.css";
 
 const page = location.pathname.replace(/\/$/, "") === "/preview"
   ? import("./components/DeckPreview.svelte")

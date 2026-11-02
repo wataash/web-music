@@ -53,6 +53,21 @@ Filter by deck name, toggle optional keyboards, and switch between 390px and
 layouts without importing them or changing study progress or saved settings.
 Empty parent decks are represented by their populated children.
 
+[Flashcard settings and previews](docs/flashcard-settings.md) documents the
+key selectors, live chord notation controls and other preview candidates.
+
+## Flashcard layout policy
+
+Across all Flashcards decks and card templates, revealing the back should
+keep diagrams and other content already visible on the front in the same
+position and at the same size as far as possible. This makes the answer easy
+to compare with the question without having to find the diagram again.
+Reserve space for answer content where needed; adding labels, highlights or
+explanations should not unnecessarily shift, recenter or resize existing
+content. Apply this policy to both the reviewer and deck previews, including
+new decks. When changing card layouts, check front/back alignment with the
+same viewport and display settings, including empty and long answers.
+
 ## Card prompts
 
 Intervals and Circle of Fifths share `cardPrompt` and `CARD_PROMPT_CSS` from
@@ -168,6 +183,7 @@ pnpm generate:svg
 - `decks/guitar-intervals/dist/guitar-intervals.json`
 - `decks/intervals/dist/intervals.json`
 - `decks/music-staff/dist/music-staff.json`
+- `decks/music-staff/dist/diatonic-chords.json` (three text-only seventh-chord decks)
 - `pnpm generate:anki` optionally produces the `.apkg` files for Anki
 - `dist/circle-of-fifths.svg`
 

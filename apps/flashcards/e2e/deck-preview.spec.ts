@@ -7,13 +7,13 @@ test("deck actions align on mobile and wrap without overflow", async ({ page }, 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   const actions = page.locator(".list-toggles .list-action");
-  await expect(actions).toHaveCount(3);
+  await expect(actions).toHaveCount(2);
   const boxes = await actions.evaluateAll(elements => elements.map(element => {
     const { x, y, width, height } = element.getBoundingClientRect();
     return { x, y, width, height };
   }));
   expect(new Set(boxes.map(box => box.y + box.height / 2)).size).toBe(1);
-  await expect(page.getByRole("link", { name: "PREVIEW DECKS" })).toHaveCSS("text-decoration-line", "none");
+  await expect(page.getByRole("link", { name: "PREVIEW DECKS" })).toHaveCount(0);
   await page.locator(".list-toggles").screenshot({ path: testInfo.outputPath("deck-actions-mobile.png") });
   await page.setViewportSize({ width: 320, height: 844 });
   for (const action of await actions.all()) {
@@ -21,8 +21,6 @@ test("deck actions align on mobile and wrap without overflow", async ({ page }, 
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(320);
   }
-  await page.getByRole("link", { name: "PREVIEW DECKS" }).click();
-  await expect(page.getByRole("heading", { name: "Deck preview", exact: true })).toBeVisible();
 });
 
 test("preview lists fixed front/back samples without changing storage", async ({ page }, testInfo) => {

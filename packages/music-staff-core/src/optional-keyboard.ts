@@ -1,19 +1,37 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { renderKeyboardSvg } from "./keyboard-svg";
+import { renderKeyboardRangeSvg, CARD_KEYBOARD_GEOMETRY } from "./keyboard-svg";
 import { formatNoteName } from "@web-music/music-notation";
 
-const BLANK_KEYBOARD = renderKeyboardSvg({ pitch: "C4", highlighted: false });
+// Keep the original single-octave key geometry; crop this reusable drawing
+// in the browser around the chosen tonic octave, with context on both sides.
+const BLANK_KEYBOARD = renderKeyboardRangeSvg({
+  range: { firstIndex: 14, keyCount: 43 },
+  width: 43 * ((CARD_KEYBOARD_GEOMETRY.width - 2 * CARD_KEYBOARD_GEOMETRY.padding) / 8) + 2 * CARD_KEYBOARD_GEOMETRY.padding,
+});
+
+export function optionalKeyboardRange(tonic: string, keyCount: number): Readonly<{ first: number; last: number; focusFirst: number; focusLast: number }> {
+  const parsed = /^([A-G])([♯♭#b]*)$/.exec(tonic);
+  const semitones: Readonly<Record<string, number>> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  let pitch = parsed ? semitones[parsed[1]] : 0;
+  for (const accidental of parsed?.[2] ?? "") pitch += accidental === "♯" || accidental === "#" ? 1 : -1;
+  const focusFirst = 60 + ((pitch % 12) + 12) % 12;
+  const count = Number.isInteger(keyCount) && keyCount >= 13 && keyCount <= 49 && keyCount % 2 === 1 ? keyCount : tonic ? 25 : 13;
+  const context = (count - 13) / 2;
+  return { first: focusFirst - context, last: focusFirst + 12 + context, focusFirst, focusLast: focusFirst + 12 };
+}
 
 export const STAFF_BASE_WIDTH = "min(88vw, 26rem, 62vh)";
 
 // Templates supply space-separated note spellings; the question leaves this
-// empty when the pitch is the answer. Octaves fold onto the same twelve keys.
+// empty when the pitch is the answer. Octaves fold into the central tonic
+// octave; the tonic and span never depend on the hidden answer.
 export const OPTIONAL_KEYBOARD_SCRIPT = `
 <script>
 (() => {
   const formatNoteName = ${formatNoteName.toString()};
+  const optionalKeyboardRange = ${optionalKeyboardRange.toString()};
   if (document.documentElement.dataset.showKeyboard !== "on") return;
   for (const [index, container] of [...document.querySelectorAll("[data-optional-keyboard]")].entries()) {
     const host = document.createElement("div");
@@ -25,6 +43,20 @@ export const OPTIONAL_KEYBOARD_SCRIPT = `
     host.append(frame);
     container.append(host);
     const svg = frame.querySelector("svg");
+    const range = optionalKeyboardRange(container.dataset.keyboardTonic ?? "",
+      Number(document.documentElement.dataset.referenceKeyboardKeys));
+    for (const key of svg.querySelectorAll("[data-semitone]")) {
+      const pitch = Number(key.getAttribute("data-semitone"));
+      if (pitch < range.first || pitch > range.last) key.remove();
+      else key.classList.add(pitch >= range.focusFirst && pitch <= range.focusLast ? "is-root-octave" : "is-context");
+    }
+    const keys = [...svg.querySelectorAll("[data-semitone]")];
+    const left = Math.min(...keys.map((key) => Number(key.getAttribute("x")))) - ${CARD_KEYBOARD_GEOMETRY.padding};
+    const right = Math.max(...keys.map((key) => Number(key.getAttribute("x")) + Number(key.getAttribute("width")))) + ${CARD_KEYBOARD_GEOMETRY.padding};
+    const height = Number(svg.getAttribute("height"));
+    svg.setAttribute("viewBox", left + " 0 " + (right - left) + " " + height);
+    svg.setAttribute("width", String(right - left));
+    svg.dataset.keyCount = String(keys.length);
     const title = svg.querySelector("title");
     const description = svg.querySelector("desc");
     title.id = "optional-keyboard-title-" + index;
@@ -41,7 +73,8 @@ export const OPTIONAL_KEYBOARD_SCRIPT = `
           : accidental === "♭" || accidental === "b" ? -1
           : accidental === "𝄫" ? -2 : 2;
       }
-      const key = svg.querySelector('[data-semitone="' + (60 + (pitch % 12 + 12) % 12) + '"]');
+      const semitone = range.focusFirst + ((pitch - range.focusFirst) % 12 + 12) % 12;
+      const key = svg.querySelector('[data-semitone="' + semitone + '"]');
       key?.classList.add("is-highlighted");
       if (!key || !container.hasAttribute("data-keyboard-labels")) continue;
       const formatUpperNote = (value) => formatNoteName(value[0].toUpperCase() + value.slice(1));
@@ -117,6 +150,14 @@ export const OPTIONAL_KEYBOARD_CSS = `
 .diagram.keyboard svg {
   width: 100%;
   height: auto;
+}
+.diagram.keyboard .keyboard__white-key.is-context {
+  fill: #596475;
+  stroke: #354052;
+}
+.diagram.keyboard .keyboard__black-key.is-context {
+  fill: #0b1220;
+  stroke: #354052;
 }
 .keyboard-label-backdrop {
   fill: #fcd34d;

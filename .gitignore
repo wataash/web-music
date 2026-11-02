@@ -22,6 +22,7 @@
 **/dist/
 **/.svelte-kit/
 /apps/flashcards/public/decks/
+/apps/flashcards/public/music-notation-examples/
 
 # misc
 .DS_Store

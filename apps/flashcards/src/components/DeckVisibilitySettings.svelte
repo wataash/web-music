@@ -30,10 +30,11 @@ SPDX-License-Identifier: Apache-2.0
   } = $props();
 
   let draft = $state<readonly string[]>(
-    untrack(() => [...hiddenDeckNames]),
+    untrack(() => hiddenDeckNames.filter(name => decks.some(deck => deck.name === name))),
   );
   const hidden = $derived(new Set(draft));
   const defaults = $derived(effectiveHiddenDeckNames(null, decks));
+  const defaultHidden = $derived(new Set(defaults));
   const isDefault = $derived(
     defaults.length === draft.length &&
       defaults.every((name) => hidden.has(name)),
@@ -57,15 +58,9 @@ SPDX-License-Identifier: Apache-2.0
     <span>{shownCount} / {decks.length}</span>
   </div>
 
-  <div class="reset">
-    <button disabled={isDefault} onclick={() => (draft = defaults)}>
-      RESET TO DEFAULT
-    </button>
-  </div>
-
   <ul class="decks">
     {#each decks as deck (deck.name)}
-      <li style:padding-inline-start={`${deck.depth * 20}px`}>
+      <li class:modified={hidden.has(deck.name) !== defaultHidden.has(deck.name)} style:margin-inline-start={`${deck.depth * 20}px`}>
         <label>
           <input
             type="checkbox"
@@ -85,6 +80,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <style>
   .table-summary {
+    width: 100%;
     display: flex;
     justify-content: space-between;
     padding: 0 0 14px;
@@ -98,7 +94,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .table-summary span:last-child {
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 400;
   }
 
@@ -108,13 +104,16 @@ SPDX-License-Identifier: Apache-2.0
     list-style: none;
   }
 
+  li { position: relative; padding-inline-start: 12px; }
+  li.modified::before { content: ""; position: absolute; inset-inline-start: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--count-new); }
+
   label {
     display: flex;
     align-items: center;
     gap: 8px;
     min-height: 40px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: var(--ui-font-size-label);
   }
 
   input {
@@ -123,32 +122,9 @@ SPDX-License-Identifier: Apache-2.0
     accent-color: var(--count-new);
   }
 
-  /* Above the list rather than below it: the list is as long as the decks
-     are, and a button under it is off the screen just when it is wanted. */
-  .reset {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 8px;
-  }
-
-  .reset button {
-    min-height: 36px;
-    padding: 0 12px;
-    border-radius: 4px;
-    color: var(--count-new);
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-  }
-
-  .reset button:disabled {
-    cursor: default;
-    color: var(--on-surface-muted);
-    opacity: 0.5;
-  }
 
   .hint {
     margin: 16px 0 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 </style>

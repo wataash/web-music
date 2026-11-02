@@ -34,8 +34,17 @@ describe("fretboard SVG", () => {
       `data-string="1" x1="${CANVAS.nutWidth}" y1="30" x2="${lastFretX}"`,
     );
     expect(svg).toContain(
-      `<g class="fretboard__fret-label" data-fret="24"><text x="1356"`,
+      `<text x="1356"`,
     );
+  });
+
+  test("shortens the neck, inlays and sound cells to the chosen fret", () => {
+    const svg = renderFretboardSvg({ highlightedString: 1, fretCount: 12, hitCells: true });
+    expect(svg.match(/class="fretboard__fret-label"/g)).toHaveLength(13);
+    expect(svg.match(/data-fret-cell=""/g)).toHaveLength(6 * 13);
+    expect(svg).toContain('class="fretboard__inlay fretboard__inlay--octave" data-fret="12"');
+    expect(svg).not.toContain('data-fret="13"');
+    expect(() => renderFretboardSvg({ string: 1, fret: 13, fretCount: 12 })).toThrow();
   });
 
   test("renders one pale-yellow target on a dark background", () => {
@@ -104,8 +113,8 @@ describe("fretboard SVG", () => {
       targets: [{ string: 3, fret: 1, label: "G♯A♭", labelKind: "answer" }],
     });
 
-    expect(svg).toContain(`r="${CANVAS.enharmonicNoteRadius}"`);
-    expect(svg).not.toContain(`r="${CANVAS.noteRadius}"`);
+    expect(svg).toContain(`width="${CANVAS.enharmonicNoteRadius * 2 + 4}" height="${CANVAS.enharmonicNoteRadius * 2}"`);
+    expect(svg).not.toContain(`width="${CANVAS.noteRadius * 2 + 4}" height="${CANVAS.noteRadius * 2}"`);
     expect(svg).toContain('class="fretboard__label fretboard__label--stacked"');
     expect(svg).toContain('dy="-0.6em">G♯</tspan>');
     expect(svg).toContain('dy="1.2em">A♭</tspan>');

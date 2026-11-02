@@ -200,3 +200,15 @@ Anki's own theme.
 
 The fretboard app lives in `../../apps/fretboard/`, and the shared Anki package
 generation in `../../packages/anki-apkg/`.
+
+## Web fretboard layout
+
+Each fret keeps the same width when the displayed fret count changes; only the
+neck length changes. Arrange card provides a Height slider
+independent of the diagram’s overall size. This setting is saved per deck family.
+The Frets selector updates the diagram and study range immediately, using the
+same saved setting as What to ask. Screen width fits the displayed neck to the
+screen at any fret count; ordinary sizing keeps each fret's width fixed.
+On the back, square markers show answers on the requested string, with faint
+markers at every other matching pitch class in the current tuning and fret range.
+The front keeps those references hidden.

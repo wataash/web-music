@@ -160,16 +160,13 @@ describe("Anki deck generation", () => {
     expect(innerE?.fields.slice(1, 4)).toEqual(["", "e", ""]);
   });
 
-  test("starts every child deck hidden in the web app", () => {
+  test("shows note-to-cell decks and hides experimental branches in the web app", () => {
     const deck = createWebDeckData(artifacts.notes, artifacts.media);
     const hiddenNames = deck.decks
       .filter(({ hiddenByDefault }) => hiddenByDefault === true)
       .map(({ name }) => name);
 
     expect(hiddenNames).toEqual([
-      NOTE_TO_CELL_DECK_NAME,
-      OUTER_NOTE_TO_CELL_DECK_NAME,
-      INNER_NOTE_TO_CELL_DECK_NAME,
       CELL_TO_NOTES_DECK_NAME,
       OUTER_CELL_TO_NOTES_DECK_NAME,
       INNER_CELL_TO_NOTES_DECK_NAME,
@@ -193,7 +190,7 @@ describe("Anki deck generation", () => {
     expect(interval.fields[5]).toMatch(/^single\|/);
     expect(WEB_FRONT_TEMPLATE).toContain("data-circle-of-fifths");
     expect(WEB_BACK_TEMPLATE).toContain("circle-of-fifths--single-note");
-    expect(JSON.stringify(deck).length).toBeLessThan(135_000);
+    expect(JSON.stringify(deck).length).toBeLessThan(170_000);
   });
 
   test("writes an inspectable Anki package", async () => {

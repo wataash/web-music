@@ -229,8 +229,9 @@ describe("Anki deck generation", () => {
     // A card's tuning is what the template draws the neck from.
     expect(WEB_FRONT_TEMPLATE).toContain('data-tuning="{{Tuning}}"');
     expect(WEB_BACK_TEMPLATE).toContain('data-tuning="{{Tuning}}"');
-    // The heading drops 24F on whichever string, not only a guitar's six.
-    expect(WEB_BACK_TEMPLATE).toContain("/^\\d+-24$/");
+    // The heading follows the visible neck while preserving the usual 24F omission.
+    expect(WEB_BACK_TEMPLATE).toContain('"--fretboard-fret-count"');
+    expect(WEB_BACK_TEMPLATE).toContain('Number(fret[1]) !== 24');
   });
 
   test("writes an inspectable Anki package", async () => {

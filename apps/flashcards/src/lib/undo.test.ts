@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { addToDailyNewLimit, dailyNewLimit } from "./daily-limits";
 import {
@@ -39,6 +39,85 @@ describe("the undo queue", () => {
   beforeEach(() => {
     installMemoryStorage();
     clearUndoQueue();
+  });
+
+  it.each(["undo", "redo"] as const)("preserves %s history when storage fails, allowing a retry", async (direction) => {
+    await raiseLimit("Intervals", 10);
+    if (direction === "redo") await undo();
+    const before = undoStatus();
+    const limit = dailyNewLimit("Intervals");
+    const write = vi.spyOn(localStorage, "setItem").mockImplementationOnce(() => {
+      throw new Error("storage unavailable");
+    });
+    try {
+      await expect((direction === "undo" ? undo : redo)()).rejects.toThrow("storage unavailable");
+      expect(undoStatus()).toEqual(before);
+      expect(dailyNewLimit("Intervals")).toBe(limit);
+    } finally {
+      write.mockRestore();
+    }
+    expect(await (direction === "undo" ? undo : redo)()).toBe("customStudy");
+    expect(dailyNewLimit("Intervals")).toBe(direction === "undo" ? 20 : 30);
+  });
+
+  it("preserves every step when undo requests overlap", async () => {
+    await raiseLimit("Intervals", 5);
+    await raiseLimit("Intervals", 10);
+    await Promise.all([undo(), undo()]);
+    expect(dailyNewLimit("Intervals")).toBe(20);
+    expect(await redo()).toBe("customStudy");
+    expect(dailyNewLimit("Intervals")).toBe(25);
+    expect(await redo()).toBe("customStudy");
+    expect(dailyNewLimit("Intervals")).toBe(35);
+  });
+
+  it("applies overlapping redo requests in order", async () => {
+    await raiseLimit("Intervals", 5);
+    await raiseLimit("Intervals", 10);
+    await undo();
+    await undo();
+    await Promise.all([redo(), redo()]);
+    expect(dailyNewLimit("Intervals")).toBe(35);
+    await undo();
+    expect(dailyNewLimit("Intervals")).toBe(25);
+    await undo();
+    expect(dailyNewLimit("Intervals")).toBe(20);
+  });
+
+  it("orders undo followed immediately by redo", async () => {
+    await raiseLimit("Intervals", 10);
+    expect(await Promise.all([undo(), redo()])).toEqual(["customStudy", "customStudy"]);
+    expect(dailyNewLimit("Intervals")).toBe(30);
+  });
+
+  it("finishes undo before recording a new operation", async () => {
+    await raiseLimit("Intervals", 10);
+    await Promise.all([undo(), raiseLimit("Intervals", 5)]);
+    expect(dailyNewLimit("Intervals")).toBe(25);
+    expect(undoStatus()).toEqual({ undo: "customStudy", redo: null });
+    await undo();
+    expect(dailyNewLimit("Intervals")).toBe(20);
+  });
+
+  it("does not revert history while an operation is still being recorded", async () => {
+    await raiseLimit("Intervals", 10);
+    await undoableOp("customStudy", async () => {
+      expect(await undo()).toBeNull();
+      saveDailyLimitsUndo();
+      addToDailyNewLimit("Intervals", 5);
+    });
+    expect(dailyNewLimit("Intervals")).toBe(35);
+    await undo();
+    expect(dailyNewLimit("Intervals")).toBe(30);
+  });
+
+  it("does not apply queued history after it has been cleared", async () => {
+    await raiseLimit("Intervals", 10);
+    const pending = undo();
+    clearUndoQueue();
+    expect(await pending).toBeNull();
+    expect(dailyNewLimit("Intervals")).toBe(30);
+    expect(undoStatus()).toEqual({ undo: null, redo: null });
   });
 
   it("puts back what an operation changed, and redoes it", async () => {

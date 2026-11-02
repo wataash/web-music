@@ -53,8 +53,8 @@ SPDX-License-Identifier: Apache-2.0
 <style>
   .tuning-editor { margin-bottom: 16px; min-width: 0; }
   label { display: grid; gap: 6px; margin-bottom: 8px; }
-  p { font-size: 12px; color: var(--on-surface-muted); }
+  p { font-size: var(--ui-font-size-secondary, 12px); color: var(--on-surface-muted); }
   .tunings { display: grid; gap: 8px; }
-  .string { display: grid; grid-template-columns: 1fr minmax(70px, 1.3fr) 52px; align-items: center; gap: 6px; font-size: 13px; }
+  .string { display: grid; grid-template-columns: 1fr minmax(70px, 1.3fr) 52px; align-items: center; gap: 6px; font-size: var(--ui-font-size-secondary, 13px); }
   select { min-width: 0; width: 100%; min-height: 36px; padding: 4px; color: inherit; background: var(--surface); border: 1px solid var(--divider); border-radius: 4px; }
 </style>

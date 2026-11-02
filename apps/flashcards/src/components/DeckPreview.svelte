@@ -6,9 +6,11 @@ SPDX-License-Identifier: Apache-2.0
   import { onMount } from "svelte";
   import NoteFontSelect from "./NoteFontSelect.svelte";
   import { noteFontPreference } from "../lib/note-font.svelte";
+  import { diatonicNotationPreference } from "../lib/diatonic-notation.svelte";
   import { changedBundledDeckEntries, fetchBundledDeck } from "../lib/bundled-decks";
   import { changedDevDeckEntries, fetchDevDeck } from "../lib/dev-decks";
   import { representativeCards, previewDocument } from "../lib/deck-preview";
+  import { DEFAULT_FRETBOARD_FRET_COUNT, FRETBOARD_FRET_COUNT_KEY, parseFretboardFretCount } from "../lib/fretboard-card";
   import { deckLabel } from "../lib/deck-labels";
   import { compareDeckNames } from "../lib/deck-visibility";
 
@@ -18,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
   let query = $state("");
   let showKeyboard = $state(true);
   let width = $state(390);
+  let fretCount = $state(DEFAULT_FRETBOARD_FRET_COUNT);
   const label = (name: string) => name.split("::").map((_, index, parts) =>
     deckLabel(parts.slice(0, index + 1).join("::"))).join(" / ");
   const filtered = $derived(rows.filter(row => label(row.deckName).toLowerCase().includes(query.toLowerCase())));
@@ -26,12 +29,18 @@ SPDX-License-Identifier: Apache-2.0
     loading = true;
     error = "";
     try {
+      try {
+        const saved = localStorage.getItem(FRETBOARD_FRET_COUNT_KEY);
+        if (saved !== null) fretCount = parseFretboardFretCount(JSON.parse(saved));
+      } catch {
+        fretCount = DEFAULT_FRETBOARD_FRET_COUNT;
+      }
       const entries = import.meta.env.DEV
         ? await changedDevDeckEntries(undefined, true)
         : await changedBundledDeckEntries(true);
       const packages = await Promise.all(entries.map(entry =>
         import.meta.env.DEV ? fetchDevDeck(entry) : fetchBundledDeck(entry)));
-      rows = packages.flatMap(({ deck }) => representativeCards(deck))
+      rows = packages.flatMap(({ deck }) => representativeCards(deck, fretCount))
         .sort((a, b) => compareDeckNames(a.deckName, b.deckName));
     } catch (cause) {
       error = cause instanceof Error ? cause.message : String(cause);
@@ -48,7 +57,7 @@ SPDX-License-Identifier: Apache-2.0
   <header>
     <a href="/">← Decks</a>
     <h1>Deck preview</h1>
-    <p>One fixed sample per deck, including Experimental decks. Default card layouts; study progress and saved settings are unchanged.</p>
+    <p>One sample per deck, including Experimental decks. Default card layouts; study progress is unchanged. Guitar Fretboard uses your saved fret count.</p>
     <div class="controls">
       <NoteFontSelect />
       <label>Filter decks <input type="search" bind:value={query} /></label>
@@ -78,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
               <h3>{back ? "Back" : "Front"}</h3>
               <iframe
                 title={`${label(row.deckName)} — ${back ? "Back" : "Front"}`}
-                srcdoc={previewDocument(row, back, showKeyboard, noteFontPreference.value)}
+                srcdoc={previewDocument(row, back, showKeyboard, noteFontPreference.value, fretCount, diatonicNotationPreference.value, diatonicNotationPreference.chords)}
                 loading="lazy"
                 sandbox="allow-scripts"
               ></iframe>
@@ -102,7 +111,7 @@ SPDX-License-Identifier: Apache-2.0
   input, select, button { font: inherit; padding: 0.5rem; }
   .checkbox { display: flex; align-items: center; padding: 0.5rem 0; }
   section { border-top: 1px solid var(--divider); padding: 1rem 0 2rem; }
-  .sample { color: var(--on-surface-muted); font-size: 0.8rem; }
+  .sample { color: var(--on-surface-muted); font-size: var(--ui-font-size-secondary); }
   .pair-scroll { overflow-x: auto; }
   .pair { display: grid; grid-template-columns: repeat(2, var(--card-width)); gap: 1rem; width: max-content; }
   .side { background: var(--surface); }

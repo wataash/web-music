@@ -21,6 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     onreset,
     onclose,
     children,
+    settingRow,
   }: {
     deckLabel: string;
     // The last operation, named, and the one undoing it would put back —
@@ -42,6 +43,8 @@ SPDX-License-Identifier: Apache-2.0
       label: string;
       on: boolean;
       ontoggle: () => void;
+      modified?: boolean;
+      onreset?: () => void;
     }>[];
     // Sizes to step up and down, shown as their own rows: what a card draws
     // large enough to read is the reader's call, and the answer to it is on
@@ -50,6 +53,8 @@ SPDX-License-Identifier: Apache-2.0
       label: string;
       value: string;
       onstep: (steps: 1 | -1) => void;
+      modified?: boolean;
+      onreset?: () => void;
     }>[];
     // Where the parts of the card sit, how large they are drawn and which way
     // the card is turned — set on the card itself rather than stepped from
@@ -59,6 +64,7 @@ SPDX-License-Identifier: Apache-2.0
     onreset?: () => void;
     onclose: () => void;
     children?: Snippet;
+    settingRow?: Snippet<[Snippet, boolean, string, () => void]>;
   } = $props();
 
   function handleKey(event: KeyboardEvent): void {
@@ -111,6 +117,7 @@ SPDX-License-Identifier: Apache-2.0
       </button>
     {/if}
     {#each sizes as size (size.label)}
+      {#snippet sizeControl()}
       <div class="action size" role="group" aria-label={size.label}>
         <span class="icon" aria-hidden="true">⤢</span>{size.label}
         <span class="stepper">
@@ -125,8 +132,15 @@ SPDX-License-Identifier: Apache-2.0
           >
         </span>
       </div>
+      {/snippet}
+      {#if settingRow && size.onreset}
+        {@render settingRow(sizeControl, size.modified ?? false, size.label, size.onreset)}
+      {:else}
+        {@render sizeControl()}
+      {/if}
     {/each}
     {#each switches as option (option.label)}
+      {#snippet switchControl()}
       <button
         class="action"
         role="menuitemcheckbox"
@@ -136,6 +150,12 @@ SPDX-License-Identifier: Apache-2.0
         <span class="icon" aria-hidden="true">{option.on ? "☑" : "☐"}</span
         >{option.label}
       </button>
+      {/snippet}
+      {#if settingRow && option.onreset}
+        {@render settingRow(switchControl, option.modified ?? false, option.label, option.onreset)}
+      {:else}
+        {@render switchControl()}
+      {/if}
     {/each}
     {#if onreset}
     <button class="action danger" role="menuitem" onclick={onreset}>
@@ -176,7 +196,7 @@ SPDX-License-Identifier: Apache-2.0
     padding: 12px 20px;
     border-bottom: 1px solid var(--divider);
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary, 13px);
     overflow-wrap: anywhere;
   }
 
@@ -188,7 +208,7 @@ SPDX-License-Identifier: Apache-2.0
     min-height: 52px;
     padding: 0 20px;
     text-align: left;
-    font-size: 15px;
+    font-size: var(--ui-font-size-label, 15px);
   }
 
   .action:active {
@@ -208,7 +228,7 @@ SPDX-License-Identifier: Apache-2.0
   .value {
     margin-left: auto;
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary, 13px);
   }
 
   .stepper {

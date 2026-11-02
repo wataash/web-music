@@ -24,12 +24,20 @@ class ChordLibrary extends Dexie {
   }
 }
 const library = new ChordLibrary();
-export const loadImportedSongs = async () => (await library.songs.toArray()).map(refreshCustomChart);
-export const saveImportedSongs = (songs: ImportedSong[]) => library.transaction("rw", library.songs, async () => {
-  const existing = await library.songs.bulkGet(songs.map(song => song.id));
-  const start = Date.now();
-  return library.songs.bulkPut(songs.map((song, index) => ({ ...song, importedAt: existing[index]?.importedAt ?? start + index / Math.max(1, songs.length) })));
-});
+export const loadImportedSongs = async () => {
+  await library.open();
+  return (await library.songs.toArray()).map(refreshCustomChart);
+};
+export const saveImportedSongs = async (songs: ImportedSong[]) => {
+  // Dexie retains a failed automatic open. Explicitly open again so a later
+  // import can recover after a temporary storage failure without a reload.
+  await library.open();
+  return library.transaction("rw", library.songs, async () => {
+    const existing = await library.songs.bulkGet(songs.map(song => song.id));
+    const start = Date.now();
+    return library.songs.bulkPut(songs.map((song, index) => ({ ...song, importedAt: existing[index]?.importedAt ?? start + index / Math.max(1, songs.length) })));
+  });
+};
 export const deleteImportedSong = (id: string) => library.songs.delete(id);
 
 // What a chart typed as a chord list needs besides its text, and what an

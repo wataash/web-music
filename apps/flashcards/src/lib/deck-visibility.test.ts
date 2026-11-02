@@ -6,6 +6,12 @@ import { describe, expect, it } from "vitest";
 import { compareDeckNames } from "./deck-visibility";
 
 describe("deck ordering", () => {
+  it("orders all shipped families and diatonic directions in the requested sequence", () => {
+    const roots = ["Music Staff", "Music Staff (with Octave Numbers)", "Music Staff (Movable Do)", "Diatonic Chords", "Chord Tones (Triads)", "Chord Tones (Four-note Chords)", "II–V–I Progressions", "Intervals", "Interval Identification", "Guitar Fretboard", "Guitar Intervals", "(Experimental) Circle of Fifths"];
+    expect([...roots].reverse().sort(compareDeckNames)).toEqual(roots);
+    const children = ["Key + Degree → Chord"].map(name => `Diatonic Chords::${name}`);
+    expect([...children].reverse().sort(compareDeckNames)).toEqual(children);
+  });
   it("puts the experimental circle deck below the other top-level decks", () => {
     const names = [
       "Guitar Fretboard",

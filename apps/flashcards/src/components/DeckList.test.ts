@@ -6,12 +6,13 @@ import { mount, tick, unmount } from "svelte";
 import { describe, expect, it } from "vitest";
 
 import DeckList from "./DeckList.svelte";
+import { parseDiatonicSelections } from "../lib/diatonic-selection";
 import { DEFAULT_CIRCLE_NOTE_SELECTION } from "../lib/circle-note-selection";
-import { DEFAULT_FRETBOARD_NOTE_SELECTION } from "../lib/fretboard-card";
+import { DEFAULT_FRETBOARD_FRET_COUNT, DEFAULT_FRETBOARD_NOTE_SELECTION } from "../lib/fretboard-card";
 import { DEFAULT_FRET_WINDOW } from "../lib/guitar-interval-selection";
 import { DEFAULT_GUITAR_TUNING } from "../lib/guitar-tuning";
 import { DEFAULT_INTERVAL_PAIR_SELECTION } from "../lib/interval-pair-selection";
-import { DEFAULT_STAFF_NOTE_SELECTION } from "../lib/staff-note-selection";
+import { DEFAULT_STAFF_NOTE_SELECTION, parseMovableDoStaffSelections } from "../lib/staff-note-selection";
 
 describe("deck-list scroll position", () => {
   it("restores the position and passes the current position when studying", async () => {
@@ -47,17 +48,21 @@ describe("deck-list scroll position", () => {
         hiddenDeckNames: [],
         initialScrollTop: 480,
         noteSelections: {
+          diatonic: parseDiatonicSelections(null),
+          progressions: { majorKeys: [0], minorKeys: [0], relativeMajor:true },
           circle: {
             noteToCell: DEFAULT_CIRCLE_NOTE_SELECTION,
             intervals: DEFAULT_CIRCLE_NOTE_SELECTION,
           },
           fretboardNotes: new Set(DEFAULT_FRETBOARD_NOTE_SELECTION),
+          fretboardFretCount: DEFAULT_FRETBOARD_FRET_COUNT,
           fretWindow: DEFAULT_FRET_WINDOW,
           guitarDifficulty: 10,
           guitarOverrides: {},
           guitarTuning: DEFAULT_GUITAR_TUNING,
           intervalPairs: new Set(DEFAULT_INTERVAL_PAIR_SELECTION),
           staff: DEFAULT_STAFF_NOTE_SELECTION,
+          movableDoStaff: parseMovableDoStaffSelections(null),
           movableDoKeys: new Set([0, 1, 2, 3, 4, 5, 6, -1, -2, -3, -4, -5]),
         },
         busy: false,
@@ -74,6 +79,7 @@ describe("deck-list scroll position", () => {
         },
         oncirclenoteselectionchange: () => {},
         onfretboardnoteselectionchange: () => {},
+        onfretboardfretcountchange: () => {},
         onguitaroverrideschange: () => {},
         onguitartuningchange: () => {},
         onguitardifficultychange: () => {},
@@ -81,6 +87,8 @@ describe("deck-list scroll position", () => {
         onintervalpairselectionchange: () => {},
         onstaffnoteselectionchange: () => {},
         onmovabledokeyselectionchange: () => {},
+        ondiatonicselectionchange: () => {},
+        onprogressionselectionchange: () => {},
         ondismisserror: () => {},
         ondismissnotice: () => {},
       },

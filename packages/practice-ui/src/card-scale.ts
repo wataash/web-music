@@ -21,6 +21,8 @@ const PIANO_KEY_COUNTS = [49, 61, 76, 88] as const;
 export const MIN_KEYBOARD_KEYS = 25;
 export const MAX_KEYBOARD_KEYS = 41;
 export const KEYBOARD_KEYS_STEP = 2;
+export const MIN_REFERENCE_KEYBOARD_KEYS = 13;
+export const MAX_REFERENCE_KEYBOARD_KEYS = 49;
 
 // Where each part of the card sits, as a share of the card's width and height.
 // A phone hangs the card at the top of a tall screen and the answer buttons at
@@ -187,11 +189,13 @@ export const DEFAULT_CARD_SCALES: CardScales = {
 // until a reader who is naming the interval between two notes asks for it.
 export type DeckCardSettings = Readonly<{
   staff: number;
+  boardHeight: number;
   // The question and the answer as words. The deck decides what size the card
   // is written at; this is the reader's multiple of it, so every part of a
   // card can be sized the same way — by pinching it.
   text: number;
   keyboardKeys: number;
+  referenceKeyboardKeys: number;
   offsets: CardOffsets;
   rotation: CardRotation;
   answerAnchor: AnswerAnchor;
@@ -204,8 +208,10 @@ export type DeckCardSettings = Readonly<{
 
 export const DEFAULT_DECK_CARD_SETTINGS: DeckCardSettings = {
   staff: 1,
+  boardHeight: 1,
   text: 1,
   keyboardKeys: 37,
+  referenceKeyboardKeys: 13,
   offsets: DEFAULT_CARD_OFFSETS,
   rotation: 0,
   answerAnchor: "bottom",
@@ -227,6 +233,7 @@ export function defaultDeckCardSettings(deckName: string): DeckCardSettings {
     ...DEFAULT_DECK_CARD_SETTINGS,
     sound: !SILENT_DECKS.some((name) => top.startsWith(name)),
     showKeyboard: top === "Music Staff (Movable Do)",
+    referenceKeyboardKeys: top === "Music Staff (Movable Do)" ? 25 : 13,
   };
 }
 
@@ -369,7 +376,7 @@ function isDefaultDeckCardSettings(
   );
 }
 
-function parseDeckCardSettings(
+export function parseDeckCardSettings(
   value: unknown,
   deckName: string,
 ): DeckCardSettings {
@@ -378,8 +385,12 @@ function parseDeckCardSettings(
   const values = value as Record<string, unknown>;
   return {
     staff: clampCardScale(readScale(values.staff)),
+    boardHeight: clampCardScale(readScale(values.boardHeight)),
     text: clampCardScale(readScale(values.text)),
     keyboardKeys: clampKeyboardKeys(values.keyboardKeys),
+    referenceKeyboardKeys: clampReferenceKeyboardKeys(values.referenceKeyboardKeys ??
+      (typeof values.keyboardOctaves === "number" && Number.isInteger(values.keyboardOctaves) && values.keyboardOctaves >= 1 && values.keyboardOctaves <= 4
+        ? values.keyboardOctaves * 12 + 1 : undefined), fallback.referenceKeyboardKeys),
     offsets: parseCardOffsets(values.offsets),
     rotation: clampCardRotation(values.rotation),
     answerAnchor: clampAnswerAnchor(values.answerAnchor),
@@ -425,6 +436,12 @@ export function clampKeyboardKeys(value: unknown): number {
     MAX_KEYBOARD_KEYS,
     Math.max(MIN_KEYBOARD_KEYS, MIN_KEYBOARD_KEYS + steps * KEYBOARD_KEYS_STEP),
   );
+}
+
+export function clampReferenceKeyboardKeys(value: unknown, fallback = 13): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(MAX_REFERENCE_KEYBOARD_KEYS, Math.max(MIN_REFERENCE_KEYBOARD_KEYS,
+    MIN_REFERENCE_KEYBOARD_KEYS + Math.round((value - MIN_REFERENCE_KEYBOARD_KEYS) / 2) * 2));
 }
 
 function parseCardOffsets(value: unknown): CardOffsets {
@@ -526,6 +543,7 @@ export function cardLiveVariables(
     ),
     "--text-scale": String(deckSettings.text),
     "--staff-scale": String(deckSettings.staff),
+    "--board-height-scale": String(deckSettings.boardHeight),
     "--answer-scale": String(scales.answer),
     ...(scales.board === SCREEN_WIDTH
       ? { "--board-width": "100vw" }

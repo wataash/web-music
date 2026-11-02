@@ -3,8 +3,11 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import SettingChange from "./SettingChange.svelte";
+  import { sameSelection } from "../lib/setting-defaults";
   import {
     ALL_FRETBOARD_NOTES,
+    DEFAULT_FRETBOARD_NOTE_SELECTION,
     fretboardNotesForPreset,
     presetForFretboardNotes,
     type FretboardNoteSpelling,
@@ -47,14 +50,18 @@ SPDX-License-Identifier: Apache-2.0
     );
   }
 </script>
-
-<section class="note-table-section">
+<SettingChange modified={!sameSelection(selection, DEFAULT_FRETBOARD_NOTE_SELECTION)} settingName="Fretboard notes" onreset={() => onchange([...DEFAULT_FRETBOARD_NOTE_SELECTION])}>
+{#snippet heading()}
   <div class="table-summary">
     <span>{deckLabel}</span>
     <span class="selected-count">
       {selectedCount} / {ALL_FRETBOARD_NOTES.length} selected
     </span>
   </div>
+{/snippet}
+
+<section class="note-table-section">
+
   <div class="table-scroll">
     <table>
       <thead>
@@ -121,6 +128,7 @@ SPDX-License-Identifier: Apache-2.0
   <p>A note such as <code>A♯B♭</code> is one pitch. It can be asked as A♯, B♭, or both names together.</p>
 </details>
 
+</SettingChange>
 <style>
   fieldset {
     margin: 0;
@@ -131,7 +139,7 @@ SPDX-License-Identifier: Apache-2.0
   legend {
     margin-bottom: 8px;
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .presets {
@@ -167,6 +175,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .table-summary {
+    width: 100%;
     display: flex;
     justify-content: space-between;
     gap: 12px;
@@ -176,7 +185,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .selected-count {
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 400;
   }
 
@@ -187,7 +196,7 @@ SPDX-License-Identifier: Apache-2.0
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: var(--ui-font-size-label);
   }
 
   th,
@@ -200,7 +209,7 @@ SPDX-License-Identifier: Apache-2.0
   th {
     background: rgb(0 0 0 / 0.035);
     color: var(--on-surface-muted);
-    font-size: 12px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 500;
     vertical-align: bottom;
   }
@@ -221,7 +230,7 @@ SPDX-License-Identifier: Apache-2.0
 
   .hint {
     margin: 16px 0 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .hint summary {

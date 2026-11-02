@@ -6,7 +6,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./note-fonts": "./src/note-fonts.ts"
+    "./note-fonts": "./src/note-fonts.ts",
+    "./chord-font": "./src/chord-font.ts",
+    "./chord-symbols": "./src/chord-symbols.ts"
   },
   "scripts": {
     "test": "vitest run"

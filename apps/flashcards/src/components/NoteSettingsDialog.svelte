@@ -3,7 +3,11 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import DiatonicNotationSelect from "./DiatonicNotationSelect.svelte";
+  import SettingChange from "./SettingChange.svelte";
+  import { DEFAULT_FRETBOARD_FRET_COUNT } from "../lib/fretboard-card";
   import { untrack } from "svelte";
+  import { CLEFS, CLEF_LABELS, MAJOR_KEYS_BY_SIGNATURE } from "@web-music/music-staff-core";
 
   import CircleNoteSettings from "./CircleNoteSettings.svelte";
   import CircleReference from "./CircleReference.svelte";
@@ -13,7 +17,14 @@ SPDX-License-Identifier: Apache-2.0
   import InstrumentSettings from "./InstrumentSettings.svelte";
   import IntervalAnswerReference from "./IntervalAnswerReference.svelte";
   import IntervalPairSettings from "./IntervalPairSettings.svelte";
+  import { DEFAULT_MOVABLE_DO_KEYS } from "../lib/movable-do-key-selection";
   import MovableDoKeySettings from "./MovableDoKeySettings.svelte";
+  import ProgressionSettings from "./ProgressionSettings.svelte";
+  import DiatonicSettings from "./DiatonicSettings.svelte";
+  import { type ProgressionSelection } from "../lib/progression-selection";
+  import { diatonicNotationPreference, setDiatonicNotation, setChordNotation } from "../lib/diatonic-notation.svelte";
+  import { CHORD_NOTATION_OPTIONS } from "../lib/diatonic-selection";
+  import type { DiatonicSelections } from "../lib/diatonic-selection";
   import SettingsDialog from "./SettingsDialog.svelte";
   import StaffNoteSettings from "./StaffNoteSettings.svelte";
   import StaffScaleReference from "./StaffScaleReference.svelte";
@@ -29,7 +40,7 @@ SPDX-License-Identifier: Apache-2.0
     type DeckSettingsTarget,
     type NoteSelections,
   } from "../lib/note-selection";
-  import type { StaffNoteSelection } from "../lib/staff-note-selection";
+  import type { StaffNoteSelection, MovableDoStaffSelections } from "../lib/staff-note-selection";
 
   // What the decks being studied let the reader narrow, one section each. A
   // deck of its own has one; a deck with decks under it has theirs, so the
@@ -40,6 +51,7 @@ SPDX-License-Identifier: Apache-2.0
     onpreviewfretwindow,
     oncirclenoteselectionchange,
     onfretboardnoteselectionchange,
+    onfretboardfretcountchange,
     onfretwindowchange,
     onguitardifficultychange,
     onguitaroverrideschange,
@@ -47,6 +59,8 @@ SPDX-License-Identifier: Apache-2.0
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
     onmovabledokeyselectionchange,
+    ondiatonicselectionchange,
+    onprogressionselectionchange,
     onclose,
   }: {
     targets: readonly DeckSettingsTarget[];
@@ -59,13 +73,16 @@ SPDX-License-Identifier: Apache-2.0
       selection: CircleNoteSelection,
     ) => void;
     onfretboardnoteselectionchange: (selection: readonly string[]) => void;
+    onfretboardfretcountchange: (count: number) => void;
     onfretwindowchange: (selection: FretWindow) => void;
     onguitardifficultychange: (difficulty: number) => void;
     onguitaroverrideschange: (overrides: Readonly<Record<string, boolean>>) => void;
     onguitartuningchange: (tuning: Tuning) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
-    onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
+    onstaffnoteselectionchange: (selection: StaffNoteSelection, solfege: MovableDoStaffSelections) => void;
     onmovabledokeyselectionchange: (selection: readonly number[]) => void;
+    ondiatonicselectionchange: (selection: DiatonicSelections) => void;
+    onprogressionselectionchange: (selection: ProgressionSelection) => void;
     onclose: () => void;
   } = $props();
 
@@ -75,7 +92,19 @@ SPDX-License-Identifier: Apache-2.0
   let staff = $state<StaffNoteSelection>(
     untrack(() => ({ ...noteSelections.staff })),
   );
+  let minorNotation = $state(untrack(() => diatonicNotationPreference.value));
+  let chordNotation = $state(untrack(() => ({ ...diatonicNotationPreference.chords })));
+  let progressions = $state(untrack(() => noteSelections.progressions));
+  let diatonic = $state(untrack(() => noteSelections.diatonic));
   let movableDoKeys = $state<readonly number[]>(untrack(() => [...noteSelections.movableDoKeys]));
+  let movableDoStaff = $state<MovableDoStaffSelections>(untrack(() => ({ ...noteSelections.movableDoStaff })));
+  let editingKey = $state(untrack(() => [...noteSelections.movableDoKeys][0] ?? 0));
+  const editableKeys = $derived(MAJOR_KEYS_BY_SIGNATURE.filter((key) => movableDoKeys.includes(key.fifths)));
+
+  function setStudyKeys(keys: readonly number[]): void {
+    movableDoKeys = keys;
+    if (!keys.includes(editingKey)) editingKey = keys[0] ?? 0;
+  }
   let circle = $state(untrack(() => ({ ...noteSelections.circle })));
   let intervalPairs = $state<readonly string[]>(
     untrack(() => [...noteSelections.intervalPairs]),
@@ -88,6 +117,7 @@ SPDX-License-Identifier: Apache-2.0
   let fretboardNotes = $state<readonly string[]>(
     untrack(() => [...noteSelections.fretboardNotes]),
   );
+  let fretboardFretCount = $state(untrack(() => noteSelections.fretboardFretCount));
   let guitarTuning = $state<Tuning>(untrack(() => [...noteSelections.guitarTuning]));
   // The instrument is every guitar deck's, so it is set once above their
   // sections rather than in each of them.
@@ -95,12 +125,23 @@ SPDX-License-Identifier: Apache-2.0
   const movableDoDecks = $derived(targets.some((target) =>
     target.kind === "movable-do-keys" || (target.kind === "staff" && target.setting.movableDo === true),
   ));
-  const sections = $derived(targets.filter((target) =>
-    target.kind !== "guitar-instrument" && target.kind !== "movable-do-keys" && target.kind !== "circle-cells",
-  ));
+  const sections = $derived.by(() => {
+    const result: DeckSettingsTarget[] = targets.filter((target) =>
+      target.kind !== "guitar-instrument" && target.kind !== "movable-do-keys" && target.kind !== "circle-cells" && target.kind !== "diatonic" && target.kind !== "progression",
+    ).filter((target) => !(target.kind === "staff" && target.setting.movableDo && movableDoKeys.length === 0));
+    if (movableDoDecks && movableDoKeys.length > 0 && !result.some((target) => target.kind === "staff" && target.setting.movableDo)) {
+      result.push(...CLEFS.map((clef): DeckSettingsTarget => ({
+        kind: "staff", setting: { clef, deckLabel: `${CLEF_LABELS[clef]} Clef`, movableDo: true },
+      })));
+    }
+    return result;
+  });
   // One reference per kind of deck, after the sections: the answers the decks
   // being set can ask for, with those the draft leaves out drawn faint.
   const targetKinds = $derived(new Set(targets.map(({ kind }) => kind)));
+  const diatonicDirections = $derived([...new Set(targets.flatMap(target =>
+    target.kind === "diatonic" ? target.setting.directions : [],
+  ))]);
   const fretboardReference = $derived(targetKinds.has("fretboard-note") || targetKinds.has("guitar-instrument"));
   const circleReference = $derived(targets.some((target) =>
     target.kind === "circle-cells" || (target.kind === "circle" && target.setting.scope === "note-to-cell"),
@@ -137,11 +178,20 @@ SPDX-License-Identifier: Apache-2.0
   // each kind once, however many decks under the one being studied asked for
   // it.
   function apply(): void {
-    if (targetKinds.has("staff")) onstaffnoteselectionchange(staff);
+    if (targetKinds.has("diatonic") || targetKinds.has("progression") || targetKinds.has("chord-tones")) {
+      setDiatonicNotation(minorNotation);
+      for (const option of CHORD_NOTATION_OPTIONS) setChordNotation(option.key, chordNotation[option.key]);
+    }
+    if (targetKinds.has("progression")) onprogressionselectionchange(progressions);
+    if (targetKinds.has("diatonic")) ondiatonicselectionchange(diatonic);
+    if (movableDoDecks || sections.some((target) => target.kind === "staff")) onstaffnoteselectionchange(staff, movableDoStaff);
     if (movableDoDecks) onmovabledokeyselectionchange(movableDoKeys);
     if (targetKinds.has("interval")) onintervalpairselectionchange(intervalPairs);
     if (targetKinds.has("fretboard-note")) {
       onfretboardnoteselectionchange(fretboardNotes);
+    }
+    if (targetKinds.has("fretboard-note") || targetKinds.has("guitar-instrument")) {
+      onfretboardfretcountchange(fretboardFretCount);
     }
     // Before the shapes turned off by hand, which are kept per instrument:
     // they are written for the instrument being applied, not the one before.
@@ -169,7 +219,7 @@ SPDX-License-Identifier: Apache-2.0
       case "circle":
         return `circle-${target.setting.scope}-${target.setting.ring}`;
       case "staff":
-        return `staff-${target.setting.clef}`;
+        return `staff-${target.setting.movableDo ? "solfege" : "regular"}-${target.setting.clef}`;
       default:
         return `${target.kind}-${target.setting.deckLabel}`;
     }
@@ -182,6 +232,18 @@ SPDX-License-Identifier: Apache-2.0
   onapply={apply}
   oncancel={onclose}
 >
+  {#if targetKinds.has("progression")}
+    <ProgressionSettings bind:minorNotation bind:chordNotation selection={progressions} onchange={value => progressions = value} />
+  {/if}
+  {#if diatonicDirections.length > 0}
+    <DiatonicSettings bind:minorNotation bind:chordNotation directions={diatonicDirections} selection={diatonic} onchange={value => diatonic = value} />
+  {/if}
+  {#each sections as target}
+    {#if target.kind === "chord-tones"}
+      <DiatonicNotationSelect bind:minorNotation bind:chordNotation showDegrees={false} triads={target.setting.triads} />
+      <p class="hint">Most common chords first · iReal Pro Jazz 1460</p>
+    {/if}
+  {/each}
   {#if guitarDecks}
     <InstrumentSettings
       tuning={guitarTuning}
@@ -193,9 +255,36 @@ SPDX-License-Identifier: Apache-2.0
       }}
     />
   {/if}
+  {#if targetKinds.has("fretboard-note") || targetKinds.has("guitar-instrument")}
+    <div class="deck-section">
+      <SettingChange modified={fretboardFretCount !== DEFAULT_FRETBOARD_FRET_COUNT} settingName="Fretboard frets" onreset={() => fretboardFretCount = DEFAULT_FRETBOARD_FRET_COUNT}>
+      {#snippet heading()}
+      <label for="fretboard-fret-count">Fretboard frets</label>
+      {/snippet}
+      <select id="fretboard-fret-count" bind:value={fretboardFretCount}>
+        {#each Array.from({ length: 13 }, (_, index) => index + 12) as count}
+          <option value={count}>{count}</option>
+        {/each}
+      </select>
+      </SettingChange>
+    </div>
+  {/if}
   {#if movableDoDecks}
     <div class="deck-section">
-      <MovableDoKeySettings selection={movableDoKeys} onchange={(keys) => (movableDoKeys = keys)} />
+      <p class="scope-label">Keys to study (select multiple)</p>
+      <MovableDoKeySettings selection={movableDoKeys} defaultSelection={DEFAULT_MOVABLE_DO_KEYS} onchange={setStudyKeys} />
+    </div>
+    <div class="deck-section">
+      <label class="scope-label" for="staff-range-key">Edit note range for key</label>
+      <select id="staff-range-key" bind:value={editingKey} disabled={editableKeys.length === 0}>
+        {#if editableKeys.length === 0}
+          <option value={editingKey}>Select keys to study first</option>
+        {/if}
+        {#each editableKeys as key}
+          <option value={key.fifths}>{key.tonic} major ({key.fifths === 0 ? "no accidentals" : `${Math.abs(key.fifths)} ${key.fifths < 0 ? "♭" : "♯"}`})</option>
+        {/each}
+      </select>
+      <p class="scope-label">{editableKeys.length === 0 ? "Choose a key to study above to edit its range." : "Range changes apply only to this key and clef. Other keys keep their own ranges."}</p>
     </div>
   {/if}
   {#each sections as target (sectionKey(target))}
@@ -237,9 +326,15 @@ SPDX-License-Identifier: Apache-2.0
         <StaffNoteSettings
           clef={target.setting.clef}
           deckLabel={target.setting.deckLabel}
-          selection={staff}
-          onchange={(pitches) =>
-            (staff = { ...staff, [target.setting.clef]: pitches })}
+          selection={target.setting.movableDo ? movableDoStaff[editingKey] : staff}
+          keyFifths={target.setting.movableDo ? editingKey : undefined}
+          onchange={(pitches) => {
+            if (target.setting.movableDo) {
+              movableDoStaff = { ...movableDoStaff, [editingKey]: { ...movableDoStaff[editingKey], [target.setting.clef]: pitches } };
+            } else {
+              staff = { ...staff, [target.setting.clef]: pitches };
+            }
+          }}
         />
       {/if}
     </div>
@@ -250,6 +345,7 @@ SPDX-License-Identifier: Apache-2.0
   {#if fretboardReference}
     <FretboardReference
       tuning={guitarTuning}
+      fretCount={fretboardFretCount}
       selection={targetKinds.has("fretboard-note") ? fretboardNotes : undefined}
     />
   {/if}
@@ -262,6 +358,25 @@ SPDX-License-Identifier: Apache-2.0
 </SettingsDialog>
 
 <style>
+  .scope-label {
+    display: block;
+    margin: 8px 0;
+    color: var(--on-surface-muted);
+    font-size: var(--ui-font-size-secondary);
+    line-height: 1.5;
+  }
+
+  #staff-range-key {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px;
+    background: var(--surface);
+    color: var(--on-surface);
+    border: 1px solid var(--divider);
+    border-radius: 6px;
+    font: inherit;
+  }
+
   /* Under a parent deck the sections are stacked, so each says where it ends
      rather than running into the next one's table. */
   .deck-section + .deck-section {

@@ -4,14 +4,16 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_CIRCLE_NOTE_SELECTION } from "./circle-note-selection";
-import { DEFAULT_FRETBOARD_NOTE_SELECTION } from "./fretboard-card";
+import { DEFAULT_FRETBOARD_FRET_COUNT, DEFAULT_FRETBOARD_NOTE_SELECTION, parseFretboardFretCount } from "./fretboard-card";
 import { DEFAULT_FRET_WINDOW } from "./guitar-interval-selection";
 import { DEFAULT_GUITAR_TUNING } from "./guitar-tuning";
 import { DEFAULT_INTERVAL_PAIR_SELECTION } from "./interval-pair-selection";
 import { deckSettingsTarget, includesSelectedNote } from "./note-selection";
 import { DEFAULT_MOVABLE_DO_KEYS, parseMovableDoKeys } from "./movable-do-key-selection";
+import { parseDiatonicSelections } from "./diatonic-selection";
 import {
   ALL_STAFF_NOTES,
+  parseMovableDoStaffSelections,
   DEFAULT_STAFF_NOTE_SELECTION,
 } from "./staff-note-selection";
 
@@ -21,15 +23,52 @@ const selections = {
     intervals: DEFAULT_CIRCLE_NOTE_SELECTION,
   },
   fretboardNotes: new Set(DEFAULT_FRETBOARD_NOTE_SELECTION),
+  fretboardFretCount: DEFAULT_FRETBOARD_FRET_COUNT,
   fretWindow: DEFAULT_FRET_WINDOW,
   guitarDifficulty: 10, guitarOverrides: {},
   guitarTuning: DEFAULT_GUITAR_TUNING,
   intervalPairs: new Set(DEFAULT_INTERVAL_PAIR_SELECTION),
   staff: DEFAULT_STAFF_NOTE_SELECTION,
+  movableDoStaff: parseMovableDoStaffSelections(null),
   movableDoKeys: new Set(DEFAULT_MOVABLE_DO_KEYS),
+  diatonic: parseDiatonicSelections(null),
+  progressions: { majorKeys: [0], minorKeys: [0], relativeMajor:true },
 };
 
 describe("note selection", () => {
+  it("filters Solfege by its own key range instead of the regular staff range", () => {
+    const selected = {
+      ...selections,
+      staff: { ...ALL_STAFF_NOTES, treble: ["D7"] },
+      movableDoStaff: parseMovableDoStaffSelections({
+        [-1]: { ...ALL_STAFF_NOTES, treble: ["A4"] },
+        [-2]: { ...ALL_STAFF_NOTES, treble: ["C5"] },
+      }),
+    };
+    const note = (fifths: number, pitch: string) => ({
+      fields: ["id", "treble", pitch, String(fifths)],
+      tags: "clef::treble mode::major",
+    });
+    expect(includesSelectedNote(note(-1, "A4"), selected)).toBe(true);
+    expect(includesSelectedNote(note(-2, "A4"), selected)).toBe(false);
+    expect(includesSelectedNote(note(-1, "D7"), selected)).toBe(false);
+    expect(includesSelectedNote(note(-2, "C5"), selected)).toBe(true);
+  });
+  it("limits Position → Note without removing the full deck or other cards", () => {
+    const position = (fret: number) => ({
+      fields: ["id", "natural", "1", String(fret), "E"],
+      tags: "direction::position-to-note",
+    });
+    const selected = { ...selections, fretboardFretCount: 12 };
+    expect(includesSelectedNote(position(12), selected)).toBe(true);
+    expect(includesSelectedNote(position(13), selected)).toBe(false);
+    expect(includesSelectedNote(position(24), selections)).toBe(true);
+    expect(includesSelectedNote({ fields: ["id"], tags: "" }, selected)).toBe(true);
+    expect(parseFretboardFretCount(12)).toBe(12);
+    expect(parseFretboardFretCount(24)).toBe(24);
+    expect(parseFretboardFretCount(25)).toBe(24);
+    expect(parseFretboardFretCount("12")).toBe(24);
+  });
   it("applies every deck's own filter and passes the rest through", () => {
     const staffCard = {
       fields: ["id", "treble", "G4", "G", "4", "", "", ""],

@@ -69,6 +69,7 @@ export type DeckInfo = Readonly<{
   DeckCounts;
 
 export type QueueItem = Readonly<{
+  deckName: string;
   card: CardRow;
   note: NoteRow;
   model: ModelRow;
@@ -305,7 +306,9 @@ async function toQueueItem(
   if (!template) {
     throw new Error(`template ord ${card.ord} missing in model ${model.name}`);
   }
-  return { card, note, model, template, state, extraReview };
+  const deck = await db.decks.get(card.did);
+  if (!deck) throw new Error(`deck ${card.did} missing for card ${card.id}`);
+  return { card, note, model, template, state, extraReview, deckName: deck.name };
 }
 
 export async function extraStudyAvailability(

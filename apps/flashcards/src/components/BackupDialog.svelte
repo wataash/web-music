@@ -198,7 +198,7 @@ SPDX-License-Identifier: Apache-2.0
   .chosen,
   .error {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .lead,
@@ -208,7 +208,7 @@ SPDX-License-Identifier: Apache-2.0
 
   .details {
     margin-top: 8px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .details summary {
@@ -267,7 +267,7 @@ SPDX-License-Identifier: Apache-2.0
     border: 1px solid var(--divider);
     border-radius: 4px;
     color: var(--on-surface);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 500;
     letter-spacing: 0.04em;
     cursor: pointer;

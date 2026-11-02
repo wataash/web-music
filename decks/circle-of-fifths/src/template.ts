@@ -101,16 +101,45 @@ const WEB_CIRCLE_SCRIPT = `
     note.getAttribute("data-note") ?? "",
     note.parentElement,
   ]));
+  const answerLabel = labels.get(visible[0]);
+  const neighborNotes = [];
+  if (drawing[2] === "neighbors" && answerLabel instanceof SVGElement) {
+    const hour = Number(answerLabel.closest(".circle-of-fifths__sector")?.getAttribute("data-hour"));
+    const role = answerLabel.getAttribute("data-role");
+    const innerFlatByDoubleSharp = { "F##": "fb", "C##": "cb", "G##": "gb", "D##": "db", "A##": "ab", "E##": "eb", "B##": "bb" };
+    const innerFlat = role === "major" ? innerFlatByDoubleSharp[visible[0]] : undefined;
+    if (innerFlat) {
+      const innerLabel = svg.querySelector('.circle-of-fifths__sector[data-hour="' + hour + '"] .circle-of-fifths__label[data-role="minor"]');
+      if (innerLabel instanceof SVGElement) neighborNotes.push([innerFlat, innerLabel]);
+    }
+    const letters = "CDEFGAB";
+    const letterIndex = letters.indexOf(visible[0][0].toUpperCase());
+    for (const offset of [-2, -1, 1, 2]) {
+      const neighborHour = ((hour - 1 + offset + 12) % 12) + 1;
+      const label = svg.querySelector('.circle-of-fifths__sector[data-hour="' + neighborHour + '"] .circle-of-fifths__label[data-role="' + role + '"]');
+      if (!(label instanceof SVGElement)) continue;
+      const spellings = (label.getAttribute("data-notes") ?? "").split(" ").filter(Boolean);
+      const fifthLetter = letters[(letterIndex + (offset < 0 ? 3 : 4) * Math.abs(offset)) % 7];
+      const spelling = spellings.find((note) => note[0].toUpperCase() === fifthLetter)
+        ?? spellings.sort((a, b) => a.length - b.length)[0];
+      if (spelling) neighborNotes.push([spelling, label]);
+    }
+  }
   for (const label of svg.querySelectorAll(".circle-of-fifths__label")) {
     label.replaceChildren();
   }
   const namespace = "http://www.w3.org/2000/svg";
-  for (const noteName of visible) {
-    const label = labels.get(noteName);
+  for (const [noteName, label, dimmed] of [
+    ...visible.map((noteName) => [noteName, labels.get(noteName), false]),
+    ...neighborNotes.map(([noteName, label]) => [noteName, label, true]),
+  ]) {
     if (!(label instanceof SVGElement)) continue;
     const group = document.createElementNS(namespace, "g");
     group.setAttribute("class", "circle-of-fifths__note");
     group.setAttribute("data-note", noteName);
+    if (dimmed) {
+      group.setAttribute("opacity", "0.35");
+    }
     const text = document.createElementNS(namespace, "text");
     text.setAttribute("class", "circle-of-fifths__spelling");
     text.setAttribute("x", "0");

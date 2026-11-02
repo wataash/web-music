@@ -12,14 +12,16 @@ SPDX-License-Identifier: Apache-2.0
   // Every position on the instrument being set, named on the same neck the
   // cards draw. With a selection, the notes Note → Positions does not ask for
   // are drawn faint.
-  let { tuning, selection }: {
+  let { tuning, selection, fretCount }: {
     tuning: Tuning;
     selection?: readonly string[];
+    fretCount: number;
   } = $props();
 
   const board = $derived.by(() => {
-    const positions = positionToNoteCards(tuning);
+    const positions = positionToNoteCards(tuning).filter(({ fret }) => fret <= fretCount);
     const svg = renderFretboardSvg({
+      fretCount,
       targets: positions.map(({ string, fret, note }) => ({ string, fret, label: note })),
       stringCount: tuning.length,
       title: "Fretboard reference",
@@ -34,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
       .map(({ string, fret }) => `${string}:${fret}`));
     // A position's dot and the name written on it, faded together.
     return svg.replace(
-      /<circle class="fretboard__target" data-string="(\d+)" data-fret="(\d+)"[^>]*\/>(?:<text[^>]*>.*?<\/text>)?/g,
+      /<rect class="fretboard__target" data-string="(\d+)" data-fret="(\d+)"[^>]*\/>(?:<text[^>]*>.*?<\/text>)?/g,
       (dot, string: string, fret: string) => off.has(`${string}:${fret}`) ? `<g class="off">${dot}</g>` : dot,
     );
   });

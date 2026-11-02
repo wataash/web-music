@@ -3,8 +3,11 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import SettingChange from "./SettingChange.svelte";
+  import { sameSelection } from "../lib/setting-defaults";
   import {
     ALL_CIRCLE_NOTES,
+    DEFAULT_CIRCLE_NOTE_SELECTION,
     circleNoteTableRows,
     presetForRingSelection,
     selectionForPreset,
@@ -49,14 +52,18 @@ SPDX-License-Identifier: Apache-2.0
     );
   }
 </script>
-
-<section class="note-table-section">
+<SettingChange modified={!sameSelection(draft[ring], DEFAULT_CIRCLE_NOTE_SELECTION[ring])} settingName={`${ringLabel} notes`} onreset={() => onchange([...DEFAULT_CIRCLE_NOTE_SELECTION[ring]])}>
+{#snippet heading()}
   <div class="table-summary">
     <span>{ring === "outer" ? "Outer (Major)" : "Inner (Minor)"}</span>
     <span class="selected-count">
       {selectedRowCount} / {tableRows.length} selected
     </span>
   </div>
+{/snippet}
+
+<section class="note-table-section">
+
   <div class="table-scroll">
     <table>
       <thead>
@@ -136,6 +143,7 @@ SPDX-License-Identifier: Apache-2.0
   <p>Fifths from {ring === "outer" ? "C" : "A"} also gives the key signature: positive for sharps, negative for flats.</p>
 </details>
 
+</SettingChange>
 <style>
   fieldset {
     margin: 0;
@@ -146,7 +154,7 @@ SPDX-License-Identifier: Apache-2.0
   legend {
     margin-bottom: 8px;
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .presets {
@@ -181,6 +189,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .table-summary {
+    width: 100%;
     display: flex;
     justify-content: space-between;
     gap: 12px;
@@ -190,7 +199,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .selected-count {
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 400;
   }
 
@@ -202,7 +211,7 @@ SPDX-License-Identifier: Apache-2.0
     width: 100%;
     min-width: 480px;
     border-collapse: collapse;
-    font-size: 14px;
+    font-size: var(--ui-font-size-label);
   }
 
   th,
@@ -215,7 +224,7 @@ SPDX-License-Identifier: Apache-2.0
   th {
     background: rgb(0 0 0 / 0.035);
     color: var(--on-surface-muted);
-    font-size: 12px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 500;
     vertical-align: bottom;
   }
@@ -242,7 +251,7 @@ SPDX-License-Identifier: Apache-2.0
   .help {
     margin-top: 16px;
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .help summary {

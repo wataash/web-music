@@ -102,6 +102,7 @@ export function buildCardDocument(options: {
   css: string;
   nightMode: boolean;
   keyboardKeys?: number;
+  referenceKeyboardKeys?: number;
   pianoKeys?: number;
   showKeyboard?: boolean;
   // What an interval keyboard marks on the front. The root is marked unless
@@ -119,6 +120,7 @@ export function buildCardDocument(options: {
     .join(" ");
   const attributes = [
     ["keyboard-keys", options.keyboardKeys],
+    ["reference-keyboard-keys", options.referenceKeyboardKeys],
     ["piano-keys", options.pianoKeys],
     ["show-keyboard", options.showKeyboard === true ? "on" : undefined],
     ["interval-root", options.intervalRoot === false ? "off" : undefined],

@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { noteFontFaces } from "@web-music/music-notation/note-fonts";
+import { CHORD_FONT_CSS } from "@web-music/music-notation/chord-font";
 
 import type { NoteFont } from "./note-font.svelte";
 
-export function noteFontCss(font: NoteFont = "termes"): string {
+export function noteFontCss(font: NoteFont = "termes", chords = false): string {
   return noteFontFaces(font, "Flashcard Notes") + `
   .prompt, .prompt-line, .question, .answer, .position,
   .movable-do__answer, .movable-do__pitch, .key-name, .fret-name,
@@ -14,5 +15,5 @@ export function noteFontCss(font: NoteFont = "termes"): string {
   .staff__answer, .staff__name, .staff__solfege {
     font-family: "Flashcard Notes", serif !important;
   }
-  `;
+  ` + (chords ? CHORD_FONT_CSS : "");
 }

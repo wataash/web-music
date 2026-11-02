@@ -16,6 +16,15 @@ export type StoredDailyLimit = Readonly<{
 
 export type StoredDailyLimits = Record<string, StoredDailyLimit>;
 
+function isStoredDailyLimit(value: unknown): value is StoredDailyLimit {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  return Number.isSafeInteger(candidate.day) &&
+    typeof candidate.newLimit === "number" &&
+    Number.isSafeInteger(candidate.newLimit) &&
+    candidate.newLimit >= DEFAULT_NEW_PER_DAY;
+}
+
 function browserStorage(): StorageLike | undefined {
   return typeof localStorage === "undefined" ? undefined : localStorage;
 }
@@ -25,7 +34,11 @@ function readStoredLimits(storage: StorageLike | undefined): StoredDailyLimits {
   try {
     const value: unknown = JSON.parse(storage.getItem(STORAGE_KEY) ?? "{}");
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-    return value as StoredDailyLimits;
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        (entry): entry is [string, StoredDailyLimit] => isStoredDailyLimit(entry[1]),
+      ),
+    );
   } catch {
     return {};
   }
@@ -37,14 +50,7 @@ export function dailyNewLimit(
   storage: StorageLike | undefined = browserStorage(),
 ): number {
   const stored = readStoredLimits(storage)[scopeName];
-  if (
-    !stored ||
-    stored.day !== dayNumber(now) ||
-    !Number.isSafeInteger(stored.newLimit)
-  ) {
-    return DEFAULT_NEW_PER_DAY;
-  }
-  return Math.max(DEFAULT_NEW_PER_DAY, stored.newLimit);
+  return stored?.day === dayNumber(now) ? stored.newLimit : DEFAULT_NEW_PER_DAY;
 }
 
 export function addToDailyNewLimit(
@@ -53,8 +59,11 @@ export function addToDailyNewLimit(
   now: Date = new Date(),
   storage: StorageLike | undefined = browserStorage(),
 ): number {
+  const currentLimit = dailyNewLimit(scopeName, now, storage);
+  if (!Number.isFinite(amount)) return currentLimit;
   const increment = Math.max(0, Math.floor(amount));
-  const nextLimit = dailyNewLimit(scopeName, now, storage) + increment;
+  const nextLimit = currentLimit + increment;
+  if (!Number.isSafeInteger(nextLimit)) return currentLimit;
   if (!storage || increment === 0) return nextLimit;
 
   // Keep only entries for the current study day, so this item does not grow
@@ -114,13 +123,7 @@ export function mergeDailyLimits(
   const local = readStoredLimits(storage);
   const merged: StoredDailyLimits = { ...local };
   for (const [scope, candidate] of Object.entries(remote)) {
-    if (
-      !Number.isSafeInteger(candidate.day) ||
-      !Number.isSafeInteger(candidate.newLimit) ||
-      candidate.newLimit < DEFAULT_NEW_PER_DAY
-    ) {
-      continue;
-    }
+    if (!isStoredDailyLimit(candidate)) continue;
     const current = merged[scope];
     if (
       !current ||

@@ -3,7 +3,7 @@
 
 import type { Locator, Page } from "@playwright/test";
 
-import { expect, test } from "./fixtures";
+import { expect, test, openDeckSettings } from "./fixtures";
 
 test.use({ viewport: { width: 390, height: 844 } });
 
@@ -22,7 +22,7 @@ async function showDecks(page: Page, labels: readonly string[]): Promise<void> {
 async function openReference(page: Page, deck: string, title: string): Promise<Locator> {
   const row = page.locator(`[data-deck="${deck}"]`);
   await expect(row).toBeVisible({ timeout: 30_000 });
-  await row.getByTitle("What to ask").click();
+  await openDeckSettings(row);
   const dialog = page.getByRole("dialog", { name: "What to ask" });
   await dialog.locator("summary").filter({ hasText: title }).click();
   const reference = dialog.locator("details").filter({ hasText: title });
@@ -57,6 +57,41 @@ test("guitar fretboard: every position is named on the neck", async ({ page, sho
   await expect(board.locator('.off > .fretboard__target[data-string="1"][data-fret="2"]')).toHaveCount(1);
   await expect(board.locator('.off > .fretboard__target[data-string="1"][data-fret="1"]')).toHaveCount(0);
   await shot("fretboard-reference");
+});
+
+test("guitar fretboard: chosen fret count persists and sizes both card sides", async ({ page, shot }) => {
+  await page.goto("/");
+  const row = page.locator('[data-deck="Guitar Fretboard::Position → Note"]');
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  await openDeckSettings(row);
+  const dialog = page.getByRole("dialog", { name: "What to ask" });
+  const count = dialog.getByLabel("Fretboard frets", { exact: true });
+  await expect(count).toHaveValue("24");
+  await count.selectOption("12");
+  await dialog.locator("summary").filter({ hasText: "Fretboard reference" }).click();
+  await expect(dialog.locator("svg.fretboard .fretboard__fret-label")).toHaveCount(13);
+  await shot("12-fret-settings");
+  await dialog.getByRole("button", { name: "APPLY" }).click();
+  await page.reload();
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  await openDeckSettings(row);
+  await expect(dialog.getByLabel("Fretboard frets", { exact: true })).toHaveValue("12");
+  await dialog.getByRole("button", { name: "CANCEL" }).click();
+  await row.locator(".deck-study").evaluate((button: HTMLButtonElement) => button.click());
+  const card = page.frameLocator('iframe[title="card"]');
+  await expect(card.locator(".fretboard__fret-label")).toHaveCount(13);
+  await expect(card.locator("[data-fret-cell]")).toHaveCount(6 * 13);
+  await shot("12-fret-front");
+  await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+  await expect(card.locator(".fretboard__fret-label")).toHaveCount(13);
+  await expect(card.locator("[data-fret-cell]")).toHaveCount(6 * 13);
+  await shot("12-fret-back");
+  await page.getByRole("button", { name: "Back" }).click();
+  await openDeckSettings(row);
+  await dialog.getByLabel("Fretboard frets", { exact: true }).selectOption("24");
+  await dialog.getByRole("button", { name: "APPLY" }).click();
+  await row.locator(".deck-study").evaluate((button: HTMLButtonElement) => button.click());
+  await expect(card.locator(".fretboard__fret-label")).toHaveCount(25);
 });
 
 test("circle of fifths: cell decks offer every spelling on the circle", async ({ page, shot }) => {

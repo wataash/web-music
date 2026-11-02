@@ -3,14 +3,17 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import { onDestroy, tick } from "svelte";
+  import { deckPathLabel } from "../lib/deck-labels";
+  import { onDestroy, onMount, tick } from "svelte";
 
   import BackupDialog from "./BackupDialog.svelte";
+  import { type ProgressionSelection } from "../lib/progression-selection";
   import DeckActionsSheet from "@web-music/practice-ui/DeckActionsSheet.svelte";
   import DeckVisibilitySettings from "./DeckVisibilitySettings.svelte";
   import type { FretWindow } from "../lib/guitar-interval-selection";
   import type { Tuning } from "../lib/guitar-tuning";
   import NoteSettingsDialog from "./NoteSettingsDialog.svelte";
+  import type { DiatonicSelections } from "../lib/diatonic-selection";
   import type {
     CircleNoteSelection,
     CircleNoteSettingsScope,
@@ -34,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
     type DeckSettingsTarget,
     type NoteSelections,
   } from "../lib/note-selection";
-  import type { StaffNoteSelection } from "../lib/staff-note-selection";
+  import type { StaffNoteSelection, MovableDoStaffSelections } from "../lib/staff-note-selection";
   import {
     effectiveHiddenDeckNames,
     filterHiddenDecks,
@@ -60,6 +63,7 @@ SPDX-License-Identifier: Apache-2.0
     onhiddendecknameschange,
     oncirclenoteselectionchange,
     onfretboardnoteselectionchange,
+    onfretboardfretcountchange,
     onfretwindowchange,
     onguitardifficultychange,
     onguitaroverrideschange,
@@ -67,6 +71,8 @@ SPDX-License-Identifier: Apache-2.0
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
     onmovabledokeyselectionchange,
+    ondiatonicselectionchange,
+    onprogressionselectionchange,
     ondismisserror,
     ondismissnotice,
   }: {
@@ -93,13 +99,16 @@ SPDX-License-Identifier: Apache-2.0
       selection: CircleNoteSelection,
     ) => void;
     onfretboardnoteselectionchange: (selection: readonly string[]) => void;
+    onfretboardfretcountchange: (count: number) => void;
     onfretwindowchange: (selection: FretWindow) => void;
     onguitardifficultychange: (difficulty: number) => void;
     onguitaroverrideschange: (overrides: Readonly<Record<string, boolean>>) => void;
     onguitartuningchange: (tuning: Tuning) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
-    onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
+    onstaffnoteselectionchange: (selection: StaffNoteSelection, solfege: MovableDoStaffSelections) => void;
     onmovabledokeyselectionchange: (selection: readonly number[]) => void;
+    ondiatonicselectionchange: (selection: DiatonicSelections) => void;
+    onprogressionselectionchange: (selection: ProgressionSelection) => void;
     ondismisserror: () => void;
     ondismissnotice: () => void;
   } = $props();
@@ -116,6 +125,13 @@ SPDX-License-Identifier: Apache-2.0
   const visibleDecks = $derived(
     filterCollapsedDecks(shownDecks, collapsedDeckNames),
   );
+  // Keep columns aligned without reserving the width of their headings.
+  // Include collapsed children so expanding a branch does not resize the list.
+  const countWidths = $derived({
+    new: Math.max(2, ...shownDecks.map(deck => String(deck.newCount).length)),
+    learn: Math.max(2, ...shownDecks.map(deck => String(deck.learnCount).length)),
+    due: Math.max(2, ...shownDecks.map(deck => String(deck.dueCount).length)),
+  });
   let choosingDecks = $state(false);
   let backingUp = $state(false);
   const collapseSpacerHeight = $derived(
@@ -152,8 +168,30 @@ SPDX-License-Identifier: Apache-2.0
   const LONG_PRESS_MS = 500;
   let actionsDeckName = $state<string | null>(null);
   let longPressTimer: number | null = null;
+  let longPressOrigin: { x: number; y: number } | null = null;
+  let suppressLongPressClick = false;
+
+  onMount(() => {
+    // Releasing a held finger can click the scrim that just appeared, closing
+    // the menu immediately. Swallow that click, but clear on the next press so
+    // an intentional tap on a menu item always works.
+    const nextPress = () => { suppressLongPressClick = false; };
+    const releaseClick = (event: MouseEvent) => {
+      if (!suppressLongPressClick) return;
+      suppressLongPressClick = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    window.addEventListener("pointerdown", nextPress, true);
+    window.addEventListener("click", releaseClick, true);
+    return () => {
+      window.removeEventListener("pointerdown", nextPress, true);
+      window.removeEventListener("click", releaseClick, true);
+    };
+  });
 
   function cancelLongPress(): void {
+    longPressOrigin = null;
     if (longPressTimer === null) return;
     window.clearTimeout(longPressTimer);
     longPressTimer = null;
@@ -215,15 +253,24 @@ SPDX-License-Identifier: Apache-2.0
     if (backupFromHistoryState(history.state)) history.back();
   }
 
-  function startLongPress(deckName: string): void {
+  function startLongPress(deckName: string, event: PointerEvent): void {
     cancelLongPress();
+    longPressOrigin = { x: event.clientX, y: event.clientY };
     longPressTimer = window.setTimeout(() => {
       longPressTimer = null;
+      longPressOrigin = null;
       // A selection that began before the press was recognised would stay
       // highlighted behind the sheet.
       window.getSelection()?.removeAllRanges();
+      suppressLongPressClick = true;
       openDeckActions(deckName);
     }, LONG_PRESS_MS);
+  }
+
+  function moveLongPress(event: PointerEvent): void {
+    if (longPressOrigin && Math.hypot(event.clientX - longPressOrigin.x, event.clientY - longPressOrigin.y) > 10) {
+      cancelLongPress();
+    }
   }
 
   function openNoteSettings(deckName: string): void {
@@ -242,10 +289,10 @@ SPDX-License-Identifier: Apache-2.0
       nextSpacers.delete(deckName);
     } else {
       const prefix = `${deckName}::`;
-      const descendantCount = visibleDecks.filter(({ name }) =>
-        name.startsWith(prefix),
-      ).length;
-      nextSpacers.set(deckName, descendantCount * DECK_ROW_HEIGHT);
+      const descendantHeight = [...list.querySelectorAll<HTMLElement>(".deck-row")]
+        .filter(row => row.dataset.deck?.startsWith(prefix))
+        .reduce((height, row) => height + (row.getBoundingClientRect().height || DECK_ROW_HEIGHT), 0);
+      nextSpacers.set(deckName, descendantHeight);
     }
     collapseSpacers = nextSpacers;
     oncollapseddecknameschange(
@@ -351,6 +398,14 @@ SPDX-License-Identifier: Apache-2.0
       return;
     }
     switch (event.key) {
+      case "ContextMenu":
+      case "F10": {
+        if (event.key === "F10" && !event.shiftKey) return;
+        const name = focusedDeckName();
+        if (name === null) return;
+        openDeckActions(name);
+        break;
+      }
       case "ArrowDown":
         moveSelection(1);
         break;
@@ -400,11 +455,13 @@ SPDX-License-Identifier: Apache-2.0
 
   <main
     class="deck-list"
+    style:--new-count-width={`${countWidths.new}ch`}
+    style:--learn-count-width={`${countWidths.learn}ch`}
+    style:--due-count-width={`${countWidths.due}ch`}
     bind:this={deckListElement}
     onscroll={scheduleCollapseSpacerRelease}
   >
     <div class="list-toggles">
-      <a class="list-action" href="/preview">PREVIEW DECKS</a>
       <button class="list-action" onclick={openBackup}>BACKUP</button>
       <button class="list-action" onclick={openDeckChooser}>
         CHOOSE DECKS
@@ -419,30 +476,29 @@ SPDX-License-Identifier: Apache-2.0
         {/if}
       </p>
     {:else}
-      <div class="column-header">
+      <div class="column-header" aria-label="Card counts: new, learning, due">
         <span class="col-new">New</span>
         <span class="col-learn">Learning</span>
         <span class="col-due">Due</span>
       </div>
       {#each visibleDecks as deck (deck.name)}
-        {@const deckSettings = deckSettingsTarget(deck.name)}
         {@const hasChildren = parentDeckNames.has(deck.name)}
         {@const collapsed = collapsedDeckNames.includes(deck.name)}
         <div
           class="deck-row"
           data-deck={deck.name}
-          style:padding-left={`${deck.depth * 20}px`}
+          style:padding-left={`calc(${deck.depth} * var(--deck-indent, 20px))`}
           role="group"
           oncontextmenu={(event) => {
             event.preventDefault();
             cancelLongPress();
-            openDeckActions(deck.name);
+            if (actionsDeckName !== deck.name) openDeckActions(deck.name);
           }}
           onpointerdown={(event) => {
-            if (event.pointerType !== "mouse") startLongPress(deck.name);
+            if (event.pointerType !== "mouse") startLongPress(deck.name, event);
           }}
           onpointerup={cancelLongPress}
-          onpointermove={cancelLongPress}
+          onpointermove={moveLongPress}
           onpointercancel={cancelLongPress}
         >
           {#if hasChildren}
@@ -469,26 +525,16 @@ SPDX-License-Identifier: Apache-2.0
             onclick={() => onstudy(deck.name, deckListElement.scrollTop)}
           >
             <span class="deck-name">{deck.baseName}</span>
-            <span class="settings-slot" aria-hidden="true"></span>
-            <span class="count new" class:zero={deck.newCount === 0}>
+            <span class="count new" title="New" class:zero={deck.newCount === 0}>
               {deck.newCount}
             </span>
-            <span class="count learn" class:zero={deck.learnCount === 0}>
+            <span class="count learn" title="Learning" class:zero={deck.learnCount === 0}>
               {deck.learnCount}
             </span>
-            <span class="count due" class:zero={deck.dueCount === 0}>
+            <span class="count due" title="Due" class:zero={deck.dueCount === 0}>
               {deck.dueCount}
             </span>
           </button>
-          {#if deckSettings !== null}
-            <button
-              class="deck-settings"
-              title="What to ask"
-              aria-label={`What ${deck.baseName} asks`}
-              onclick={() => openNoteSettings(deck.name)}
-              ><span aria-hidden="true">⚙</span></button
-            >
-          {/if}
         </div>
       {/each}
     {/if}
@@ -548,6 +594,7 @@ SPDX-License-Identifier: Apache-2.0
     {noteSelections}
     {oncirclenoteselectionchange}
     {onfretboardnoteselectionchange}
+    {onfretboardfretcountchange}
     {onfretwindowchange}
     {onguitardifficultychange}
     {onguitaroverrideschange}
@@ -555,13 +602,15 @@ SPDX-License-Identifier: Apache-2.0
     {onintervalpairselectionchange}
     {onstaffnoteselectionchange}
     {onmovabledokeyselectionchange}
+    {ondiatonicselectionchange}
+    {onprogressionselectionchange}
     onclose={closeNoteSettings}
   />
 {/if}
 
 {#if actionsDeckName !== null}
   <DeckActionsSheet
-    deckLabel={actionsDeckName}
+    deckLabel={deckPathLabel(actionsDeckName)}
     undo={undo === undefined
       ? undefined
       : {
@@ -587,7 +636,8 @@ SPDX-License-Identifier: Apache-2.0
       : () => runDeckAction(openNoteSettings)}
     onreset={() => runDeckAction(onresetdeck)}
     onclose={closeDeckActions}
-  />
+  >
+  </DeckActionsSheet>
 {/if}
 
 <style>
@@ -650,7 +700,7 @@ SPDX-License-Identifier: Apache-2.0
     margin: 0;
     padding: 12px 16px;
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .empty {
@@ -681,7 +731,7 @@ SPDX-License-Identifier: Apache-2.0
     padding: 0 12px;
     border-radius: 4px;
     color: var(--count-new);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 500;
     letter-spacing: 0.04em;
   }
@@ -689,23 +739,25 @@ SPDX-License-Identifier: Apache-2.0
   .column-header {
     display: flex;
     justify-content: flex-end;
-    gap: 0;
-    padding: 8px 16px 4px;
-    font-size: 12px;
+    gap: 12px;
+    padding: 8px 12px 4px;
+    font-size: var(--ui-font-size-secondary);
     color: var(--on-surface-muted);
   }
 
-  .column-header span,
-  .count {
-    width: 40px;
-    flex: none;
-    text-align: right;
-  }
+  .column-header .col-new { color: var(--count-new); }
+  .column-header .col-learn { color: var(--count-learn); }
+  .column-header .col-due { color: var(--count-due); }
 
-  .column-header .col-learn,
-  .count.learn {
-    width: 56px;
+  .count {
+    flex: none;
+    margin-left: 6px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
   }
+  .count.new { width: var(--new-count-width); margin-left: 8px; }
+  .count.learn { width: var(--learn-count-width); }
+  .count.due { width: var(--due-count-width); }
 
   .deck-row {
     position: relative;
@@ -728,9 +780,9 @@ SPDX-License-Identifier: Apache-2.0
     align-items: center;
     min-width: 0;
     min-height: 48px;
-    padding: 0 16px 0 0;
+    padding: 4px 12px 4px 0;
     text-align: left;
-    font-size: 16px;
+    font-size: var(--ui-font-size-label);
   }
 
   .deck-study:active,
@@ -778,36 +830,8 @@ SPDX-License-Identifier: Apache-2.0
   .deck-name {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .count {
-    font-variant-numeric: tabular-nums;
-  }
-
-  .settings-slot {
-    width: 40px;
-    flex: none;
-  }
-
-  .deck-settings {
-    position: absolute;
-    z-index: 1;
-    top: 50%;
-    right: 152px;
-    width: 40px;
-    height: 40px;
-    transform: translateY(-50%);
-    border-radius: 50%;
-    color: var(--on-surface-muted);
-    font-size: 18px;
-  }
-
-  .deck-settings:hover,
-  .deck-settings:focus-visible {
-    background: rgb(0 0 0 / 0.06);
+    overflow-wrap: anywhere;
+    line-height: 1.25;
   }
 
   .count.new {
@@ -826,13 +850,18 @@ SPDX-License-Identifier: Apache-2.0
     color: var(--count-zero);
   }
 
+  @media (max-width: 600px) {
+    .deck-list { --deck-indent: 16px; scrollbar-width: thin; }
+    .deck-expander, .deck-expander-placeholder { width: 44px; }
+  }
+
   .legal {
     flex: none;
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--divider);
     background: var(--surface);
     color: var(--on-surface-muted);
-    font-size: 11px;
+    font-size: var(--ui-font-size-caption);
     line-height: 1.5;
     text-align: center;
   }

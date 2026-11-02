@@ -5,6 +5,7 @@
 
 import { MAESTRO_GLYPHS, MAESTRO_STAFF_SPACE } from './maestro-glyphs';
 import { MAESTRO_TEXT_GLYPHS } from './maestro-text-glyphs';
+import { chordSymbolsHtml, CHORD_SYMBOL_CSS } from './chord-symbols';
 
 // Keep this function self-contained: card generators embed formatNoteName.toString().
 export function formatNoteName(note: string): string {
@@ -108,10 +109,10 @@ export function renderMusicTextHtml(text: string, glyphStyle: MusicGlyphStyle = 
     : escapeHtml(char)).join('');
 }
 
-function enhanceMusicGlyphs(glyphs: Record<string, Glyph>, css: string): void {
+function enhanceMusicGlyphs(glyphs: Record<string, Glyph>, css: string, formatChords: typeof chordSymbolsHtml): void {
   const svgNS = 'http://www.w3.org/2000/svg';
   const target = /[♭♯♮𝄪𝄫Δ△]/u;
-  const skip = 'script,style,title,desc,.glyph,.reading,[data-music-glyph]';
+  const skip = 'script,style,title,desc,.glyph,.reading,.chord-symbol,[data-music-glyph]';
   const svgElement = (name: string) => document.createElementNS(svgNS, name);
 
   function enhanceHtml(root: Element): void {
@@ -216,16 +217,38 @@ function enhanceMusicGlyphs(glyphs: Record<string, Glyph>, css: string): void {
       style.textContent = css;
       document.head.append(style);
     }
+    // These decks contain chord names, Roman degrees and relative-key prose.
+    // Format only complete chord tokens, before replacing their music glyphs.
+    for (const root of document.querySelectorAll('.diatonic-card')) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const nodes: Text[] = [];
+      while (walker.nextNode()) {
+        const node = walker.currentNode as Text;
+        if (node.parentElement?.closest('.diatonic-symbol,.diatonic-degree,.diatonic-relative,.progression-relative,.progression-line') && !node.parentElement.closest('.chord-symbol,.glyph,.reading')) nodes.push(node);
+      }
+      for (const node of nodes) {
+        const html = formatChords(node.data, Boolean(node.parentElement?.closest('.diatonic-symbol')));
+        if (!html.includes('class="chord-symbol"')) continue;
+        const holder = document.createElement('span');
+        holder.innerHTML = html;
+        node.replaceWith(...holder.childNodes);
+      }
+    }
     for (const root of document.querySelectorAll('.question,.answer,.key-name')) enhanceHtml(root);
     for (const text of document.querySelectorAll('svg text')) enhanceSvg(text as SVGTextElement);
   };
-  const ready = () => { void (document.fonts?.ready ?? Promise.resolve()).then(run); };
+  const ready = () => {
+    void Promise.all([
+      document.fonts?.ready,
+      document.querySelector('.diatonic-card') ? document.fonts?.load('400 40px "Flashcard Chord Symbols"') : undefined,
+    ]).then(run);
+  };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready, { once: true });
   else ready();
 }
 
 export function musicGlyphScript(glyphStyle: MusicGlyphStyle = 'chart'): string {
-  return `<script>(${enhanceMusicGlyphs.toString()})(${JSON.stringify(glyphsFor(glyphStyle))},${JSON.stringify(MUSIC_GLYPH_CSS)});</script>`;
+  return `<script>(${enhanceMusicGlyphs.toString()})(${JSON.stringify(glyphsFor(glyphStyle))},${JSON.stringify(MUSIC_GLYPH_CSS + CHORD_SYMBOL_CSS)},${chordSymbolsHtml.toString()});</script>`;
 }
 
 export const MUSIC_GLYPH_SCRIPT = musicGlyphScript();

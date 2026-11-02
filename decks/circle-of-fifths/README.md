@@ -136,11 +136,10 @@ template starts from one circle SVG and uses compact drawing descriptors to
 show the requested notes or highlighted cell, so the JSON has no SVG media.
 The Anki package is optional and keeps static SVGs.
 
-On each card, keep the circle and optional keyboard at the same position and
-size on the front and back. The heading reserves one line even when both text
-fields are empty, as on the back of Cell → All Notes cards. Revealing notes or
-changing a highlighted cell must not move the diagrams. When several note
-spellings share a piano key, stack their labels within that key so every name
+Following the shared [flashcard layout policy](../../README.md#flashcard-layout-policy),
+the heading reserves one line even when both text fields are empty, as on the
+back of Cell → All Notes cards, keeping the circle and optional keyboard in
+place. When several note spellings share a piano key, stack their labels within that key so every name
 remains legible. Use the same Maestro accidental outline in the heading,
 circle and keyboard; a black key may use a wider label background for long
 spellings such as `B𝄪`.
@@ -154,21 +153,21 @@ pnpm generate:anki
 
 This writes `dist/circle-of-fifths-intervals.apkg`.
 
-The decks form the tree below. Every one of them is marked `hiddenByDefault`,
-so the web app's deck list starts without the whole tree; `CHOOSE DECKS`
-turns it on.
+The web app shows Circle of Fifths and Note → Cell by default.
+Cell → All Notes and Intervals remain experimental and hidden until enabled
+through `CHOOSE DECKS`. Display labels leave the stored deck names unchanged.
 Cards live only in the leaf decks, so nothing is duplicated and a parent shares
 its children's study history.
 
 ```text
-(Experimental) Circle of Fifths
+Circle of Fifths
 ├── Note → Cell
 │   ├── Note → Outer (Major) Cell (35 cards)
 │   └── Note → Inner (Minor) Cell (35 cards)
-├── Cell → All Notes
+├── (Experimental) Cell → All Notes [default hidden]
     ├── Outer (Major) Cell → Notes (12 cards)
     └── Inner (Minor) Cell → Notes (12 cards)
-└── (Experimental) Intervals
+└── (Experimental) Intervals [default hidden]
     ├── ♭3 (20 cards)
     └── Δ3 (21 cards)
 ```

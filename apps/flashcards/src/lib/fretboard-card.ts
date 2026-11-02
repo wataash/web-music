@@ -16,6 +16,22 @@ export const FRETBOARD_NOTE_TO_POSITIONS_DECK =
   "Guitar Fretboard::Note → Positions";
 export const FRETBOARD_POSITION_TO_NOTE_DECK =
   "Guitar Fretboard::Position → Note";
+export const DEFAULT_FRETBOARD_FRET_COUNT = 24;
+export const FRETBOARD_FRET_COUNT_KEY = "music-flashcards:guitar-fretboard-fret-count";
+
+export function parseFretboardFretCount(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 12 && value <= 24
+    ? value
+    : DEFAULT_FRETBOARD_FRET_COUNT;
+}
+
+export function includesFretboardFretCard(
+  note: Pick<NoteRow, "fields" | "tags">,
+  fretCount: number,
+): boolean {
+  return !note.tags.split(/\s+/).includes("direction::position-to-note") ||
+    Number(note.fields[3]) <= fretCount;
+}
 
 export type FretboardNoteSpelling =
   | "natural"

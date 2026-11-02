@@ -3,9 +3,12 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import SettingChange from "./SettingChange.svelte";
+  import { sameSelection } from "../lib/setting-defaults";
   import { renderStaffRowSvg, type Clef } from "@web-music/music-staff-core";
   import {
     ALL_STAFF_NOTES,
+    DEFAULT_STAFF_NOTE_SELECTION,
     presetForClefSelection,
     selectionForPreset,
     type StaffNoteDifficulty,
@@ -16,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
     clef,
     deckLabel,
     selection,
+    keyFifths,
     onchange,
   }: {
     clef: Clef;
@@ -23,6 +27,7 @@ SPDX-License-Identifier: Apache-2.0
     // The whole selection, of which this section owns one clef: the dialog
     // holds it, so several clefs can be set before anything is applied.
     selection: StaffNoteSelection;
+    keyFifths?: number;
     onchange: (pitches: readonly string[]) => void;
   } = $props();
 
@@ -34,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
   // says its name and answers a tap. Reading them off the staff is the skill
   // the deck teaches, so it is what the choosing is done on too.
   const staffRow = $derived(
-    renderStaffRowSvg({ clef, pitches, selected: draft[clef] }),
+    renderStaffRowSvg({ clef, pitches, selected: draft[clef], keyFifths, showSolfege: keyFifths !== undefined, nameHeight: keyFifths === undefined ? 22 : 45 }),
   );
 
   let rowElement = $state<HTMLDivElement>();
@@ -97,14 +102,18 @@ SPDX-License-Identifier: Apache-2.0
     togglePitch(pitch);
   }
 </script>
-
-<section class="note-table-section">
+<SettingChange modified={!sameSelection(draft[clef], DEFAULT_STAFF_NOTE_SELECTION[clef])} settingName={`${deckLabel} note range`} onreset={() => onchange([...DEFAULT_STAFF_NOTE_SELECTION[clef]])}>
+{#snippet heading()}
   <div class="table-summary">
     <span>{deckLabel}</span>
     <span class="selected-count">
       {selectedCount} / {pitches.length} selected
     </span>
   </div>
+{/snippet}
+
+<section class="note-table-section">
+
   <!-- The staff is wider than the dialog, as a clef's whole range is wider
        than a phone: it scrolls sideways rather than shrinking to illegible. -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -161,6 +170,7 @@ SPDX-License-Identifier: Apache-2.0
   </label>
 </fieldset>
 
+</SettingChange>
 <style>
   fieldset {
     margin: 0;
@@ -171,7 +181,7 @@ SPDX-License-Identifier: Apache-2.0
   legend {
     margin-bottom: 8px;
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .presets {
@@ -201,6 +211,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .table-summary {
+    width: 100%;
     display: flex;
     justify-content: space-between;
     gap: 12px;
@@ -211,7 +222,7 @@ SPDX-License-Identifier: Apache-2.0
 
   .selected-count {
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 400;
   }
 

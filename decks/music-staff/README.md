@@ -30,10 +30,10 @@ The plain deck holds 132 `Staff → Note` cards and the one with octave numbers
 
 The Flashcards web app also bundles `Music Staff (Movable Do)` as a separate
 major-key reading deck. It asks for ド–シ from a clef, key signature and one
-written note, across twelve major keys and all four clefs (1,584 cards).
-The answer gives the solfege prominently and the sounding pitch and key as
-context. It uses the same per-clef ledger-line selection as the fixed-do
-decks. Accidentals outside the key signature and minor keys are not included.
+written note, across fifteen major-key signatures and all four clefs (1,980 cards).
+The answer gives the pitch name and solfege. Its ledger-line ranges are
+independent for each key and clef, and independent of the fixed-do decks.
+Accidentals outside the key signature and minor keys are not included.
 This deck is currently web-only; `generate:anki` still exports the two
 fixed-do deck trees described above.
 `Music Staff (with Octave Numbers)` is marked `hiddenByDefault`, and so are
@@ -83,6 +83,16 @@ is what tells one white key from another.
 
 The plain deck draws a single octave, which says which white key it is, and
 names it inside the key.
+
+The Movable Do web cards use a separate optional reference keyboard. The
+container's `data-keyboard-tonic` supplies the spelled major tonic; the
+document's `data-reference-keyboard-keys` selects 13–49 keys in steps of two.
+The tonic octave, including its final tonic, remains bright in the centre;
+additional context keys extend equally on both sides and use darker fills.
+Without an explicit count, tonic-based keyboards use 25 keys and other optional
+keyboards use 13. Answer notes fold into the bright octave. Front and back supply the same tonic
+and count, while only the back supplies the answer note. The app exposes the
+count in Arrange card and saves it per deck family.
 
 The deck with octave numbers has to say where in a piano the note falls, which
 no stretch of a few octaves can do: each clef spans 4.7 of them. It draws the
@@ -256,3 +266,116 @@ shared Anki package generation lives in `../../packages/anki-apkg/`. The circle
 of fifths SVG in `../../packages/circle-of-fifths-svg/` keeps its own staff
 renderer, but its key-signature placements and glyph metrics are shared with
 the movable-do cards through the core package.
+
+## Diatonic seventh chords (web)
+
+`pnpm generate` also runs `src/harmony-cli.ts` to write the separate
+`dist/diatonic-chords.json` bundle. `src/diatonic.ts` owns the scales,
+chord spelling, variants and selection defaults; `src/diatonic-deck.ts` owns
+card generation. The Flashcards app imports the same browser-safe theory
+module for its range settings.
+
+`Diatonic Chords` is a single deck, visible by default:
+
+| Deck | Front | Answer |
+| --- | --- | --- |
+| Diatonic Chords | F major / IΔ7 | FΔ7 |
+
+No keyboard or staff is shown. Front/back retain identical layout, with only
+the answer revealed.
+The note fields are `Id`, `Direction`, `Key`, `Degree`, `Chord`, `Notes`,
+`RelativeDegree`, `Contexts`, `Source`; `Contexts` is a JSON array of `{fifths, variant}`.
+Only notes tagged `diatonic-chords` use this selection policy. Source identifies
+harmonic/melodic minor only for variants absent from natural minor.
+
+The web app shows Diatonic Chords as a single deck by default.
+Card GUIDs and IDs remain unchanged when importing the flattened hierarchy.
+
+What to ask offers separate major/minor circle-of-fifths selectors for each
+deck. The initial keys are C, F and B♭ major, and A and D minor.
+Saved key choices remain unchanged. Each circle offers an individual reset icon
+when its selection differs from those defaults. All seven major diatonic
+seventh chords and all seven natural-minor chords are required for selected
+keys. Minor defaults additionally include V7 and vii°7, which remain optional.
+Optional minor rows show a left-edge line and reset icon when changed from their default; natural-minor rows
+are checked and disabled. Saved filters restore required chords while
+preserving selected keys and optional variants. Identical chords from multiple scales form a single variant.
+Melodic minor means the ascending/jazz form. Degrees are referenced to the
+parallel major scale (e.g. ♭IIIΔ7 and ♭VII7 in natural minor).
+Degrees use Roman numerals (IΔ7, iim7, V7, viiø7). In the Flashcards deck
+What to ask, Minor degree notation selects `i7`, `i-7`, `im7` (default), `Im7` or
+`I-7`. This display preference is shared across the two diatonic decks and II–V–I,
+their relative-major hints, range labels and previews. It does not change
+chord symbols such as Am7, chord tones, selected variants or study identities.
+Minor-major sevenths use the same case and minor marker (e.g. imΔ7).
+Rendered notation tiles independently select major
+sevenths (Δ7 / maj7 / M7), note-name minor sevenths (m7 / -7 / min7 / mi7),
+half-diminished sevenths (ø7 / m7(♭5) / m7♭5), and minor-major sevenths
+(mΔ7 / m(maj7) / mM7). Defaults are Δ7, m7, ø7 and mΔ7. Minor degree notation
+still owns the case and minor marker of Roman degrees; changing Am7 to A-7
+does not change im7. Major-seventh choices also apply to augmented major
+sevenths, retaining the explicit (♯5). The independent Chord Tones decks use the selected chord style too; study identity uses canonical qualities.
+Prose uses the shared Note font preference (Termes by default); chord symbols use Edwin and Leland Text through the shared engraving formatter. Note IDs and
+selection keys depend on the underlying chord variant, not its display label.
+
+| Degree | Natural minor | Harmonic minor | Melodic minor |
+| --- | --- | --- | --- |
+| 1 | m7 | mΔ7 | mΔ7 |
+| 2 | ø7 | ø7 | m7 |
+| ♭3 | Δ7 | Δ7(♯5) | Δ7(♯5) |
+| 4 | m7 | m7 | 7 |
+| 5 | m7 | 7 | 7 |
+| 6 | ♭6Δ7 | ♭6Δ7 | 6ø7 |
+| 7 | ♭VII7 | 7°7 | 7ø7 |
+
+An optional relative-major degree appears on minor degree questions, off by
+default: G minor / V7 can also show `(III7 in B♭ major)`. This maps degree numbers
+and preserves the chord quality; it does not assert that the altered chord
+belongs to the relative major scale. The independent Chord Tones decks have no key/degree reference.
+In Flashcards, the Minor keys section in What to ask
+controls it separately for the two key-and-degree decks. The card reads
+`--diatonic-relative-display` (`block` / `none`) without changing study content.
+
+See [Minor Scales](https://musictheory.pugetsound.edu/mt21c/MinorScales.html)
+and [Roman Numerals of Diatonic Seventh Chords](https://musictheory.pugetsound.edu/mt21c/RomanNumeralsOfDiatonicSeventhChords.html).
+Tests: `src/diatonic.test.ts`, app `diatonic-selection.test.ts`, and
+`e2e/diatonic.spec.ts` cover spelling, minor variants, deduplication, independent
+ranges, saved preferences and front/back alignment.
+
+## II–V–I progression deck
+
+`progression.ts` selects the ii, V and I variants from the same diatonic theory.
+Major uses m7 / 7 / Δ7; minor uses ø7 / 7 / m7. The minor V has a raised leading
+note, while the ending i is the requested minor seventh, not minor-major.
+In A minor this is Bø7 (B–D–F–A), E7 (E–G♯–B–D), Am7 (A–C–E–G).
+The [minor seventh-chord reference](https://musictheory.pugetsound.edu/mt21c/RomanNumeralsOfDiatonicSeventhChords.html)
+shows iiø7 and V7 in minor. This deck combines them with a minor-seventh tonic.
+
+`progression-deck.ts` produces 30 cards (15 written major keys and their
+relative minor keys). GUIDs depend on mode and fifths; display spelling does
+not change study identity. `harmony-cli.ts`, included in `generate`, writes
+`dist/ii-v-i.json`. The app's build stages this into public/decks and includes
+it in the bundled-deck manifest. It is visible by default.
+
+Fields: Id, Mode, Fifths, Key, Degree, Chords, RelativeDegree. Degree and Chords contain three
+escaped labels separated by arrows. The app rebuilds those two display fields
+from Mode/Fifths and the shared notation preferences. Minor cards also show
+RelativeDegree on both sides, e.g. (viiø7 → III7 → vim7 in C major) for A minor.
+The reference uses the same formatter as Diatonic Chords and preserves the
+dominant quality of III7; it does not assert that E7 is diatonic to C major.
+Major cards leave this field empty. The front reserves the
+answer's space with visibility:hidden, so revealing the answer keeps the
+question fixed. There is no chord-tone display.
+The app stores independent major/minor key lists and a `relativeMajor` boolean
+in `music-flashcards:ii-v-i-keys`. The hint defaults to on, including when an
+existing saved range has no boolean. What to ask → Notation switches it live using
+`--progression-relative-display` (`block` / `none`, default `block`). This
+preference is independent of the Diatonic decks and is not a study filter.
+
+## Chord-tone cards and reading size
+
+Diatonic Chords is a single, initially visible Key + Degree → Chord deck. II–V–I Progressions is also initially visible. Chord Tones (Triads) and Chord Tones (Four-note Chords) are separate experimental, initially hidden roots. Their ranges are independent of diatonic keys; they study the written basic chord forms present in Jazz 1460, most frequent first. Seventh/sixth/add-note core forms retain their spelling; tensions and slash basses are aggregated into the core form. Ambiguous power/altered chords without a specified third/fifth are excluded.
+
+All five harmony decks use the same 150% base reading size. Key names use 65% and relative-degree/source text 55% of the main diatonic symbol size; II–V–I also enlarges its key and relative-major line. Diatonic variants outside natural minor show Harmonic minor, Melodic minor, or both on front and back. Front/back keep the same question and reserved answer region. Diagram-label geometry in staff/keyboard/fretboard decks is separate from this harmony text scale.
+
+Frequency data: decks/music-staff/src/chord-tone-frequency.ts, generated by tools/ireal-analysis/src/chord-tones.js from the same expanded Jazz 1460 JSON used by the interval analysis. Existing chord-to-notes GUIDs and card IDs are reused for matching four-note chords, preserving their review state.

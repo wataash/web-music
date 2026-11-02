@@ -3,6 +3,7 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import SettingChange from "./SettingChange.svelte";
   import { createWebDeck } from "guitar-intervals-anki/web-deck";
   import type { NoteRow } from "../lib/db";
   import GuitarIntervalMap from "./GuitarIntervalMap.svelte";
@@ -68,16 +69,6 @@ SPDX-License-Identifier: Apache-2.0
     onpreview?.(next);
   }
 
-  function reset(): void {
-    onchange({ ...DEFAULT_FRET_WINDOW });
-    onpreview?.({ ...DEFAULT_FRET_WINDOW });
-  }
-
-  const isDefault = $derived(
-    draft.left === DEFAULT_FRET_WINDOW.left &&
-      draft.right === DEFAULT_FRET_WINDOW.right,
-  );
-
   const sides: readonly Readonly<{
     side: FretWindowSide;
     label: string;
@@ -91,9 +82,12 @@ SPDX-License-Identifier: Apache-2.0
 </script>
 
 <section class="threshold">
+<SettingChange modified={difficulty !== DEFAULT_GUITAR_DIFFICULTY} settingName="Learning range" onreset={() => ondifficultychange(DEFAULT_GUITAR_DIFFICULTY)}>
+{#snippet heading()}
   <label for="guitar-difficulty">
     Learning range: <strong>{difficulty} / {DEFAULT_GUITAR_DIFFICULTY}</strong>
   </label>
+{/snippet}
   <input
     id="guitar-difficulty"
     type="range"
@@ -114,16 +108,21 @@ SPDX-License-Identifier: Apache-2.0
   {#if loaded && selectedCount === 0}
     <p class="empty-selection">No cards match. Increase the learning range or widen the fret window.</p>
   {/if}
+
+</SettingChange>
 </section>
 
-<GuitarIntervalMap {notes} {selectedNotes} window={draft} stringCount={tuning.length} {overrides} {onoverrideschange} />
+<GuitarIntervalMap {difficulty} {notes} {selectedNotes} window={draft} stringCount={tuning.length} {overrides} {onoverrideschange} />
 
 <div class="reaches">
   {#each sides as { side, label, mirrored }}
     <section class="reach">
+      <SettingChange modified={draft[side] !== DEFAULT_FRET_WINDOW[side]} settingName={label} onreset={() => setSide(side, DEFAULT_FRET_WINDOW[side])}>
+      {#snippet heading()}
       <label for="fret-reach-{side}">
         {label}: <strong>{draft[side]}</strong>
       </label>
+      {/snippet}
       <input
         id="fret-reach-{side}"
         type="range"
@@ -134,14 +133,9 @@ SPDX-License-Identifier: Apache-2.0
         value={draft[side]}
         oninput={(event) => setSide(side, Number(event.currentTarget.value))}
       />
+      </SettingChange>
     </section>
   {/each}
-</div>
-
-<div class="reset">
-  <button disabled={isDefault} onclick={reset}>
-    RESET TO {DEFAULT_FRET_WINDOW.left} AND {DEFAULT_FRET_WINDOW.right}
-  </button>
 </div>
 
 <details class="hint">
@@ -164,7 +158,7 @@ SPDX-License-Identifier: Apache-2.0
 
   .threshold label,
   .threshold p {
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     color: var(--on-surface-muted);
   }
 
@@ -203,7 +197,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .reach label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .reach strong {
@@ -222,31 +216,9 @@ SPDX-License-Identifier: Apache-2.0
     direction: rtl;
   }
 
-  .reset {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 12px;
-  }
-
-  .reset button {
-    min-height: 36px;
-    padding: 0 12px;
-    border-radius: 4px;
-    color: var(--count-new);
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-  }
-
-  .reset button:disabled {
-    cursor: default;
-    color: var(--on-surface-muted);
-    opacity: 0.5;
-  }
-
   .hint {
     margin: 16px 0 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .hint summary {

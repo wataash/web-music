@@ -141,7 +141,7 @@ SPDX-License-Identifier: Apache-2.0
   .availability,
   .selected {
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 400;
   }
 
@@ -156,7 +156,7 @@ SPDX-License-Identifier: Apache-2.0
     min-height: 40px;
     border: 1px solid var(--divider);
     border-radius: 20px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 500;
   }
 

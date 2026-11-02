@@ -202,7 +202,7 @@ function webBackDrawing(card: CardDefinition): string {
   if (card.kind === "interval") {
     return `single|${card.outerNote} ${card.innerNote}`;
   }
-  if (card.kind === "note-to-cell") return `single|${card.note}`;
+  if (card.kind === "note-to-cell") return `single|${card.note}|neighbors`;
   return `standard|${card.notes.join(" ")}`;
 }
 

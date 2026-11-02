@@ -3,10 +3,13 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import SettingChange from "./SettingChange.svelte";
+  import { sameSelection } from "../lib/setting-defaults";
   import { untrack } from "svelte";
 
   import {
     ALL_INTERVAL_PAIRS,
+    DEFAULT_INTERVAL_PAIR_SELECTION,
     INTERVAL_DEGREE_ROWS,
     INTERVAL_PAIR_CELLS,
     INTERVAL_PAIR_THRESHOLDS,
@@ -74,6 +77,13 @@ SPDX-License-Identifier: Apache-2.0
     return `(${count.toLocaleString("en-US")})`;
   }
 </script>
+<SettingChange modified={!sameSelection(selection, DEFAULT_INTERVAL_PAIR_SELECTION)} settingName="Interval pairs" onreset={() => { thresholdIndex = 0; onchange([...DEFAULT_INTERVAL_PAIR_SELECTION]); }}>
+{#snippet heading()}
+  <div class="table-summary">
+    <span>{deckLabel}</span>
+    <span>{draft.size} / {ALL_INTERVAL_PAIRS.length} selected</span>
+  </div>
+{/snippet}
 
 <section class="threshold">
   <label for="interval-pair-threshold">
@@ -99,10 +109,7 @@ SPDX-License-Identifier: Apache-2.0
 </ol>
 
 <section class="grid-section">
-  <div class="table-summary">
-    <span>{deckLabel}</span>
-    <span>{draft.size} / {ALL_INTERVAL_PAIRS.length} selected</span>
-  </div>
+
   <div class="table-scroll">
     <table>
       <thead>
@@ -151,6 +158,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <p class="hint">Counts come from iReal Pro's Jazz 1460 playlist. Changing the threshold replaces your selection.</p>
 
+</SettingChange>
 <style>
   .threshold {
     display: grid;
@@ -159,7 +167,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .threshold label {
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     color: var(--on-surface-muted);
   }
 
@@ -180,6 +188,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .table-summary {
+    width: 100%;
     display: flex;
     justify-content: space-between;
     padding: 14px;
@@ -193,7 +202,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .table-summary span:last-child {
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 400;
   }
 
@@ -205,7 +214,7 @@ SPDX-License-Identifier: Apache-2.0
   table {
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 12px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   th,
@@ -343,7 +352,7 @@ SPDX-License-Identifier: Apache-2.0
     padding: 0;
     list-style: none;
     color: var(--on-surface-muted);
-    font-size: 12px;
+    font-size: var(--ui-font-size-secondary);
     font-variant-numeric: tabular-nums;
   }
 
@@ -385,6 +394,6 @@ SPDX-License-Identifier: Apache-2.0
 
   .hint {
     margin: 16px 0 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 </style>

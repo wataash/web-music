@@ -40,6 +40,12 @@ export const DEGREE_NAMES: readonly (readonly string[])[] = [
   ["M7"],
 ];
 
+// Display labels indexed by semitone; canonical names still drive references and tags.
+export const DEGREE_LABELS: readonly string[] = [
+  "1", "♭9(m2)", "9(M2)", "m3 ♯9", "M3", "11(P4)",
+  "♯11(A4) d5", "P5", "♭13(m6) A5", "13(M6) d7", "m7", "M7",
+] as const;
+
 export const FRET_OFFSETS: readonly number[] = Array.from(
   { length: MAX_FRET_REACH * 2 + 1 },
   (_, index) => index - MAX_FRET_REACH,

@@ -1,0 +1,10 @@
+/* SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com> */
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/* App chrome uses rem so browser text preferences remain effective.
+   Learning diagrams inside card iframes retain their own typography. */
+:root {
+  --ui-font-size-caption: 0.875rem;
+  --ui-font-size-secondary: 0.9375rem;
+  --ui-font-size-label: 1rem;
+}

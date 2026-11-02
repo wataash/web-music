@@ -3,16 +3,17 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import SettingChange from "./SettingChange.svelte";
   import type { NoteRow } from "../lib/db";
-  import { MAX_FRET_REACH, type FretWindow } from "../lib/guitar-interval-selection";
+  import { includesGuitarIntervalCard, MAX_FRET_REACH, type FretWindow } from "../lib/guitar-interval-selection";
   import { parseGuitarOverrides } from "../lib/guitar-interval-selection";
   import { guitarShapeId, guitarShapeIds } from "../lib/guitar-shapes";
 
   import { noteTuning } from "../lib/guitar-tuning";
 
-  let { notes, selectedNotes, window, stringCount, overrides, onoverrideschange }: {
+  let { notes, selectedNotes, window, stringCount, difficulty, overrides, onoverrideschange }: {
     notes: readonly NoteRow[]; selectedNotes: readonly NoteRow[]; window: FretWindow;
-    stringCount: number;
+    stringCount: number; difficulty: number;
     overrides: Readonly<Record<string, boolean>>;
     onoverrideschange: (value: Readonly<Record<string, boolean>>) => void;
   } = $props();
@@ -28,17 +29,20 @@ SPDX-License-Identifier: Apache-2.0
   const selectedIds = $derived(new Set(selectedNotes.map(({ id }) => id)));
   const included = (note: NoteRow) => selectedIds.has(note.id);
   const counts = $derived(roots.map((string) => selectedNotes.filter((note) => Number(note.fields[2]) === string).length));
+  const modified = $derived(notes.some(note => included(note) !== includesGuitarIntervalCard(note, window, difficulty, {})));
   const detail = $derived(inspected ? allCells.get(inspected) : undefined);
   const offsetLabel = (offset: number) => offset > 0 ? `+${offset}` : String(offset);
 </script>
 
 <section class="map" aria-label="Question map">
-  <strong>Question map</strong>
+  <SettingChange {modified} settingName="Question map" onreset={() => onoverrideschange({})}>
+  {#snippet heading()}<strong>Question map</strong>{/snippet}
   <p>Tap an interval to change all equivalent shapes.</p>
   <div class="roots">
     {#each roots as root, index}
       <section class="board" aria-label="Root string {root}">
         <div class="overview-heading"><strong>String {root}</strong><small>{counts[index]} positions</small></div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Intervals for string {root}">
         <table aria-label="Intervals from root string {root}">
           <thead><tr><th aria-label="Target string">Str.</th>{#each offsets as offset}<th scope="col">{offsetLabel(offset)}</th>{/each}</tr></thead>
           <tbody>
@@ -54,7 +58,7 @@ SPDX-License-Identifier: Apache-2.0
                         aria-pressed={included(note)}
                         disabled={offset < -window.left || offset > window.right}
                         aria-label="String {string}, fret {offsetLabel(offset)}: {note.fields[5]}, {included(note) ? 'included' : 'excluded'}"
-                        onclick={() => { inspected = `${root}:${string}:${offset}`; onoverrideschange({ ...parseGuitarOverrides(overrides, tuning), [guitarShapeId(note)]: !included(note) }); }}>{note.fields[5].split(' ')[0]}</button>
+                        onclick={() => { inspected = `${root}:${string}:${offset}`; onoverrideschange({ ...parseGuitarOverrides(overrides, tuning), [guitarShapeId(note)]: !included(note) }); }}>{note.fields[5].split(/[( ]/)[0]}</button>
                     {:else}<span>—</span>{/if}
                   </td>
                 {/each}
@@ -62,42 +66,40 @@ SPDX-License-Identifier: Apache-2.0
             {/each}
           </tbody>
         </table>
+        </div>
       </section>
     {/each}
   </div>
   <div class="legend"><span class="swatch included"></span>Included<span class="swatch"></span>Excluded<span class="swatch root"></span>Root 1</div>
-  {#if Object.keys(overrides).length > 0}
-    <p>Changing the learning range resets individual changes.</p>
-    <button class="reset-individual" onclick={() => onoverrideschange({})}>RESET INDIVIDUAL CHANGES</button>
-  {/if}
   <p class="detail" aria-live="polite">
     {#if detail}String {detail.fields[2]} → string {detail.fields[3]} · fret {offsetLabel(Number(detail.fields[4]))} · <strong>{detail.fields[5]}</strong> · {included(detail) ? 'Included' : 'Excluded'}
       · {guitarShapeIds(detail).length} equivalent positions
     {/if}
   </p>
+  </SettingChange>
 </section>
 
 <style>
   .map { margin: 16px 0; min-width: 0; }
-  .map > strong { font-size: 14px; }
-  p, .legend { font-size: 12px; color: var(--on-surface-muted); margin: 8px 0; }
+  strong { font-size: var(--ui-font-size-label); }
+  p, .legend { font-size: var(--ui-font-size-secondary); color: var(--on-surface-muted); margin: 8px 0; }
   .roots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .board { min-width: 0; padding: 6px; border: 1px solid var(--divider); border-radius: 6px; }
-  .overview-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; margin-bottom: 6px; font-size: 12px; }
-  small { font-size: 10px; color: var(--on-surface-muted); }
+  .overview-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; margin-bottom: 6px; font-size: var(--ui-font-size-secondary); }
+  small { font-size: var(--ui-font-size-caption); color: var(--on-surface-muted); }
   @media (max-width: 600px) { .roots { grid-template-columns: 1fr; } }
-  .legend { display: flex; gap: 6px; align-items: center; margin: 12px 0; }
+  .legend { display: flex; flex-wrap:wrap; gap: 6px; align-items: center; margin: 12px 0; }
   .swatch { width: 12px; height: 12px; border: 1px solid var(--divider); background: var(--surface); }
   .swatch:not(:first-child) { margin-left: 8px; }
   .included { background: color-mix(in srgb, var(--count-new) 24%, var(--surface)); }
-  table { table-layout: fixed; border-collapse: collapse; width: 100%; font-size: 11px; }
+  .table-scroll { overflow-x:auto; }
+  table { min-width:28rem; table-layout: fixed; border-collapse: collapse; width: 100%; font-size: var(--ui-font-size-caption); }
   th { font-weight: 400; color: var(--on-surface-muted); height: 24px; }
   td { padding: 0; border: 1px solid var(--divider); text-align: center; }
   .outside { background: var(--divider); }
-  .cell, .root-marker { display: grid; place-items: center; width: 100%; min-height: 26px; font-size: 11px; border-radius: 2px; }
+  .cell, .root-marker { display: grid; place-items: center; width: 100%; min-height: 26px; font-size: var(--ui-font-size-caption); border-radius: 2px; }
   .cell { color: var(--on-surface-muted); }
   .cell:disabled { cursor: default; opacity: 0.5; }
-  .reset-individual { min-height: 44px; color: var(--count-new); font-size: 12px; }
   .cell.included { color: var(--on-surface); box-shadow: inset 0 0 0 1px var(--count-new); font-weight: 600; }
   .root, .root-marker { background: var(--on-surface); color: var(--surface); }
   .detail { min-height: 32px; color: var(--on-surface); }

@@ -3,10 +3,14 @@
 
 import { describe, expect, it } from "vitest";
 
-import { deckLabel } from "./deck-labels";
+import { deckLabel, deckPathLabel } from "./deck-labels";
 
 describe("deckLabel", () => {
   it("tags the decks that are still experiments, and only their own row", () => {
+    expect(deckLabel("Music Staff (with Octave Numbers)")).toBe("(Experimental) Music Staff (with Octave Numbers)");
+    expect(deckLabel("Music Staff (with Octave Numbers)::Staff → Note")).toBe("Staff → Note");
+    expect(deckLabel("Diatonic Chords")).toBe("Diatonic Chords");
+    expect(deckLabel("Diatonic Chords::Chord → Notes")).toBe("Chord → Notes");
     expect(deckLabel("Intervals")).toBe("(Experimental) Intervals");
     expect(deckLabel("Interval Identification")).toBe(
       "(Experimental) Interval Identification",
@@ -14,8 +18,10 @@ describe("deckLabel", () => {
     expect(deckLabel("Music Staff (Movable Do)")).toBe(
       "(Experimental) Music Staff (Movable Do)",
     );
-    // The tag is on the head of the tree, as the circle of fifths carries it in
-    // its name; the decks under it are named as they are.
+    expect(deckPathLabel("(Experimental) Circle of Fifths::Cell → All Notes")).toBe("Circle of Fifths::(Experimental) Cell → All Notes");
+    expect(deckLabel("II–V–I Progressions")).toBe("II–V–I Progressions");
+    expect(deckLabel("(Experimental) Circle of Fifths")).toBe("Circle of Fifths");
+    expect(deckLabel("(Experimental) Circle of Fifths::Cell → All Notes")).toBe("(Experimental) Cell → All Notes");
     expect(deckLabel("Music Staff (Movable Do)::Staff → Solfege")).toBe(
       "Staff → Solfege",
     );

@@ -16,6 +16,18 @@ async function show(page: Page, fields: Record<string, string>, back = false, sh
   }));
 }
 
+test("shortened fretboards describe only the displayed positions", async ({ page }, testInfo) => {
+  const fields = { String: "1", Note: "E", Positions: "1-0 1-12 1-24", Tuning: "64 59 55 50 45 40" };
+  await page.setContent(buildCardDocument({
+    html: renderTemplate(WEB_BACK_TEMPLATE, fields),
+    css: CARD_CSS,
+    nightMode: true,
+    variables: { "--fretboard-fret-count": "12" },
+  }));
+  await expect(page.locator("svg.fretboard desc")).toHaveText("The note E appears at 1-0 1-12 on string 1.");
+  await page.screenshot({ path: testInfo.outputPath("12-fret-back.png"), fullPage: true });
+});
+
 test("disabled keyboard adds no row or layout gap", async ({ page }) => {
   const fields = { String: "1", Fret: "0", Note: "E", Tuning: "64 59 55 50 45 40" };
   for (const enabled of [undefined, false]) {
@@ -86,4 +98,49 @@ test("keyboard reuses part scale and offsets independently of the fretboard", as
   expect(moved.x - scaled.x).toBeCloseTo(30, 0);
   expect(moved.y - scaled.y).toBeCloseTo(20, 0);
   expect(await board.boundingBox()).toEqual(boardBefore);
+});
+
+test("fret counts preserve cell width and answers show faint matching pitches", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fields = { String: "5", Note: "G♭", Positions: "5-9 5-21", Tuning: "64 59 55 50 45 40" };
+  const draw = async (frets: number, back: boolean, height = 1) => {
+    await page.setContent(buildCardDocument({
+      html: renderTemplate(back ? WEB_BACK_TEMPLATE : WEB_FRONT_TEMPLATE, fields),
+      css: CARD_CSS, nightMode: true,
+      variables: { "--fretboard-fret-count": String(frets), "--board-height-scale": String(height) },
+    }));
+    return (await page.locator("svg.fretboard").boundingBox())!;
+  };
+  const full = await draw(24, true);
+  const cell24 = (await page.locator('[data-fret-cell][data-string="1"][data-fret="2"]').boundingBox())!;
+  const short = await draw(12, true);
+  const cell12 = (await page.locator('[data-fret-cell][data-string="1"][data-fret="2"]').boundingBox())!;
+  expect(cell12.width).toBeCloseTo(cell24.width, 2);
+  expect(short.height).toBeCloseTo(full.height, 3);
+  expect(short.width / full.width).toBeCloseTo(712 / 1384, 3);
+  for (const [string, fret] of [[1, 2], [6, 2], [4, 4], [2, 7], [3, 11]]) {
+    await expect(page.locator(`.fretboard__reference rect[data-string="${string}"][data-fret="${fret}"]`)).toHaveCount(1);
+  }
+  await expect(page.locator('.fretboard__reference rect[data-string="5"][data-fret="9"]')).toHaveCount(0);
+  await expect(page.locator('rect.fretboard__target[data-string="5"][data-fret="9"]')).toHaveCount(1);
+  await page.screenshot({ path: testInfo.outputPath("12-fret-matching-notes.png") });
+  const marker = page.locator('rect.fretboard__target[data-string="5"][data-fret="9"]');
+  const label = page.locator('.fretboard__label').last();
+  const number = page.locator('.fretboard__fret-label text').first();
+  const originalSizes = await Promise.all([marker, label, number].map(async (item) => {
+    const box = (await item.boundingBox())!;
+    return { width: box.width, height: box.height };
+  }));
+  const tall = await draw(12, true, 1.5);
+  for (const [index, item] of [marker, label, number].entries()) {
+    const box = (await item.boundingBox())!;
+    expect(box.width).toBeCloseTo(originalSizes[index].width, 2);
+    expect(box.height).toBeCloseTo(originalSizes[index].height, 2);
+  }
+  expect(tall.width).toBeCloseTo(short.width, 3);
+  expect(tall.height).toBeCloseTo(short.height * 1.5, 2);
+  await page.screenshot({ path: testInfo.outputPath("12-fret-tall.png") });
+  const front = await draw(12, false, 1.5);
+  expect(front).toEqual(tall);
+  await expect(page.locator('.fretboard__reference')).toHaveCount(0);
 });

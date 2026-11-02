@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import SettingChange from "./SettingChange.svelte";
+  import type { Snippet } from "svelte";
   import { pointAtClockAngle } from "@circle-of-fifths/core";
   import {
     CLEF_GLYPHS,
@@ -12,6 +14,7 @@ SPDX-License-Identifier: Apache-2.0
   } from "@web-music/music-staff-core";
   import { renderStaffMusicGlyph } from "@web-music/music-notation";
   import StaffScaleReference from "./StaffScaleReference.svelte";
+  import { diatonicKey, type Tonality } from "../lib/diatonic-selection";
 
   const CENTER = 200;
   const OUTER_RADIUS = 190;
@@ -53,10 +56,20 @@ SPDX-License-Identifier: Apache-2.0
   let {
     selection,
     onchange,
+    mode = "major",
+    showReference = true,
+    defaultSelection,
+    afterHeading,
   }: {
     selection: readonly number[];
     onchange: (selection: readonly number[]) => void;
+    mode?: Tonality;
+    showReference?: boolean;
+    defaultSelection: readonly number[];
+    afterHeading?: Snippet;
   } = $props();
+
+  const isDefault = $derived(selection.length === defaultSelection.length && defaultSelection.every(key => selection.includes(key)));
 
   function toggle(fifths: number): void {
     const next = new Set(selection);
@@ -73,14 +86,18 @@ SPDX-License-Identifier: Apache-2.0
 </script>
 
 <section>
+  <SettingChange modified={!isDefault} settingName={mode === "major" ? "Major keys" : "Minor keys"} onreset={() => onchange([...defaultSelection])}>
+  {#snippet heading()}
   <div class="summary">
-    <span>Major keys</span>
+    <span>{mode === "major" ? "Major keys" : "Minor keys"}</span>
   </div>
+  {/snippet}
+  {@render afterHeading?.()}
   <div class="actions">
     <button type="button" onclick={() => onchange(MAJOR_KEYS_BY_SIGNATURE.map(({ fifths }) => fifths))}>Select all</button>
     <button type="button" onclick={() => onchange([])}>Clear</button>
   </div>
-  <svg class="wheel" viewBox="0 0 400 400" aria-label="Major keys in circle of fifths order">
+  <svg class="wheel" viewBox="0 0 400 400" aria-label={`${mode === "major" ? "Major" : "Minor"} keys in circle of fifths order`}>
     {#each keys as key (key.fifths)}
       {@const selected = selection.includes(key.fifths)}
       <g
@@ -88,13 +105,13 @@ SPDX-License-Identifier: Apache-2.0
         class:selected
         role="button"
         tabindex="0"
-        aria-label={`${key.tonic} major`}
+        aria-label={`${diatonicKey(key.fifths, mode)} ${mode}`}
         aria-pressed={selected}
         onclick={() => toggle(key.fifths)}
         onkeydown={(event) => handleKeydown(event, key.fifths)}
       >
         <path class="sector" d={key.path} />
-        <text class="tonic" x={key.x} y={key.y - 13} text-anchor="middle">{key.tonic}</text>
+        <text class="tonic" x={key.x} y={key.y - 13} text-anchor="middle">{mode === "minor" ? diatonicKey(key.fifths, mode).toLowerCase() : key.tonic}</text>
         <g fill="currentColor" aria-hidden="true" transform={`translate(${key.x - 130 * key.scale / 2} ${key.y - 5}) scale(${key.scale})`}>
           {#each STAFF_LINES as y}
             <line x1="7" x2="123" y1={y} y2={y} stroke="currentColor" stroke-width="1" />
@@ -115,7 +132,8 @@ SPDX-License-Identifier: Apache-2.0
     <text class="count" x={CENTER} y={CENTER - 2} text-anchor="middle">{selection.length} / 15</text>
     <text class="count-label" x={CENTER} y={CENTER + 17} text-anchor="middle">selected</text>
   </svg>
-  <StaffScaleReference />
+  {#if showReference}<StaffScaleReference />{/if}
+  </SettingChange>
 </section>
 
 <style>
@@ -133,5 +151,5 @@ SPDX-License-Identifier: Apache-2.0
   .tonic { fill: currentColor; font-size: 15px; font-weight: 700; }
   .hub { fill: var(--surface); stroke: var(--divider); stroke-width: 1.5; }
   .count { fill: currentColor; font-size: 20px; font-weight: 700; }
-  .count-label { fill: var(--on-surface-muted); font-size: 12px; }
+  .count-label { fill: var(--on-surface-muted); font-size: var(--ui-font-size-secondary); }
 </style>

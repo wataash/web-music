@@ -159,10 +159,14 @@ export function statesToWrite(
   incoming: readonly StateRow[],
 ): readonly StateRow[] {
   const localByKey = new Map(local.map((state) => [state.key, state]));
-  return incoming.filter((state) => {
-    const mine = localByKey.get(state.key);
-    return mine === undefined || state.updatedAt > mine.updatedAt;
-  });
+  const writable = new Map<string, StateRow>();
+  for (const state of incoming) {
+    const newest = writable.get(state.key) ?? localByKey.get(state.key);
+    if (newest === undefined || state.updatedAt > newest.updatedAt) {
+      writable.set(state.key, state);
+    }
+  }
+  return [...writable.values()];
 }
 
 export function reviewsToAdd(
@@ -174,7 +178,11 @@ export function reviewsToAdd(
     if (seen.has(review.eventId)) return false;
     seen.add(review.eventId);
     return true;
-  });
+  }).map(({ eventId, deviceId, key, rating, ts }) => ({
+    // Input JSON may carry an id despite BackupReview omitting it. Let the
+    // destination database allocate its own ID to avoid key collisions.
+    eventId, deviceId, key, rating, ts,
+  }));
 }
 
 export async function restoreBackup(

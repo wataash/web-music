@@ -126,10 +126,21 @@ const ANSWER_SCRIPT = `
 })();
 </script>`;
 
-const FRONT = `<main class="staff-card movable-do-card" data-optional-keyboard data-keyboard-notes=""><div class="diagram" data-card-part="staff" data-staff="{{Staff}}" data-major-fifths="{{Fifths}}"></div></main>\n${WEB_DIAGRAM_SCRIPT}\n${SIGNATURE_SCRIPT}\n${OPTIONAL_KEYBOARD_SCRIPT}`;
-const BACK = `<main class="staff-card movable-do-card" data-optional-keyboard data-keyboard-notes="{{SoundingPitch}}"><div class="diagram" data-card-part="staff" data-staff="{{Staff}}" data-major-fifths="{{Fifths}}"></div><div class="movable-do__answer" data-card-part="text" data-movable-do-answer data-sounding-pitch="{{SoundingPitch}}" data-solfege="{{Solfege}}"></div><div class="movable-do__pitch">{{SoundingPitch}} · {{Key}} major</div></main>\n${WEB_DIAGRAM_SCRIPT}\n${SIGNATURE_SCRIPT}\n${ANSWER_SCRIPT}\n${OPTIONAL_KEYBOARD_SCRIPT}`;
+function cardTemplate(back: boolean): string {
+  const hidden = back ? "" : ' aria-hidden="true"';
+  return `<main class="staff-card movable-do-card${back ? "" : " movable-do-card--front"}" data-optional-keyboard data-keyboard-tonic="{{Key}}" data-keyboard-notes="${back ? "{{SoundingPitch}}" : ""}"><div class="diagram" data-card-part="staff" data-staff="{{Staff}}" data-major-fifths="{{Fifths}}"></div><div class="movable-do__answer"${hidden} data-card-part="text" data-movable-do-answer data-sounding-pitch="{{SoundingPitch}}" data-solfege="{{Solfege}}"></div></main>\n${WEB_DIAGRAM_SCRIPT}\n${SIGNATURE_SCRIPT}\n${ANSWER_SCRIPT}\n${OPTIONAL_KEYBOARD_SCRIPT}`;
+}
+const FRONT = cardTemplate(false);
+const BACK = cardTemplate(true);
+// Reserve answer rows only when a front-side keyboard follows them.
+const FRONT_ANSWER_CSS = `
+.movable-do-card--front > [aria-hidden="true"] { display: none; }
+html[data-show-keyboard="on"] .movable-do-card--front > [aria-hidden="true"] {
+  display: block;
+  visibility: hidden;
+}`;
 const CROP_WIDTH_RATIO = CARD_STAFF_GEOMETRY.width / READING_STAFF_WIDTH;
-const CSS = `@font-face{font-family:"Noto Music";src:url("/fonts/NotoMusic-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:block}\n${CARD_CSS}\n.movable-do__answer{font-size:calc(clamp(2.5rem,11vw,5rem) * var(--text-scale,1));font-weight:700;color:#fcd34d}\n.movable-do__pitch{font-size:1rem;color:#d1d5db}\n.movable-do__accidental{color:#f9fafb}\n.movable-do-card .diagram > svg.staff{--staff-clip-top-length:calc(var(--staff-width) * var(--staff-clip-top,0) * ${CROP_WIDTH_RATIO});--staff-clip-bottom-length:calc(var(--staff-width) * var(--staff-clip-bottom,0) * ${CROP_WIDTH_RATIO})}`;
+const CSS = `@font-face{font-family:"Noto Music";src:url("/fonts/NotoMusic-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:block}\n${CARD_CSS}\n.movable-do__answer{font-size:calc(clamp(2.5rem,11vw,5rem) * var(--text-scale,1));font-weight:700;color:#fcd34d}\n.movable-do__accidental{color:#f9fafb}\n.movable-do-card .diagram > svg.staff{--staff-clip-top-length:calc(var(--staff-width) * var(--staff-clip-top,0) * ${CROP_WIDTH_RATIO});--staff-clip-bottom-length:calc(var(--staff-width) * var(--staff-clip-bottom,0) * ${CROP_WIDTH_RATIO})}`;
 
 export function createMovableDoWebDeckData(): WebDeckData {
   // The whole tree ships turned off: movable do is an experiment.
@@ -173,7 +184,7 @@ export function createMovableDoWebDeckData(): WebDeckData {
     }
   }
   return {
-    models: [{ mid: MODEL_ID, name: "Music Staff Movable Do", css: `${CSS}\n${OPTIONAL_KEYBOARD_CSS}`, fieldNames: ["Id", "Clef", "Pitch", "Fifths", "Key", "Solfege", "SoundingPitch", "Staff"], templates: [{ name: "Card 1", ord: 0, qfmt: FRONT, afmt: BACK }] }],
+    models: [{ mid: MODEL_ID, name: "Music Staff Movable Do", css: `${CSS}\n${FRONT_ANSWER_CSS}\n${OPTIONAL_KEYBOARD_CSS}`, fieldNames: ["Id", "Clef", "Pitch", "Fifths", "Key", "Solfege", "SoundingPitch", "Staff"], templates: [{ name: "Card 1", ord: 0, qfmt: FRONT, afmt: BACK }] }],
     decks,
     notes,
     cards,

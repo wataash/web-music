@@ -73,19 +73,19 @@ const DECK_DEFINITIONS: readonly DeckDefinition[] = [
     id: NOTE_TO_CELL_DECK_ID,
     name: NOTE_TO_CELL_DECK_NAME,
     description: "Parent deck that studies both note-to-cell decks together.",
-    hiddenByDefault: true,
+    hiddenByDefault: false,
   },
   {
     id: OUTER_NOTE_TO_CELL_DECK_ID,
     name: OUTER_NOTE_TO_CELL_DECK_NAME,
     description: "Answer the outer (major) cell for a note.",
-    hiddenByDefault: true,
+    hiddenByDefault: false,
   },
   {
     id: INNER_NOTE_TO_CELL_DECK_ID,
     name: INNER_NOTE_TO_CELL_DECK_NAME,
     description: "Answer the inner (minor) cell for a note.",
-    hiddenByDefault: true,
+    hiddenByDefault: false,
   },
   {
     id: CELL_TO_NOTES_DECK_ID,

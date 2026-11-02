@@ -62,6 +62,7 @@ SPDX-License-Identifier: Apache-2.0
   let importedSongs = $state<ImportedSong[]>([]);
   const songs = $derived([...CHORD_SONGS, ...importedSongs]);
   let libraryReady = $state(false);
+  let progressReady = $state(false);
   let libraryError = $state("");
   let songSearch = $state("");
   let songSort = $state("title");
@@ -112,6 +113,7 @@ SPDX-License-Identifier: Apache-2.0
         const available = setLibrary(stored);
         Object.assign(savedProgress, loadChordProgress(available));
         selectSong(available.find(song => song.id === savedProgress.songId) ?? CHORD_SONGS[0]);
+        progressReady = true;
         viewRevision++;
       } catch { libraryError = "Could not load saved charts. Check your browser storage settings."; }
       finally { if (active) libraryReady = true; }
@@ -127,7 +129,16 @@ SPDX-License-Identifier: Apache-2.0
 
   async function importSongs(incoming: ImportedSong[]) {
     await saveImportedSongs(incoming);
-    setLibrary(await loadImportedSongs());
+    const available = setLibrary(await loadImportedSongs());
+    if (!progressReady) {
+      const restored = loadChordProgress(available);
+      // Mounted scroll actions retain this object; recover without replacing it
+      // or remounting the import dialog while it reports completion.
+      Object.assign(savedProgress.views, restored.views);
+      Object.assign(savedProgress, { ...restored, views: savedProgress.views });
+      progressReady = true;
+    }
+    libraryError = "";
     songSearch = "";
     playlistFilter = "";
     selectSong(incoming[0]);
@@ -152,7 +163,7 @@ SPDX-License-Identifier: Apache-2.0
     scope: () => `${songId}:${listMode}:${uniqueBySection}`,
     songScope: () => songId,
     views: () => savedProgress.views,
-    save: () => saveChordProgress(savedProgress),
+    save: () => { if (progressReady) saveChordProgress(savedProgress); },
     minorNotation: () => minorNotation,
     highlightAnnotations: () => highlightAnnotations,
     setHighlightAnnotations: (value) => { highlightAnnotations = value; },
@@ -200,7 +211,9 @@ SPDX-License-Identifier: Apache-2.0
     if (id) chordScales[scaleKey(chord)] = id; else delete chordScales[scaleKey(chord)];
   }
   $effect(() => {
-    if (!libraryReady) return;
+    // A failed library read leaves only the samples in memory. Do not replace
+    // the saved imported-song positions with that incomplete fallback state.
+    if (!progressReady) return;
     savedProgress.positions[songId] = index;
     savedProgress.keys[songId] = targetKey;
     Object.assign(savedProgress, { songId, listMode, uniqueBySection, minorNotation, highlightAnnotations, chordNames, chartZoom,

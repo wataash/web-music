@@ -106,10 +106,23 @@ bundled web decks and schedules them with FSRS.
   5–6 exist for completeness on instruments with extreme ranges, and are not a
   general learning target. The selection applies both to the plain
   `Staff → Note` deck and to both directions of the deck with octave numbers.
-  The separate major-key `Music Staff (Movable Do)` deck shares this selection
-  and asks for ド–シ from the key signature and written note. Its answer also
+  The major-key `Music Staff (Movable Do)` deck keeps independent ranges for
+  each key and clef. What to ask separates the keys to study from the key whose
+  range is being edited; changing the latter does not toggle any study keys.
+  The range editor lists only selected study keys and is disabled when none
+  are selected. Deselecting a key preserves its saved range for later use.
+  APPLY saves all edited ranges and CANCEL discards the draft. Each key starts
+  with a one-time copy of the previous shared selection on upgrade, preserving
+  the existing study range without linking subsequent changes. New installations
+  start on Basic. Solfege cards use their own key's range for both filtering
+  and staff cropping, and ask for ド–シ from the key signature and written note. Their answer also
   shows the sounding pitch; minor keys and chromatic alterations are excluded.
   Its notation font is bundled for consistent, offline PWA rendering.
+  Solfege's optional keyboard keeps a bright central tonic octave (F–F for
+  F major, including the final tonic). In Arrange card, Keyboard range adjusts
+  13–49 keys in steps of two, extending equally on both sides with darker
+  context keys. The default is 25 keys; other optional reference keyboards
+  default to 13 keys around C. The count is saved per deck family.
   For the ranges see the [ABRSM Music Theory syllabus][abrsm-theory]; for
   avoiding many ledger lines with 8va, [Dorico's guide][dorico-octave-line]
 - The staff a card draws is framed for everything its clef can carry, so it
@@ -128,7 +141,7 @@ bundled web decks and schedules them with FSRS.
   ANSWER, however many fingers land on it
 - A finger held on a keyboard or a fretboard and drawn along it plays each key
   or position it reaches, once each, so a run can be heard by sweeping it
-- Whether a card sounds at all is a switch in the ⋮, kept per deck. The staff
+- Whether a card sounds at all is a switch in the ⋮, kept per card layout. The staff
   decks start silent: a staff card asks which note is written and answers with
   its name, and sounding that every time is practice at naming pitches by ear —
   a different skill, and one a reader is better off not chasing by accident
@@ -156,6 +169,25 @@ bundled web decks and schedules them with FSRS.
   nearest — the only way they are placed, since dragging them says everything a
   list of the eleven could. One part at a time: the rest stays where it was, so a question can
   come down to the thumb without the keyboard following it off the bottom
+- Key counts are adjusted in Arrange card alongside the live drawing:
+  Piano keys selects 49/61/76/88 keys on octave-number staff cards, Keyboard
+  keys selects 25–41 on interval cards, and Keyboard range controls optional
+  reference keyboards. These controls replace the key-count rows in the ⋮ menu.
+- Arrangement is saved for the actual card's deck family, model, direction and
+  template, including when studying a parent deck. Pitch, key and clef share
+  that layout; front and back use the same positions. Keyboard zoom and position
+  are remembered separately for each key count. Diagram/text/answer sizes,
+  rotation, answer-button position and piano key count belong to the layout.
+  Only Minimize app bar remains global. Reset clears the current layout's sizes,
+  positions and keyboard-count variants, leaving other layouts and learning
+  switches (sound, optional keyboard and front-note visibility) unchanged.
+  Existing deck-specific preferences provide initial values; the old global
+  zoom is not copied. `src/lib/card-layout.ts` owns this storage, under
+  `music-flashcards:card-layouts`, which is included in settings backups.
+- Move up / Move down relocates the Arrange card toolbar to the other edge
+  when it covers a diagram. Moving the toolbar keeps the card viewport and
+  diagram positions unchanged. Help text and unused toolbar space let drags
+  through; buttons, sliders and other controls still receive their own taps.
 - The answer buttons keep their place while the mode is open, so a part is set
   out on the card as it will be studied, and a part is moved in the card's own
   directions — a card turned sideways is set out along its own edges. What is
@@ -183,6 +215,18 @@ bundled web decks and schedules them with FSRS.
   actions. Resetting its study progress puts every card in the deck and its
   subdecks back to new, in its original order, and cannot be undone
 
+## Card layout
+
+Diatonic Chords shares notation preferences across its three decks. In the
+deck actions menu, Chord notation expands controls for major sevenths, minor
+chord symbols, half-diminished and minor-major sevenths. These are independent
+of Minor degree notation and of card arrangement. Changes apply to study
+cards, relative-major hints, range labels and previews. They are saved under
+`music-flashcards:chord-notation` and included in settings backups.
+
+All decks follow the shared [flashcard layout policy](../../README.md#flashcard-layout-policy)
+for keeping front/back content aligned.
+
 ## Development
 
 Run from the repository root.
@@ -199,10 +243,13 @@ leaving the deck.
 
 - `decks/circle-of-fifths/dist/circle-of-fifths-intervals.json`
 - `decks/guitar-fretboard/dist/guitar-fretboard-notes.json`
+- `decks/guitar-intervals/dist/guitar-intervals.json`
 - `decks/intervals/dist/intervals.json`
 - `decks/music-staff/dist/music-staff.json`
+- `decks/music-staff/dist/diatonic-chords.json`
+- `decks/music-staff/dist/ii-v-i.json`
 
-A production build bundles those four decks into the web app. The `.apkg` files
+A production build bundles the generated decks into the web app. The `.apkg` files
 for Anki are generated separately with `pnpm generate:anki` at the root.
 
 ## Not implemented
@@ -231,3 +278,43 @@ one line or space away on the same clef, and from following its mirror in
 the ledger lines — the ±1.5, ±3 and ±3.5, ±4, ±4.5 and ±5 ledger positions
 each form one group, counted in lines above or below the staff with the space
 past a line as a half, the same for every clef.
+
+## Diatonic Chords
+
+The list labels this family `(Experimental) Diatonic Chords` and hides it by
+default. Enable it in CHOOSE DECKS. It appears after Music Staff (Movable Do)
+and before Intervals. Existing explicit visibility choices are preserved;
+stored deck names and study identities do not include the display-only label.
+
+Three text-only decks separate Key + Degree → Chord, Chord → Notes and the
+combined question. Each has its own What to ask settings: select major/minor
+keys on the circle of fifths, then individual chord variants. Defaults are
+C major and A minor, with natural-minor chords plus V7 and vii°7; other minor
+variants are optional. Relative-major degrees are an optional hint on minor
+degree questions. Chord → Notes does not show key or degree context.
+The theory, field format and generator are documented in
+[`decks/music-staff/README.md`](../../decks/music-staff/README.md#diatonic-seventh-chords-web).
+
+## II–V–I Progressions
+
+Enable `(Experimental) II–V–I Progressions` in CHOOSE DECKS. Each card asks
+for the three chord names in one key: C major answers Dm7 → G7 → CΔ7;
+A minor answers Bø7 → E7 → Am7. Minor uses a half-diminished ii, dominant V,
+and minor-seventh i. There are 15 major and 15 minor key spellings, including
+enharmonic keys. What to ask uses the shared circle of fifths, with independent
+major/minor selections, initially C major and A minor. Chord spelling options
+are shared with Diatonic Chords. Minor cards show their relative-major degree
+reference on the front and back: A minor includes (viiø7 → III7 → vim7 in C
+major). Chord qualities are retained, so III7 identifies the dominant E7 rather
+than Em7. These cards have no chord tones or keyboard. Question placement is
+fixed on reveal.
+
+## Typography reference atlas
+
+A separate [MuseScore typography atlas](https://mf.wataash.com/music-notation-examples/)
+provides searchable reference sheets and vector previews. It does not add
+content to study cards. Its sources and regeneration instructions are in
+[`tools/musescore-atlas/`](../../tools/musescore-atlas/README.md). The generated
+`public/music-notation-examples/` is copied into a build if present, and excluded from the
+service worker precache so the flashcard app does not fetch the atlas at
+startup. During Vite development, use `/music-notation-examples/index.html` explicitly.

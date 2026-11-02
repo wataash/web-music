@@ -3,11 +3,18 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
+  import { deckPathLabel } from "../lib/deck-labels";
   import { untrack } from "svelte";
 
+  import { cardLayoutKey, cardLayoutFamily, cardLayoutSettings, keyboardLayout, withKeyboardLayout,
+    layoutPartIsDefault, resetLayoutPart, initialCardLayout, resetCardLayout, loadCardLayouts, saveCardLayouts, type CardLayout } from "../lib/card-layout";
+  import SettingChange from "./SettingChange.svelte";
+  import { DEFAULT_FRETBOARD_FRET_COUNT } from "../lib/fretboard-card";
   import CardFrame from "./CardFrame.svelte";
   import DeckActionsSheet from "@web-music/practice-ui/DeckActionsSheet.svelte";
   import NoteFontSelect from "./NoteFontSelect.svelte";
+  import { isChordToneCard, chordToneDisplayFields } from "../lib/chord-tone-selection";
+  import { diatonicNotationPreference } from "../lib/diatonic-notation.svelte";
   import { noteFontPreference } from "../lib/note-font.svelte";
   import { noteFontCss } from "../lib/note-font-css";
   import ResetProgressDialog from "./ResetProgressDialog.svelte";
@@ -15,6 +22,8 @@ SPDX-License-Identifier: Apache-2.0
     type ExtraStudySelection,
   } from "./ExtraStudyDialog.svelte";
   import NoteSettingsDialog from "./NoteSettingsDialog.svelte";
+  import { type ProgressionSelection, isProgressionCard, progressionDisplayFields } from "../lib/progression-selection";
+  import { diatonicDirection, diatonicDisplayFields, type DiatonicSelections } from "../lib/diatonic-selection";
   import { mediaUrls as mediaUrlsFor } from "../lib/db";
   import { cardLayoutDebugText, recordCardLayoutDebug } from "../lib/card-layout-debug";
   import { effectiveHiddenDeckNames } from "../lib/deck-hiding";
@@ -41,38 +50,38 @@ SPDX-License-Identifier: Apache-2.0
   } from "../lib/note-selection";
   import {
     staffCardVariables,
+    staffSelectionForNote,
+    type MovableDoStaffSelections,
     type StaffNoteSelection,
   } from "../lib/staff-note-selection";
   import {
     answerAnchorAt,
     cardLiveVariables,
     cardPartScales,
-    deckCardSettings,
+    defaultDeckCardSettings,
     formatCardScale,
     loadCardScales,
     loadCardSettingsByDeck,
     saveCardScales,
-    saveCardSettingsByDeck,
     SCREEN_WIDTH,
     stepCardRotation,
     stepCardScale,
-    stepKeyboardKeys,
-    stepPianoKeys,
+    MIN_REFERENCE_KEYBOARD_KEYS,
+    MAX_REFERENCE_KEYBOARD_KEYS,
+    MIN_KEYBOARD_KEYS,
+    MAX_KEYBOARD_KEYS,
+    KEYBOARD_KEYS_STEP,
     answerAnchorParts,
     ANSWER_ANCHOR_LABELS,
     CARD_PART_LABELS,
-    DEFAULT_CARD_OFFSETS,
     DEFAULT_CARD_SCALES,
-    DEFAULT_DECK_CARD_SETTINGS,
     type CardOffset,
     type CardPart,
     type CardRotation,
     type CardScale,
     type CardScaleKind,
     type CardScales,
-    type CardSettingsByDeck,
     type DeckCardSettings,
-    withDeckCardSettings,
   } from "@web-music/practice-ui/card-scale";
   import {
     answerSound,
@@ -138,6 +147,7 @@ SPDX-License-Identifier: Apache-2.0
     onclose,
     oncirclenoteselectionchange,
     onfretboardnoteselectionchange,
+    onfretboardfretcountchange,
     onfretwindowchange,
     onguitardifficultychange,
     onguitaroverrideschange,
@@ -145,6 +155,8 @@ SPDX-License-Identifier: Apache-2.0
     onintervalpairselectionchange,
     onstaffnoteselectionchange,
     onmovabledokeyselectionchange,
+    ondiatonicselectionchange,
+    onprogressionselectionchange,
   }: {
     deckName: string;
     // Every deck there is, so a deck with decks under it can offer their
@@ -165,16 +177,20 @@ SPDX-License-Identifier: Apache-2.0
       selection: CircleNoteSelection,
     ) => void;
     onfretboardnoteselectionchange: (selection: readonly string[]) => void;
+    onfretboardfretcountchange: (count: number) => void;
     onfretwindowchange: (selection: FretWindow) => void;
     onguitardifficultychange: (difficulty: number) => void;
     onguitaroverrideschange: (overrides: Readonly<Record<string, boolean>>) => void;
     onguitartuningchange: (tuning: Tuning) => void;
     onintervalpairselectionchange: (selection: readonly string[]) => void;
-    onstaffnoteselectionchange: (selection: StaffNoteSelection) => void;
+    onstaffnoteselectionchange: (selection: StaffNoteSelection, solfege: MovableDoStaffSelections) => void;
     onmovabledokeyselectionchange: (selection: readonly number[]) => void;
+    ondiatonicselectionchange: (selection: DiatonicSelections) => void;
+    onprogressionselectionchange: (selection: ProgressionSelection) => void;
   } = $props();
 
   let item = $state<QueueItem | null>(null);
+  const harmonyCard = $derived(item !== null && (diatonicDirection(item.note) !== null || isChordToneCard(item.note) || isProgressionCard(item.note)));
   let counts = $state<DeckCounts>({ newCount: 0, learnCount: 0, dueCount: 0 });
   let phase = $state<"question" | "answer">("question");
   let labels = $state<Record<Grade, string> | null>(null);
@@ -193,7 +209,9 @@ SPDX-License-Identifier: Apache-2.0
   // covering; here the card is the whole screen and the part is under the
   // finger that is moving it.
   let positioning = $state(false);
+  let layoutAnswerPreview = $state(true);
   let showLayoutHelp = $state(false);
+  let toolbarAtTop = $state<boolean | null>(null);
   let debugLogText = $state<string | null>(null);
   let debugLogCopied = $state(false);
   // The last part selected for layout controls.
@@ -218,15 +236,30 @@ SPDX-License-Identifier: Apache-2.0
   // The deck's own colour behind the card, so whatever the app leaves around
   // it reads as part of it rather than as a band of app.
   let cardBackground = $state("");
-  let cardScales = $state<CardScales>(loadCardScales());
-  // Stored rather than held here, so what the reader set stays set when they
-  // come back to the deck — and stays that deck's: a fretboard turned sideways
-  // leaves the staff decks upright.
-  let cardSettingsByDeck = $state<CardSettingsByDeck>(loadCardSettingsByDeck());
-  const deckSettings = $derived(deckCardSettings(cardSettingsByDeck, deckName));
+  let globalScales = $state<CardScales>(loadCardScales());
+  let layouts = $state(loadCardLayouts());
+  // Older deck preferences seed each layout independently; global zoom does not.
+  const legacySettings = loadCardSettingsByDeck();
+  const layoutKey = $derived(item ? cardLayoutKey(item) : "");
+  const layoutFamily = $derived(item ? cardLayoutFamily(item) : deckName);
+  const layout = $derived(item ? layouts[layoutKey] ?? initialCardLayout(item, legacySettings) : null);
+  const settingsDefaults = $derived(defaultDeckCardSettings(layoutFamily));
+  const deckSettings = $derived(item && layout ? cardLayoutSettings(item, layout) : defaultDeckCardSettings(layoutFamily));
+  const cardScales = $derived<CardScales>({ ...DEFAULT_CARD_SCALES,
+    minimalAppBar: globalScales.minimalAppBar,
+    ...(layout ? { board: layout.board, answer: layout.answer, pianoKeys: layout.pianoKeys } : {}),
+    keyboard: item && layout ? keyboardLayout(item, layout).scale : 1,
+  });
+  function setLayout(next: CardLayout, save = true): void {
+    if (!item) return;
+    layouts = { ...layouts, [layoutKey]: next };
+    if (save) saveCardLayouts(layouts);
+  }
   const rotation = $derived(deckSettings.rotation);
   const answerAnchor = $derived(deckSettings.answerAnchor);
   const answerPlace = $derived(answerAnchorParts(answerAnchor));
+  const layoutToolbarAtTop = $derived(toolbarAtTop ??
+    (answerPlace.edge === "bottom" || answerPlace.end === "bottom"));
   // Down a side the buttons stand on end. Beside a card on its side they face
   // the way it does, so the two are read the same way round; beside an upright
   // one there is no such card to follow, and they stand on the edge they are
@@ -244,13 +277,12 @@ SPDX-License-Identifier: Apache-2.0
     scale: CardScale,
     save = true,
   ): void {
-    cardScales = { ...cardScales, [kind]: scale };
-    if (save) saveCardScales(cardScales);
+    if (!item || !layout) return;
+    if (kind === "keyboard") setLayout(withKeyboardLayout(item, layout, { scale }), save);
+    else setLayout({ ...layout, [kind]: scale }, save);
   }
 
-  // Which part a pinch is on decides where its size is kept: what the deck
-  // draws is the deck's, what the reader wants a keyboard to look like is
-  // theirs wherever they are.
+  // Each card layout owns its sizes; keyboard zoom and position also follow key count.
   const partScales = $derived(cardPartScales(cardScales, deckSettings));
 
   function setPartScale(part: CardPart, scale: number): void {
@@ -260,18 +292,16 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function settleCardParts(): void {
-    saveCardScales(cardScales);
-    saveCardSettingsByDeck(cardSettingsByDeck);
+    saveCardLayouts(layouts);
   }
 
-  function toggleMinimalAppBar(): void {
-    cardScales = { ...cardScales, minimalAppBar: !cardScales.minimalAppBar };
-    saveCardScales(cardScales);
+  function setMinimalAppBar(value: boolean): void {
+    globalScales = { ...globalScales, minimalAppBar: value };
+    saveCardScales(globalScales);
   }
 
   function setPianoKeys(keys: number): void {
-    cardScales = { ...cardScales, pianoKeys: keys };
-    saveCardScales(cardScales);
+    if (layout) setLayout({ ...layout, pianoKeys: keys });
   }
 
   // A part follows the finger: written down as it moves so the card keeps up,
@@ -291,19 +321,7 @@ SPDX-License-Identifier: Apache-2.0
   function resetCardParts(): void {
     logCardLayout("reset-before");
     arranged = null;
-    setDeckSettings({
-      offsets: DEFAULT_CARD_OFFSETS,
-      text: DEFAULT_DECK_CARD_SETTINGS.text,
-      staff: DEFAULT_DECK_CARD_SETTINGS.staff,
-      rotation: DEFAULT_DECK_CARD_SETTINGS.rotation,
-      answerAnchor: DEFAULT_DECK_CARD_SETTINGS.answerAnchor,
-    });
-    cardScales = {
-      ...cardScales,
-      keyboard: DEFAULT_CARD_SCALES.keyboard,
-      board: DEFAULT_CARD_SCALES.board,
-    };
-    saveCardScales(cardScales);
+    if (layout) setLayout(resetCardLayout(layout, layoutFamily));
     recordCardLayoutDebug("reset-after");
   }
 
@@ -411,11 +429,10 @@ SPDX-License-Identifier: Apache-2.0
     changes: Partial<DeckCardSettings>,
     save = true,
   ): void {
-    cardSettingsByDeck = withDeckCardSettings(cardSettingsByDeck, deckName, {
-      ...deckSettings,
-      ...changes,
-    });
-    if (save) saveCardSettingsByDeck(cardSettingsByDeck);
+    if (!item || !layout) return;
+    let next = { ...layout, settings: { ...layout.settings, ...changes } };
+    if (changes.offsets) next = withKeyboardLayout(item, next, { offset: changes.offsets.keyboard });
+    setLayout(next, save);
   }
   let resetOpen = $state(false);
   let resetPreviewCounts = $state<ResetPreview>(EMPTY_RESET_PREVIEW);
@@ -507,9 +524,8 @@ SPDX-License-Identifier: Apache-2.0
   // decks draw a staff and a keyboard; the interval decks draw a keyboard
   // beside the answer, so there is no staff to size; the fretboard deck can
   // also show an optional keyboard.
-  // What is left to step from the sheet: how many keys a keyboard draws, and
-  // the answer's name. Everything else about the size of a card is pinched on
-  // the card itself.
+  // Key counts are set beside the live card in Arrange card. The answer's
+  // name, written over the drawing, is still stepped from the sheet.
   const cardSizes = $derived.by(() => {
     if (item === null) return [];
     const staff = isStaffReadingCard(item.note);
@@ -517,37 +533,14 @@ SPDX-License-Identifier: Apache-2.0
       return [];
     }
     return [
-      ...(staff && isPianoKeyboardCard(item.note)
-        ? [
-            {
-              label: "Piano keys",
-              value: String(cardScales.pianoKeys),
-              onstep: (steps: 1 | -1) =>
-                setPianoKeys(stepPianoKeys(cardScales.pianoKeys, steps)),
-            },
-          ]
-        : []),
-      ...(isIntervalCard(item.note)
-        ? [
-            {
-              label: "Keyboard keys",
-              value: String(deckSettings.keyboardKeys),
-              onstep: (steps: 1 | -1) =>
-                setDeckSettings({
-                  keyboardKeys: stepKeyboardKeys(
-                    deckSettings.keyboardKeys,
-                    steps,
-                  ),
-                }),
-            },
-          ]
-        : []),
       // Not a part of its own: the answer's name is written over the drawing,
       // on whichever key or fret it belongs to, and a question side has none
       // at all to take hold of. It is stepped here rather than pinched there.
       {
         label: "Answer size",
         value: formatCardScale(cardScales.answer),
+        modified: cardScales.answer !== 1,
+        onreset: () => setScale("answer", 1),
         onstep: (steps: 1 | -1) =>
           setScale("answer", stepCardScale(cardScales.answer, steps)),
       },
@@ -567,18 +560,24 @@ SPDX-License-Identifier: Apache-2.0
       // pitches by ear without having asked to be.
       {
         label: "Sound",
+        modified: deckSettings.sound !== settingsDefaults.sound,
+        onreset: () => setDeckSettings({ sound: settingsDefaults.sound }),
         on: deckSettings.sound,
         ontoggle: () => setDeckSettings({ sound: !deckSettings.sound }),
       },
       {
         label: "Minimize app bar",
         on: cardScales.minimalAppBar,
-        ontoggle: toggleMinimalAppBar,
+        ontoggle: () => setMinimalAppBar(!globalScales.minimalAppBar),
+        modified: globalScales.minimalAppBar !== DEFAULT_CARD_SCALES.minimalAppBar,
+        onreset: () => setMinimalAppBar(DEFAULT_CARD_SCALES.minimalAppBar),
       },
-      ...(item !== null && (isFretboardCard(item.note) || isMovableDoDeck(deckName) ||
-          deckName === "(Experimental) Circle of Fifths" || deckName.startsWith("(Experimental) Circle of Fifths::"))
+      ...(item !== null && (isFretboardCard(item.note) || isMovableDoDeck(layoutFamily) ||
+          layoutFamily === "(Experimental) Circle of Fifths" || layoutFamily.startsWith("(Experimental) Circle of Fifths::"))
         ? [{
             label: "Keyboard",
+        modified: deckSettings.showKeyboard !== settingsDefaults.showKeyboard,
+        onreset: () => setDeckSettings({ showKeyboard: settingsDefaults.showKeyboard }),
             on: deckSettings.showKeyboard,
             ontoggle: () => setDeckSettings({ showKeyboard: !deckSettings.showKeyboard }),
           }]
@@ -589,11 +588,15 @@ SPDX-License-Identifier: Apache-2.0
       ...appBar,
       {
         label: "Front: root note",
+        modified: deckSettings.frontRoot !== settingsDefaults.frontRoot,
+        onreset: () => setDeckSettings({ frontRoot: settingsDefaults.frontRoot }),
         on: deckSettings.frontRoot,
         ontoggle: () => setDeckSettings({ frontRoot: !deckSettings.frontRoot }),
       },
       {
         label: "Front: answer note",
+        modified: deckSettings.frontAnswer !== settingsDefaults.frontAnswer,
+        onreset: () => setDeckSettings({ frontAnswer: settingsDefaults.frontAnswer }),
         on: deckSettings.frontAnswer,
         ontoggle: () =>
           setDeckSettings({ frontAnswer: !deckSettings.frontAnswer }),
@@ -607,9 +610,10 @@ SPDX-License-Identifier: Apache-2.0
     item.model.fieldNames.forEach((name, i) => {
       fields[name] = item!.note.fields[i] ?? "";
     });
+    Object.assign(fields, chordToneDisplayFields(item.note, diatonicNotationPreference.chords), diatonicDisplayFields(item.note, diatonicNotationPreference.value, diatonicNotationPreference.chords), progressionDisplayFields(item.note, diatonicNotationPreference.value, diatonicNotationPreference.chords));
     const front = renderTemplate(item.template.qfmt, fields);
     const html =
-      phase === "question"
+      (positioning && harmonyCard ? !layoutAnswerPreview : phase === "question")
         ? front
         : renderTemplate(item.template.afmt, {
             ...fields,
@@ -617,9 +621,10 @@ SPDX-License-Identifier: Apache-2.0
           });
     return buildCardDocument({
       html: resolveMediaReferences(html, mediaUrls),
-      css: item.model.css + noteFontCss(noteFontPreference.value),
+      css: item.model.css + noteFontCss(noteFontPreference.value, harmonyCard),
       nightMode,
       keyboardKeys: deckSettings.keyboardKeys,
+      referenceKeyboardKeys: deckSettings.referenceKeyboardKeys,
       pianoKeys: cardScales.pianoKeys,
       showKeyboard: deckSettings.showKeyboard,
       // Only the question is the reader's to strip down or fill in; the answer
@@ -632,8 +637,19 @@ SPDX-License-Identifier: Apache-2.0
           ? intervalAnswerNote(item.note)
           : undefined,
       variables: {
+        "--progression-relative-display": noteSelections.progressions.relativeMajor ? "block" : "none",
+        "--diatonic-relative-display": (() => {
+          const direction = diatonicDirection(item.note);
+          return direction && noteSelections.diatonic[direction].relativeMajor ? "block" : "none";
+        })(),
         ...fretWindowVariables(drawnFretWindow),
-        ...staffCardVariables(item.note, noteSelections.staff, staffClefs),
+        // Keep an already visible card drawable until the queue selects an
+        // in-range card after Apply.
+        "--fretboard-fret-count": String(isFretboardCard(item.note) &&
+          !isFretboardNoteToPositionsCard(item.note)
+            ? Math.max(noteSelections.fretboardFretCount, Number(item.note.fields[3]) || 0)
+            : noteSelections.fretboardFretCount),
+        ...staffCardVariables(item.note, staffSelectionForNote(item.note, noteSelections.staff, noteSelections.movableDoStaff), staffClefs),
       },
     });
   });
@@ -699,10 +715,14 @@ SPDX-License-Identifier: Apache-2.0
     }
   }
 
+  // Display-only hints must not reset the current question or its revealed side.
+  const studySelectionKey = $derived(JSON.stringify(noteSelections, (key, value) =>
+    key === "relativeMajor" ? undefined : value instanceof Set ? [...value] : value));
+
   $effect(() => {
     void deckName;
     void deckVersion;
-    void noteSelections;
+    void studySelectionKey;
     untrack(() => {
       applyExtraOptionsHistory(history.state);
       applyResetHistory(history.state);
@@ -819,6 +839,7 @@ SPDX-License-Identifier: Apache-2.0
     logCardLayout("open");
     openOverDeckActions(historyStateForCardLayout);
     arranged = null;
+    layoutAnswerPreview = true;
     try {
       const key = "music-flashcards:layout-help-seen";
       showLayoutHelp = localStorage.getItem(key) !== "true";
@@ -979,7 +1000,7 @@ SPDX-License-Identifier: Apache-2.0
       aria-label="Back"
       onclick={onclose}><span aria-hidden="true">←</span></button
     >
-    <h1>{deckName.split("::").pop()}</h1>
+    <h1>{deckPathLabel(deckName).split("::").at(-1) ?? deckName}</h1>
     {#if importing}
       <span class="importing" role="status">Updating…</span>
     {/if}
@@ -1053,49 +1074,129 @@ SPDX-License-Identifier: Apache-2.0
            them is a bar that cannot be dragged out from under. -->
       <div
         class="laying-out"
-        class:high={answerPlace.edge === "bottom" ||
-          answerPlace.end === "bottom"}
+        class:high={layoutToolbarAtTop}
         role="group"
         aria-label="Arrange card"
       >
-        <details class="layout-help" bind:open={showLayoutHelp}>
-          <summary>Help</summary>
-          <p>Drag to move, pinch to size, twist to turn.</p>
-          <button class="debug-copy" onclick={() => void copyCardLayoutDebug()}>
-            {debugLogCopied ? "Copied debug log" : "Copy debug log"}
-          </button>
-          {#if debugLogText !== null}
-            <textarea aria-label="Layout debug log" readonly value={debugLogText}></textarea>
-          {/if}
-        </details>
-        {#if arranged !== null}
-          <p>
-            {#if arranged === "answer"}
-              Answer buttons {ANSWER_ANCHOR_LABELS[answerAnchor]}
-            {:else}
-              {CARD_PART_LABELS[arranged]}
-              {formatCardScale(partScales[arranged])}
+        <div class="layout-heading">
+          <details class="layout-help" bind:open={showLayoutHelp}>
+            <summary>Help</summary>
+            <p>Drag to move, pinch to size, twist to turn. Use Move up / Move down if the toolbar covers a diagram.</p>
+            <button class="debug-copy" onclick={() => void copyCardLayoutDebug()}>
+              {debugLogCopied ? "Copied debug log" : "Copy debug log"}
+            </button>
+            {#if debugLogText !== null}
+              <textarea aria-label="Layout debug log" readonly value={debugLogText}></textarea>
             {/if}
-          </p>
+          </details>
+          <button
+            aria-label={layoutToolbarAtTop ? "Move toolbar to bottom" : "Move toolbar to top"}
+            onclick={() => (toolbarAtTop = !layoutToolbarAtTop)}
+          >{layoutToolbarAtTop ? "Move down ↓" : "Move up ↑"}</button>
+          {#if harmonyCard}
+            <button onclick={resetCardParts}>Reset</button>
+            <button class="done" onclick={closeCardLayout}>DONE</button>
+          {/if}
+        </div>
+        {#if arranged !== null && item && layout}
+          <div class="arrange-part">
+            <SettingChange modified={!layoutPartIsDefault(item, layout, arranged)} settingName={arranged === "answer" ? "Answer buttons" : CARD_PART_LABELS[arranged]} onreset={() => { if (item && layout && arranged) setLayout(resetLayoutPart(item, layout, arranged)); }}>
+              {#snippet heading()}
+                <span>{#if arranged === "answer"}Answer buttons {ANSWER_ANCHOR_LABELS[answerAnchor]}{:else if arranged !== null}{CARD_PART_LABELS[arranged]} {formatCardScale(partScales[arranged])}{/if}</span>
+              {/snippet}
+            </SettingChange>
+          </div>
         {/if}
-        <button
-          aria-label="Rotate anticlockwise"
-          title={ROTATION_LABELS[rotation]}
-          onclick={() => turnCard(-1)}><span aria-hidden="true">⟲</span></button
-        >
-        <button
-          aria-label="Rotate clockwise"
-          title={ROTATION_LABELS[rotation]}
-          onclick={() => turnCard(1)}><span aria-hidden="true">⟳</span></button
-        >
         {#if arranged === "keyboard" || arranged === "board"}
           <!-- Not a multiple of anything, so a pinch cannot reach it. -->
           <button onclick={() => setScale(arranged as CardScaleKind, SCREEN_WIDTH)}>
             Screen width
           </button>
         {/if}
-        <button onclick={resetCardParts}>Reset</button>
-        <button class="done" onclick={closeCardLayout}>DONE</button>
+        <div class="arrange-control">
+          <SettingChange modified={rotation !== 0} settingName="Rotation" onreset={() => setDeckSettings({rotation: 0})}>
+            {#snippet heading()}
+              <div class="rotation-controls">
+                <button aria-label="Rotate anticlockwise" title={ROTATION_LABELS[rotation]} onclick={() => turnCard(-1)}><span aria-hidden="true">⟲</span></button>
+                <button aria-label="Rotate clockwise" title={ROTATION_LABELS[rotation]} onclick={() => turnCard(1)}><span aria-hidden="true">⟳</span></button>
+              </div>
+            {/snippet}
+          </SettingChange>
+        </div>
+        {#if item !== null && isFretboardCard(item.note)}
+          <div class="arrange-control">
+            <SettingChange modified={noteSelections.fretboardFretCount !== DEFAULT_FRETBOARD_FRET_COUNT} settingName="Fretboard frets" onreset={() => onfretboardfretcountchange(DEFAULT_FRETBOARD_FRET_COUNT)}>
+              {#snippet heading()}
+          <label class="board-height">Frets
+            <select aria-label="Fretboard frets" value={noteSelections.fretboardFretCount} onchange={(event) => {
+              arranged = "board";
+              onfretboardfretcountchange(Number(event.currentTarget.value));
+            }}>
+              {#each Array.from({ length: 13 }, (_, index) => index + 12) as count}
+                <option value={count}>{count}</option>
+              {/each}
+            </select>
+          </label>
+              {/snippet}
+            </SettingChange>
+          </div>
+          <div class="arrange-control">
+            <SettingChange modified={deckSettings.boardHeight !== settingsDefaults.boardHeight} settingName="Fretboard height" onreset={() => setDeckSettings({boardHeight: settingsDefaults.boardHeight})}>
+              {#snippet heading()}
+          <label class="board-height">Height
+            <input aria-label="Fretboard height" type="range" min="0.5" max="2" step="0.05" value={deckSettings.boardHeight} oninput={(event) => setDeckSettings({ boardHeight: Number(event.currentTarget.value) })} />
+          </label>
+              {/snippet}
+            </SettingChange>
+          </div>
+        {/if}
+        {#if item !== null && isPianoKeyboardCard(item.note)}
+          <div class="arrange-control">
+            <SettingChange modified={cardScales.pianoKeys !== DEFAULT_CARD_SCALES.pianoKeys} settingName="Piano keys" onreset={() => setPianoKeys(DEFAULT_CARD_SCALES.pianoKeys)}>
+              {#snippet heading()}
+          <label class="board-height">Piano keys
+            <select aria-label="Piano keys" value={cardScales.pianoKeys} onchange={(event) => setPianoKeys(Number(event.currentTarget.value))}>
+              {#each [49, 61, 76, 88] as count}
+                <option value={count}>{count}</option>
+              {/each}
+            </select>
+          </label>
+              {/snippet}
+            </SettingChange>
+          </div>
+        {:else if item !== null && isIntervalCard(item.note)}
+          <div class="arrange-control">
+            <SettingChange modified={deckSettings.keyboardKeys !== settingsDefaults.keyboardKeys} settingName="Keyboard keys" onreset={() => setDeckSettings({keyboardKeys: settingsDefaults.keyboardKeys})}>
+              {#snippet heading()}
+          <label class="board-height">Keyboard keys
+            <select aria-label="Keyboard keys" value={deckSettings.keyboardKeys} onchange={(event) => setDeckSettings({ keyboardKeys: Number(event.currentTarget.value) })}>
+              {#each Array.from({ length: (MAX_KEYBOARD_KEYS - MIN_KEYBOARD_KEYS) / KEYBOARD_KEYS_STEP + 1 }, (_, index) => MIN_KEYBOARD_KEYS + index * KEYBOARD_KEYS_STEP) as count}
+                <option value={count}>{count}</option>
+              {/each}
+            </select>
+          </label>
+              {/snippet}
+            </SettingChange>
+          </div>
+        {:else if deckSettings.showKeyboard}
+          <div class="arrange-control">
+            <SettingChange modified={deckSettings.referenceKeyboardKeys !== settingsDefaults.referenceKeyboardKeys} settingName="Keyboard range" onreset={() => setDeckSettings({referenceKeyboardKeys: settingsDefaults.referenceKeyboardKeys})}>
+              {#snippet heading()}
+          <label class="board-height">Keyboard range
+            <input aria-label="Reference keyboard keys" type="range" min={MIN_REFERENCE_KEYBOARD_KEYS} max={MAX_REFERENCE_KEYBOARD_KEYS} step="2" value={deckSettings.referenceKeyboardKeys} oninput={(event) => setDeckSettings({ referenceKeyboardKeys: Number(event.currentTarget.value) })} />
+            <output>{deckSettings.referenceKeyboardKeys} keys</output>
+          </label>
+              {/snippet}
+            </SettingChange>
+          </div>
+        {/if}
+        {#if harmonyCard}
+          <label class="board-height"><input type="checkbox" bind:checked={layoutAnswerPreview} />Preview answer</label>
+        {/if}
+        {#if !harmonyCard}
+          <button onclick={resetCardParts}>Reset</button>
+          <button class="done" onclick={closeCardLayout}>DONE</button>
+        {/if}
       </div>
     {/if}
   </main>
@@ -1170,7 +1271,7 @@ SPDX-License-Identifier: Apache-2.0
 
 {#if actionsOpen}
   <DeckActionsSheet
-    deckLabel={deckName}
+    deckLabel={deckPathLabel(deckName)}
     undo={undoable.undo === null
       ? undefined
       : {
@@ -1205,6 +1306,9 @@ SPDX-License-Identifier: Apache-2.0
     onreset={() => void openResetDialog()}
     onclose={closeDeckActions}
   >
+    {#snippet settingRow(content, modified, name, onreset)}
+      <div class="menu-setting"><SettingChange {modified} settingName={name} {onreset}>{#snippet heading()}{@render content()}{/snippet}</SettingChange></div>
+    {/snippet}
     <NoteFontSelect menu />
   </DeckActionsSheet>
 {/if}
@@ -1221,7 +1325,7 @@ SPDX-License-Identifier: Apache-2.0
 
 {#if extraOptionsOpen}
   <ExtraStudyDialog
-    deckLabel={deckName.split("::").pop() ?? deckName}
+    deckLabel={deckPathLabel(deckName).split("::").at(-1) ?? deckName}
     availability={extraAvailability}
     loading={loadingExtraAvailability}
     onstart={(selection) => void startExtraStudy(selection)}
@@ -1236,6 +1340,7 @@ SPDX-License-Identifier: Apache-2.0
     onpreviewfretwindow={(selection) => (previewFretWindow = selection)}
     {oncirclenoteselectionchange}
     {onfretboardnoteselectionchange}
+    {onfretboardfretcountchange}
     {onfretwindowchange}
     {onguitardifficultychange}
     {onguitaroverrideschange}
@@ -1243,11 +1348,22 @@ SPDX-License-Identifier: Apache-2.0
     {onintervalpairselectionchange}
     {onstaffnoteselectionchange}
     {onmovabledokeyselectionchange}
+    {ondiatonicselectionchange}
+    {onprogressionselectionchange}
     onclose={closeNoteSettings}
   />
 {/if}
 
 <style>
+  .menu-setting { padding: 0 12px 0 8px; }
+  .menu-setting :global(.action) { padding-inline: 8px 0; }
+  .arrange-part { flex: 1 1 160px; min-width: 0; }
+  .arrange-control { max-width: 100%; }
+  .rotation-controls { display: flex; align-items: center; gap: 8px; }
+  .rotation-controls button { margin-left: 0; padding: 0; width: 40px; }
+  .laying-out :global(.reset-setting) { pointer-events: auto; }
+  .board-height input[type="range"] { width: min(130px, 32vw); }
+
   .screen {
     height: 100%;
     display: flex;
@@ -1342,7 +1458,7 @@ SPDX-License-Identifier: Apache-2.0
   .importing {
     flex: none;
     padding-right: 4px;
-    font-size: 12px;
+    font-size: var(--ui-font-size-secondary);
     opacity: 0.85;
   }
 
@@ -1447,7 +1563,7 @@ SPDX-License-Identifier: Apache-2.0
     border-radius: 4px;
     background: var(--count-new);
     color: #0b1720;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 500;
     letter-spacing: 0.04em;
   }
@@ -1473,7 +1589,7 @@ SPDX-License-Identifier: Apache-2.0
     padding: 10px 14px;
     background: rgb(0 0 0 / 0.8);
     color: #fff;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     text-align: center;
     pointer-events: none;
   }
@@ -1498,7 +1614,7 @@ SPDX-License-Identifier: Apache-2.0
     padding: 8px 14px;
     background: rgb(0 0 0 / 0.72);
     color: #fff;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .laying-out.high {
@@ -1511,12 +1627,24 @@ SPDX-License-Identifier: Apache-2.0
     margin: 0;
   }
 
-  .layout-help {
-    pointer-events: auto;
+  .layout-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
     flex: 1 0 100%;
   }
 
+  .layout-help {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .layout-help :is(summary, textarea) {
+    pointer-events: auto;
+  }
+
   .layout-help summary {
+    width: fit-content;
     cursor: pointer;
     min-height: 32px;
     align-content: center;
@@ -1529,7 +1657,7 @@ SPDX-License-Identifier: Apache-2.0
     margin-top: 8px;
     color: #fff;
     background: #111827;
-    font-size: 11px;
+    font-size: var(--ui-font-size-caption);
   }
 
   .laying-out button {
@@ -1541,9 +1669,33 @@ SPDX-License-Identifier: Apache-2.0
     border-radius: 20px;
     background: rgb(255 255 255 / 0.15);
     color: #fff;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 500;
     letter-spacing: 0.04em;
+  }
+
+  .board-height {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+  }
+
+  .board-height input {
+    min-height: 44px;
+    margin: 0;
+    touch-action: none;
+  }
+
+  .board-height select {
+    min-height: 44px;
+    color: #fff;
+    background: #263238;
+    border: 1px solid #78909c;
+    border-radius: 6px;
+    padding: 0 8px;
+    font: inherit;
   }
 
   .laying-out button ~ button {
@@ -1760,7 +1912,7 @@ SPDX-License-Identifier: Apache-2.0
     display: flex;
     justify-content: center;
     padding: 4px 0 0;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-variant-numeric: tabular-nums;
   }
 
@@ -1795,8 +1947,10 @@ SPDX-License-Identifier: Apache-2.0
   .show-answer {
     display: block;
     width: 100%;
-    height: 52px;
-    font-size: 14px;
+    /* Match the rating row so revealing an answer keeps the iframe viewport,
+       including height-dependent diagram sizes and offsets, unchanged. */
+    height: 60px;
+    font-size: var(--ui-font-size-label);
     font-weight: 500;
     letter-spacing: 0.05em;
     color: var(--on-surface);
@@ -1835,12 +1989,12 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   .ivl {
-    font-size: 12px;
+    font-size: var(--ui-font-size-secondary);
     color: var(--on-surface-muted);
   }
 
   .ease-label {
-    font-size: 14px;
+    font-size: var(--ui-font-size-label);
     font-weight: 500;
     letter-spacing: 0.05em;
   }

@@ -11,6 +11,7 @@ import {
   exportDailyLimits,
   mergeDailyLimits,
 } from "./daily-limits";
+import { dayNumber } from "./scheduler";
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -25,6 +26,45 @@ class MemoryStorage {
 }
 
 describe("today-only new-card limits", () => {
+  it("discards malformed stored entries without losing valid limits", () => {
+    const storage = new MemoryStorage();
+    const now = new Date(2026, 7, 15, 12);
+    const day = dayNumber(now);
+    storage.setItem("music-flashcards:daily-study-limits", JSON.stringify({
+      Deck: { day, newLimit: 30 },
+      broken: null,
+      array: [],
+      text: "invalid",
+      missing: { day },
+      fractional: { day: day + 0.5, newLimit: 30 },
+      negative: { day, newLimit: -1 },
+      stringLimit: { day, newLimit: "30" },
+    }));
+
+    expect(exportDailyLimits(storage)).toEqual({ Deck: { day, newLimit: 30 } });
+    expect(addToDailyNewLimit("Deck", 5, now, storage)).toBe(35);
+    expect(exportDailyLimits(storage)).toEqual({ Deck: { day, newLimit: 35 } });
+  });
+
+  it.each([NaN, Infinity, -Infinity, Number.MAX_SAFE_INTEGER])(
+    "preserves the saved allowance for an unsafe increment %s",
+    (amount) => {
+      const storage = new MemoryStorage();
+      const now = new Date(2026, 7, 15, 12);
+      addToDailyNewLimit("Deck", 10, now, storage);
+      expect(addToDailyNewLimit("Deck", amount, now, storage)).toBe(30);
+      expect(dailyNewLimit("Deck", now, storage)).toBe(30);
+    },
+  );
+
+  it("ignores malformed incoming limits", () => {
+    const storage = new MemoryStorage();
+    const incoming = JSON.parse('{"broken":null,"Deck":{"day":100,"newLimit":30}}');
+    expect(mergeDailyLimits(incoming, storage)).toEqual({
+      Deck: { day: 100, newLimit: 30 },
+    });
+  });
+
   it("adds to the default limit for one deck scope", () => {
     const storage = new MemoryStorage();
     const now = new Date(2026, 7, 15, 12);

@@ -4,10 +4,42 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createMovableDoWebDeckData } from "../../../decks/music-staff/src/movable-do";
 import { buildCardDocument, renderTemplate } from "../src/lib/template";
+import { MAJOR_KEYS } from "@web-music/music-staff-core";
 
 const deck = createMovableDoWebDeckData();
 const model = deck.models[0];
 const template = model.templates[0];
+
+test("every key keeps a bright central tonic octave with symmetric context", async ({ page }) => {
+  const starts = [60, 67, 62, 69, 64, 71, 66, 65, 70, 63, 68, 61, 61, 66, 71];
+  for (const [index, key] of MAJOR_KEYS.entries()) {
+    for (const count of [13, 15, 25, 49]) {
+      await page.setContent(buildCardDocument({
+        html: renderTemplate(template.qfmt, fieldsFor("C4", key.fifths)),
+        css: model.css, nightMode: true, showKeyboard: true, referenceKeyboardKeys: count,
+      }));
+      const keys = page.locator("svg.keyboard [data-semitone]");
+      await expect(keys).toHaveCount(count);
+      const pitches = await keys.evaluateAll((elements) => elements.map((element) => Number(element.getAttribute("data-semitone"))));
+      expect(Math.min(...pitches)).toBe(starts[index] - (count - 13) / 2);
+      expect(Math.max(...pitches)).toBe(starts[index] + 12 + (count - 13) / 2);
+      const focus = page.locator("svg.keyboard .is-root-octave");
+      await expect(focus).toHaveCount(13);
+      const focusedPitches = await focus.evaluateAll((elements) => elements.map((element) => Number(element.getAttribute("data-semitone"))));
+      expect(Math.min(...focusedPitches)).toBe(starts[index]);
+      expect(Math.max(...focusedPitches)).toBe(starts[index] + 12);
+      await expect(page.locator("svg.keyboard .is-context")).toHaveCount(count - 13);
+      if (count > 13) {
+        const dim = page.locator("svg.keyboard .is-context").first();
+        const black = await dim.evaluate((element) => element.classList.contains("keyboard__black-key"));
+        const bright = page.locator(`svg.keyboard .${black ? "keyboard__black-key" : "keyboard__white-key"}.is-root-octave`).first();
+        expect(await dim.evaluate((element) => getComputedStyle(element).fill)).not.toBe(await bright.evaluate((element) => getComputedStyle(element).fill));
+      }
+      expect(new Set(pitches).size).toBe(pitches.length);
+      await expect(page.locator("svg.keyboard .is-highlighted")).toHaveCount(0);
+    }
+  }
+});
 
 function fieldsFor(pitch: string, fifths: number, clef = "treble") {
   const note = deck.notes.find(({ fields }) =>
@@ -69,17 +101,18 @@ test("plain movable-do documents omit the optional keyboard unless explicitly en
       await expect(page.locator('[data-card-part="keyboard"]')).toHaveCount(0);
       await expect(page.locator("svg.keyboard")).toHaveCount(0);
       await expect(page.locator("svg.staff")).toBeVisible();
-      await expect(page.locator(".movable-do-card > *")).toHaveCount(back ? 3 : 1);
+      await expect(page.locator(".movable-do-card > :visible")).toHaveCount(back ? 2 : 1);
       const before = await page.locator(".movable-do-card").boundingBox();
       await show(page, fields, back, true);
       await expect(page.locator('[data-card-part="keyboard"]')).toHaveCount(1);
       await page.locator('[data-card-part="keyboard"]').evaluate((row) => row.remove());
+      await page.evaluate(() => { document.documentElement.dataset.showKeyboard = "off"; });
       expect(await page.locator(".movable-do-card").boundingBox()).toEqual(before);
     }
   }
 });
 
-test("questions have one blank octave and answers highlight the sounding pitch including enharmonics", async ({ page }) => {
+test("questions have a tonic octave with context and answers stay in the focus region", async ({ page }) => {
   for (const [pitch, fifths, sounding, pitchClass] of [
     ["C4", 0, "C4", 0],
     ["F4", 1, "F♯4", 6],
@@ -95,17 +128,17 @@ test("questions have one blank octave and answers highlight the sounding pitch i
       await expect(page.locator("html")).toHaveAttribute("data-show-keyboard", "on");
       await expect(page.locator("main[data-optional-keyboard]")).toHaveAttribute("data-keyboard-notes", back ? sounding : "");
       await expect(page.locator('[data-card-part="keyboard"] svg.keyboard')).toBeVisible();
-      await expect(page.locator("svg.keyboard [data-semitone]")).toHaveCount(12);
+      await expect(page.locator("svg.keyboard [data-semitone]")).toHaveCount(25);
       const marked = page.locator("svg.keyboard .is-highlighted");
       await expect(marked).toHaveCount(back ? 1 : 0);
       await expect(page.locator("svg.staff")).toBeVisible();
       await expect(page.locator(".movable-do__accidental")).toHaveCount(Math.abs(fifths));
       if (back) {
+        await expect(marked).toHaveClass(/is-root-octave/);
         expect(Number(await marked.getAttribute("data-semitone")) % 12).toBe(pitchClass);
         await expect(page.locator(".movable-do__answer")).toHaveText(`${sounding.replaceAll("♯", "#").replaceAll("♭", "b").replace(/[0-9]/g, "")} ${fields.Solfege}`);
-        await expect(page.locator(".movable-do__pitch")).toHaveText(`${sounding} · ${fields.Key} major`);
       } else {
-        await expect(page.locator("[data-movable-do-answer], .movable-do__pitch")).toHaveCount(0);
+        await expect(page.locator("[data-movable-do-answer]")).toBeHidden();
       }
     }
   }
@@ -127,4 +160,31 @@ test("optional keyboard uses the keyboard scale and offsets without moving the s
   expect(moved.x - scaled.x).toBeCloseTo(30, 0);
   expect(moved.y - scaled.y).toBeCloseTo(20, 0);
   expect(await page.locator("svg.staff").boundingBox()).toEqual(staffBefore);
+});
+
+test("movable-do diagrams stay fixed when answers are revealed", async ({ page }, testInfo) => {
+  for (const locale of ["en", "ja"]) {
+    await page.addInitScript(language => Object.defineProperty(navigator, "language", { value: language, configurable: true }), locale);
+    await page.goto("/");
+    for (const width of [390, 640]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const clef of ["treble", "bass", "alto", "tenor"]) {
+        const fields = fieldsFor("F4", 0, clef);
+        await show(page, fields, false, true);
+        await page.evaluate(() => document.fonts.ready);
+        const staff = await page.locator("svg.staff").boundingBox();
+        const keyboard = await page.locator("svg.keyboard").boundingBox();
+        if (locale === "en" && width === 390 && clef === "treble") {
+          await page.screenshot({ path: testInfo.outputPath("movable-do-front.png") });
+        }
+        await show(page, fields, true, true);
+        await page.evaluate(() => document.fonts.ready);
+        expect(await page.locator("svg.staff").boundingBox()).toEqual(staff);
+        expect(await page.locator("svg.keyboard").boundingBox()).toEqual(keyboard);
+        if (locale === "en" && width === 390 && clef === "treble") {
+          await page.screenshot({ path: testInfo.outputPath("movable-do-back.png") });
+        }
+      }
+    }
+  }
 });

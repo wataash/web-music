@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
   table {
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 14px;
+    font-size: var(--ui-font-size-label);
   }
 
   th,
@@ -73,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
     z-index: 2;
     background: var(--surface);
     color: var(--on-surface-muted);
-    font-size: 12px;
+    font-size: var(--ui-font-size-secondary);
   }
 
   .root {

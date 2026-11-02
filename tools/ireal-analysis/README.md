@@ -394,3 +394,15 @@ node --test tools/ireal-analysis/src/*.test.js
 [reader-revision]: https://github.com/pianosnake/ireal-reader/tree/662106fe60ea3f91574ddf98df0e2468a3d89e6a
 [analysis-script]: ./src/analyze.js
 [intervals-map]: ../../packages/ireal/src/intervals.js
+
+## Chord-tone flashcards
+
+The triad/four-note ranking uses the same expanded playlist as the interval counts above. The generator retains specified thirds, fifths and seventh/sixth/add-note tones, groups extra tensions and slash basses into the basic form, and does not invent tones for power chords or unspecified altered fifths. Only aggregate counts and chord-tone spellings are committed.
+
+Run from the repository root after producing the expanded JSON by the method above (fish/bash):
+
+```sh
+node tools/ireal-analysis/src/chord-tones.js path/to/jazz-1460-expanded.json > decks/music-staff/src/chord-tone-frequency.ts
+```
+
+The generated header records the expanded source hash and parser revision. Verify tools/ireal-analysis/src/chord-tones.test.js, decks/music-staff/src/chord-tones.test.ts, and apps/flashcards/e2e/chord-tones.spec.ts.

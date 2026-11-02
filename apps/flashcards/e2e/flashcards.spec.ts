@@ -3,7 +3,7 @@
 
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "./fixtures";
+import { expect, test, openDeckSettings } from "./fixtures";
 
 // Every test gets a fresh browser context, so the app starts with empty
 // storage and imports the decks from the dev server. That takes a couple of
@@ -215,6 +215,34 @@ test("continues importing after one deck fails", async ({ page }) => {
     timeout: IMPORT_TIMEOUT,
   });
 });
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }, { width: 640, height: 480 }]) {
+  test(`revealing an answer keeps the card viewport and diagrams fixed (${viewport.width}×${viewport.height})`, async ({ page, shot }) => {
+    await page.setViewportSize(viewport);
+    await openDeckList(page);
+    await study(page, "Treble Clef");
+    const iframe = page.locator('iframe[title="card"]');
+    const card = page.frameLocator('iframe[title="card"]');
+    await expect(card.locator("svg.staff")).toBeVisible();
+    await expect(card.locator("svg.keyboard")).toBeVisible();
+    const frame = await (await iframe.elementHandle())!.contentFrame();
+    await frame!.evaluate(() => document.fonts.ready);
+    const before = {
+      frame: await iframe.boundingBox(),
+      staff: await card.locator("svg.staff").boundingBox(),
+      keyboard: await card.locator("svg.keyboard").boundingBox(),
+    };
+    if (viewport.width === 1280) await shot("staff-front");
+    await page.getByRole("button", { name: "SHOW ANSWER" }).click();
+    await expect(page.getByRole("button", { name: "GOOD" })).toBeVisible();
+    await expect(card.locator(".key-name")).toHaveCount(1);
+    await frame!.evaluate(() => document.fonts.ready);
+    expect(await iframe.boundingBox()).toEqual(before.frame);
+    expect(await card.locator("svg.staff").boundingBox()).toEqual(before.staff);
+    expect(await card.locator("svg.keyboard").boundingBox()).toEqual(before.keyboard);
+    if (viewport.width === 1280) await shot("staff-back");
+  });
+}
 
 test("undoes the last answer, and redoes it", async ({ page, shot }) => {
   await openDeckList(page);
@@ -695,8 +723,11 @@ test("names a fretboard position's degree, in a window of frets", async ({
   await expect.poll(windowWidth).toBeCloseTo(screen, 0);
 });
 
-test("adds more cards from the deck's menu", async ({ page, shot }) => {
+test("adds more cards from the deck's menu despite malformed saved limits", async ({ page, shot }) => {
   await openDeckList(page);
+  await page.evaluate(() => {
+    localStorage.setItem("music-flashcards:daily-study-limits", '{"broken":null}');
+  });
   // A deck with more unstudied cards than the daily limit, so raising the
   // limit is what decides how many new cards are offered.
   await studyIntervals(page);
@@ -780,7 +811,7 @@ test("picks interval cards out of the frequency grid", async ({
   // The flat deck has no subdecks to study one degree at a time.
   await expect(page.locator(".deck-name", { hasText: /^P5$/ })).toHaveCount(0);
 
-  await deckRow(page, INTERVALS).locator(".deck-settings").click();
+  await openDeckSettings(deckRow(page, INTERVALS));
   const dialog = page.getByRole("dialog");
   // Most-used first, both ways: C P5 is the corner cell.
   await expect(dialog.locator("tbody tr").first().locator("th")).toHaveText(
@@ -873,11 +904,11 @@ test("turns decks off and on again from the deck list", async ({
   await expect(deckRow(page, "Position → Note")).toBeVisible();
   await expect(deckRow(page, "Note → Positions")).toHaveCount(0);
 
-  // And RESET puts the list back to the decks the packages ship on.
+  // Toggling the changed child back restores the shipped list.
   await page.getByRole("button", { name: "CHOOSE DECKS" }).click();
-  const reset = dialog.getByRole("button", { name: /^RESET/ });
-  await reset.click();
-  await expect(reset).toBeDisabled();
+  await dialog.getByRole("checkbox", { name: "Note → Positions", exact: true }).check();
+  await expect(dialog.locator("li.modified")).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: /Reset .* to default/ })).toHaveCount(0);
   await dialog.getByRole("button", { name: "APPLY" }).click();
   await expect(deckRow(page, "Guitar Fretboard")).toBeVisible();
   await expect(deckRow(page, "Alto Clef")).toHaveCount(0);
@@ -889,10 +920,10 @@ test("ships the deeper decks turned off", async ({ page, shot }) => {
     timeout: IMPORT_TIMEOUT,
   });
 
-  // The circle of fifths and staff reading with octave numbers are off until
-  // they are asked for; nothing on the list says "advanced" any more.
-  const circle = deckRow(page, "(Experimental) Circle of Fifths");
-  await expect(circle).toHaveCount(0);
+  // Circle note-to-cell is visible; the experimental branches stay hidden.
+  const circle = deckRow(page, "Circle of Fifths");
+  await expect(circle).toBeVisible();
+  await expect(deckRow(page, "(Experimental) Cell → All Notes")).toHaveCount(0);
   await expect(
     deckRow(page, "Music Staff (with Octave Numbers)"),
   ).toHaveCount(0);
@@ -911,11 +942,11 @@ test("ships the deeper decks turned off", async ({ page, shot }) => {
     await expect(page.locator(`[data-deck="${name}"]`)).toHaveCount(0);
   }
 
-  // Turning the head of the branch on brings the branch with it.
+  // Turning an experimental branch on brings its leaves with it.
   await page.getByRole("button", { name: "CHOOSE DECKS" }).click();
   const dialog = page.getByRole("dialog");
   await dialog
-    .getByRole("checkbox", { name: "(Experimental) Circle of Fifths" })
+    .getByRole("checkbox", { name: "(Experimental) Cell → All Notes", exact: true })
     .check();
   await expect(
     dialog.getByRole("checkbox", { name: "Note → Cell", exact: true }),
@@ -1721,10 +1752,8 @@ test("restores default deck visibility when a backup has no saved settings", asy
 test("selects 41 interval keys", async ({ page }) => {
   await openDeckList(page);
   await studyIntervals(page);
-  await page.getByRole("button", { name: "Deck actions" }).click();
-  await page.getByRole("button", { name: "Keyboard keys larger" }).click();
-  await page.getByRole("button", { name: "Keyboard keys larger" }).click();
-  await expect(page.getByRole("group", { name: "Keyboard keys", exact: true })).toContainText("41");
+  await arrangeCard(page);
+  await page.getByRole("combobox", { name: "Keyboard keys", exact: true }).selectOption("41");
   const card = page.frameLocator('iframe[title="card"]');
   await expect(card.locator("svg.keyboard-svg")).toHaveAttribute("data-key-count", "41");
 });
@@ -1856,7 +1885,7 @@ test("positions the circle before the answer document loads", async ({ page }) =
   await settleDeckImports(page);
   await page.getByRole("button", { name: "CHOOSE DECKS" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("checkbox", { name: "(Experimental) Circle of Fifths" }).check();
+  await dialog.getByRole("checkbox", { name: "Circle of Fifths" }).check();
   await dialog.getByRole("button", { name: "APPLY" }).click();
   await page.locator('[data-deck="(Experimental) Circle of Fifths"] .deck-study').click();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1878,7 +1907,7 @@ test("filters guitar intervals by difficulty with apply, cancel and persisted se
   await openDeckList(page);
   await settleDeckImports(page);
   const row = deckRow(page, "Guitar Intervals");
-  const openSettings = () => row.getByRole("button", { name: "What Guitar Intervals asks" }).click();
+  const openSettings = () => openDeckSettings(row);
   const dialog = page.getByRole("dialog", { name: "What to ask" });
   const slider = dialog.getByRole("slider", { name: "Learning range" });
   await openSettings();
@@ -1903,7 +1932,7 @@ test("filters guitar intervals by difficulty with apply, cancel and persisted se
   await expect(slider).toHaveValue("2");
   await expect(dialog).toContainText("41 / 220 shapes selected");
   const root6 = map.getByRole("region", { name: "Root string 6", exact: true });
-  for (const name of ["String 5, fret +2: P5, included", "String 4, fret 0: m7, included", "String 3, fret 0: m3 ♯9, included", "String 2, fret 0: P5, included", "String 1, fret +2: 9 M2, included"]) {
+  for (const name of ["String 5, fret +2: P5, included", "String 4, fret 0: m7, included", "String 3, fret 0: m3 ♯9, included", "String 2, fret 0: P5, included", "String 1, fret +2: 9(M2), included"]) {
     await expect(root6.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
   }
   await shot("guitar-cm9-learning-range-2");
@@ -1966,7 +1995,7 @@ test("saves individual guitar exclusions and asks only the remaining shape", asy
   await openDeckList(page);
   await settleDeckImports(page);
   const row = deckRow(page, "Guitar Intervals");
-  const open = () => row.getByRole("button", { name: "What Guitar Intervals asks" }).click();
+  const open = () => openDeckSettings(row);
   await open();
   const dialog = page.getByRole("dialog");
   const map = dialog.getByRole("region", { name: "Question map" });
@@ -1984,7 +2013,7 @@ test("saves individual guitar exclusions and asks only the remaining shape", asy
   await open();
   await expect(dialog).toContainText("1 / 220 shapes selected");
   // Reset is a draft until APPLY; cancelling must retain the exclusions.
-  await map.getByRole("button", { name: "RESET INDIVIDUAL CHANGES" }).click();
+  await map.getByRole("button", { name: "Reset Question map to default" }).click();
   await expect(dialog).toContainText("24 / 220 shapes selected");
   await dialog.getByRole("button", { name: "CANCEL" }).click();
   await expect(row.locator(".count.new")).toHaveText("1");

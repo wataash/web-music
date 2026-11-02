@@ -38,7 +38,6 @@ SPDX-License-Identifier: Apache-2.0
   >
     <header>
       <h2 id={titleId}>{title}</h2>
-      <button class="close" title="Cancel" onclick={oncancel}>✕</button>
     </header>
 
     <div class="content">{@render children()}</div>
@@ -101,14 +100,6 @@ SPDX-License-Identifier: Apache-2.0
     font-weight: 500;
   }
 
-  .close {
-    width: 40px;
-    height: 40px;
-    color: var(--on-surface-muted);
-    border-radius: 50%;
-    font-size: 18px;
-  }
-
   .content {
     min-height: 0;
     padding: 16px;
@@ -126,7 +117,7 @@ SPDX-License-Identifier: Apache-2.0
     min-height: 42px;
     padding: 0 18px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 500;
     letter-spacing: 0.04em;
   }

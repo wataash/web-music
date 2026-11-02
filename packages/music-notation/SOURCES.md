@@ -1,5 +1,35 @@
 # Music notation glyph sources
 
+## Chord font
+
+`src/fonts/edwin-roman.otf` is the unmodified Edwin Roman font from the
+[official Edwin repository](https://github.com/MuseScoreFonts/Edwin), revision
+`14d82aca352c18d7cd31a40e7fa0d2e40b3f2805`, file `Edwin-Roman.otf`.
+Its SHA-256 is
+`edf9bddcdf7a62d0d799151d863556cf5e0958ad0a01e9f1d46afbaaa5a36e1c`.
+It is distributed under SIL OFL 1.1, copyright 2021 MuseScore BVBA, with
+Reserved Font Name Edwin. The complete upstream notice and license are in
+[`OFL-Edwin.txt`](OFL-Edwin.txt), also shipped at
+[`apps/flashcards/public/licenses/Edwin.txt`](../../apps/flashcards/public/licenses/Edwin.txt).
+No subsetting, renaming or contour modification is applied.
+
+`src/fonts/leland-text.otf` is the unmodified `LelandText.otf` from the
+[official Leland repository](https://github.com/MuseScoreFonts/Leland), revision
+`d91cf5d21045e2c294541676ad386b7ffb4ac881`. Its SHA-256 is
+`929a932304431f2f72047c2052695435ad006925b172981e3b0a518c96a524a1`.
+It is distributed under SIL OFL 1.1, copyright 2025 MuseScore BVBA, with
+Reserved Font Name Leland. The complete notice and license are in
+[`OFL-Leland.txt`](OFL-Leland.txt), also shipped at
+[`apps/flashcards/public/licenses/Leland.txt`](../../apps/flashcards/public/licenses/Leland.txt).
+
+The Vite-only `chord-font` entry embeds these faces for Diatonic Chords and
+II–V–I cards, using regular weight and baseline extensions, following the
+Standard / Edwin atlas profile. Leland Text supplies U+ED60–U+ED64 accidentals
+and U+E870–U+E874 chord qualities; the original Unicode spelling remains in
+accessible text. The corresponding symbols are documented in
+[MuseScore 4.7.4's Standard chord definitions](https://github.com/musescore/MuseScore/blob/v4.7.4/src/engraving/data/chords/chords_std.xml).
+These fonts do not change the selectable note-name fonts below.
+
 ## Note fonts
 
 The self-hosted regular and bold WOFF2 files in [`src/fonts/`](src/fonts/) are

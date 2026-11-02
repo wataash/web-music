@@ -37,9 +37,13 @@ function heading(showAnswer: boolean): string {
 const POSITION_LABEL_SCRIPT = `
 <script>
 for (const answer of document.querySelectorAll(".position-answer")) {
+  const fretCount = Number(getComputedStyle(document.documentElement).getPropertyValue("--fretboard-fret-count")) || 24;
   answer.textContent = (answer.textContent ?? "")
     .split(" ")
-    .filter((position) => !/^\\d+-24$/.test(position))
+    .filter((position) => {
+      const fret = /^\\d+-(\\d+)$/.exec(position);
+      return fret === null || (Number(fret[1]) <= fretCount && (fretCount < 24 || Number(fret[1]) !== 24));
+    })
     .join(" ");
 }
 </script>
@@ -125,7 +129,8 @@ ${KEYBOARD_CSS}
 .diagram img,
 .diagram svg {
   display: block;
-  width: min(96vw, 72rem);
-  height: auto;
+  --fretboard-drawn-width: var(--board-width, calc(min(96vw, 72rem) * var(--board-scale, 1) * var(--fretboard-width-fraction, 1)));
+  width: var(--fretboard-drawn-width);
+  height: calc(var(--fretboard-drawn-width) * var(--fretboard-height-fraction, 0.18786) / var(--fretboard-width-fraction, 1) * var(--board-height-scale, 1));
 }
 `.trim();

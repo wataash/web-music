@@ -1,14 +1,18 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { DEFAULT_CARD_SCALES, DEFAULT_DECK_CARD_SETTINGS } from "@web-music/practice-ui/card-scale";
+import { DEFAULT_CARD_SCALES, DEFAULT_DECK_CARD_SETTINGS, defaultDeckCardSettings } from "@web-music/practice-ui/card-scale";
 import type { DeckCard, DeckData, DeckMediaFile, DeckModel, DeckNote, DeckTemplate } from "./deck-data";
 import { compareDeckNames } from "./deck-visibility";
 import { DEFAULT_FRET_WINDOW, fretWindowVariables } from "./guitar-interval-selection";
+import { DEFAULT_FRETBOARD_FRET_COUNT, includesFretboardFretCard } from "./fretboard-card";
 import { DEFAULT_STAFF_NOTE_SELECTION, staffCardVariables } from "./staff-note-selection";
 import { buildCardDocument, renderTemplate, resolveMediaReferences } from "./template";
 import type { NoteFont } from "./note-font.svelte";
 import { noteFontCss } from "./note-font-css";
+import { isChordToneCard, chordToneDisplayFields } from "./chord-tone-selection";
+import { isProgressionCard, progressionDisplayFields } from "./progression-selection";
+import { diatonicDirection, diatonicDisplayFields, DEFAULT_CHORD_NOTATION, type ChordNotation, type MinorDegreeNotation } from "./diatonic-selection";
 
 export type DeckPreviewRow = Readonly<{
   deckName: string;
@@ -20,16 +24,18 @@ export type DeckPreviewRow = Readonly<{
 }>;
 
 /** One representative of each directly populated deck, without changing the package. */
-export function representativeCards(data: DeckData): DeckPreviewRow[] {
+export function representativeCards(data: DeckData, fretCount = DEFAULT_FRETBOARD_FRET_COUNT): DeckPreviewRow[] {
+  const notes = new Map(data.notes.map((note) => [note.id, note]));
   const cards = new Map<number, DeckCard>();
   for (const card of data.cards) {
+    const note = notes.get(card.nid);
+    if (note && !includesFretboardFretCard(note, fretCount)) continue;
     const previous = cards.get(card.did);
     if (!previous || card.newOrder < previous.newOrder ||
         (card.newOrder === previous.newOrder && card.id < previous.id)) {
       cards.set(card.did, card);
     }
   }
-  const notes = new Map(data.notes.map((note) => [note.id, note]));
   const models = new Map(data.models.map((model) => [model.mid, model]));
   return [...data.decks]
     .sort((a, b) => compareDeckNames(a.name, b.name) || a.did - b.did)
@@ -47,10 +53,11 @@ export function representativeCards(data: DeckData): DeckPreviewRow[] {
 }
 
 /** A standalone iframe document; no database, storage, or object URL lifetime. */
-export function previewDocument(row: DeckPreviewRow, back: boolean, showKeyboard: boolean, noteFont?: NoteFont): string {
+export function previewDocument(row: DeckPreviewRow, back: boolean, showKeyboard: boolean, noteFont?: NoteFont, fretCount = DEFAULT_FRETBOARD_FRET_COUNT, minorNotation: MinorDegreeNotation = "im7", chordNotation: ChordNotation = DEFAULT_CHORD_NOTATION): string {
   const fields = Object.fromEntries(row.model.fieldNames.map((name, index) =>
     [name, row.note.fields[index] ?? ""],
   ));
+  Object.assign(fields, chordToneDisplayFields(row.note, chordNotation), diatonicDisplayFields(row.note, minorNotation, chordNotation), progressionDisplayFields(row.note, minorNotation, chordNotation));
   const front = renderTemplate(row.template.qfmt, fields);
   const html = back
     ? renderTemplate(row.template.afmt, { ...fields, FrontSide: front })
@@ -64,14 +71,16 @@ export function previewDocument(row: DeckPreviewRow, back: boolean, showKeyboard
   }));
   return buildCardDocument({
     html: resolveMediaReferences(html, mediaUrls),
-    css: row.model.css + noteFontCss(noteFont),
+    css: row.model.css + noteFontCss(noteFont, diatonicDirection(row.note) !== null || isChordToneCard(row.note) || isProgressionCard(row.note)),
     nightMode: true,
     keyboardKeys: DEFAULT_DECK_CARD_SETTINGS.keyboardKeys,
+    referenceKeyboardKeys: defaultDeckCardSettings(row.deckName).referenceKeyboardKeys,
     pianoKeys: DEFAULT_CARD_SCALES.pianoKeys,
     showKeyboard,
     intervalRoot: back ? true : DEFAULT_DECK_CARD_SETTINGS.frontRoot,
     variables: {
       ...fretWindowVariables(DEFAULT_FRET_WINDOW),
+      "--fretboard-fret-count": String(fretCount),
       ...staffCardVariables(row.note, DEFAULT_STAFF_NOTE_SELECTION),
     },
   });

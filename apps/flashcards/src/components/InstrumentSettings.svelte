@@ -59,7 +59,7 @@ SPDX-License-Identifier: Apache-2.0
   .current,
   .hint {
     color: var(--on-surface-muted);
-    font-size: 13px;
+    font-size: var(--ui-font-size-secondary);
     font-weight: 400;
   }
 

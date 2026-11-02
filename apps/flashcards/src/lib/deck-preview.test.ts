@@ -37,6 +37,19 @@ function fixture(): DeckData {
 }
 
 describe("representativeCards", () => {
+  it("chooses an in-range fretboard sample without mutating the full deck", () => {
+    const data = fixture();
+    const notes = [
+      { id: 12, guid: "high", mid: 7, tags: "direction::position-to-note", fields: ["id", "natural", "1", "24"] },
+      { id: 13, guid: "low", mid: 7, tags: "direction::position-to-note", fields: ["id", "natural", "1", "12"] },
+    ];
+    const deck = { ...data, notes: [...data.notes, ...notes], cards: [
+      { id: 1, nid: 12, did: 2, ord: 0, newOrder: 0 },
+      { id: 2, nid: 13, did: 2, ord: 0, newOrder: 1 },
+    ] };
+    expect(representativeCards(deck, 12)[0].note.guid).toBe("low");
+    expect(representativeCards(deck, 24)[0].note.guid).toBe("high");
+  });
   it("sorts directly populated decks and chooses newOrder then id, matching template ord", () => {
     const data = fixture();
     const before = structuredClone(data);
@@ -90,6 +103,7 @@ describe("previewDocument", () => {
     expect(front).toContain('data-piano-keys="88"');
     expect(front).not.toContain('data-show-keyboard="on"');
     expect(back).toContain('data-show-keyboard="on"');
+    expect(previewDocument(row, false, false, undefined, 12)).toContain("--fretboard-fret-count: 12");
     expect(front).not.toContain("{{");
     expect(back).not.toContain("{{FrontSide}}");
     expect(previewDocument(row, false, false)).toBe(front);

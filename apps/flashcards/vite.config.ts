@@ -29,6 +29,17 @@ const BUNDLED_DECKS = [
     ),
   },
   {
+    id: "diatonic-chords",
+    filename: "diatonic-chords.json",
+    sourcePath: resolve(PROJECT_DIRECTORY, "../../decks/music-staff/dist/diatonic-chords.json"),
+  },
+  { id:"chord-tones", filename:"chord-tones.json", sourcePath:resolve(PROJECT_DIRECTORY,"../../decks/music-staff/dist/chord-tones.json") },
+  {
+    id: "ii-v-i",
+    filename: "ii-v-i.json",
+    sourcePath: resolve(PROJECT_DIRECTORY, "../../decks/music-staff/dist/ii-v-i.json"),
+  },
+  {
     id: "intervals",
     filename: "intervals.json",
     sourcePath: resolve(
@@ -99,11 +110,14 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
+        // The standalone atlas must not fall back to the cached study app shell.
+        navigateFallbackDenylist: [/^\/(?:typography|music-notation-examples)(?:\/|$)/],
         // The deck JSON is imported into IndexedDB on the first visit, so a
         // second copy in the service worker cache would only make that visit
         // download the same ~15 MB twice. The manifest stays precached, so an
         // offline launch can still see that no deck changed.
         globPatterns: ["**/*.{js,css,html,svg,ttf}", "decks/manifest.json"],
+        globIgnores: ["music-notation-examples/**"],
       },
     }),
   ],

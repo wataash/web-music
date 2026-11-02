@@ -12,6 +12,10 @@ import {
   selectionForPreset,
   staffCardVariables,
   staffNoteDeckSetting,
+  parseMovableDoStaffSelections,
+  loadMovableDoStaffSelections,
+  MOVABLE_DO_STAFF_SELECTION_KEY,
+  staffSelectionForNote,
 } from "./staff-note-selection";
 
 function staffNote(clef: string, pitch: string, direction = "staff-to-note") {
@@ -22,6 +26,56 @@ function staffNote(clef: string, pitch: string, direction = "staff-to-note") {
 }
 
 describe("staff note selection", () => {
+  it("migrates the shared range once and keeps each key independent", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+    };
+    const wide = selectionForPreset("esoteric");
+    const migrated = loadMovableDoStaffSelections(storage, wide);
+    expect(Object.keys(migrated)).toHaveLength(15);
+    expect(migrated[-1]).toEqual(wide);
+    const changed = { ...migrated, [-1]: { ...wide, treble: ["A4"] } };
+    storage.setItem(MOVABLE_DO_STAFF_SELECTION_KEY, JSON.stringify(changed));
+    const loaded = loadMovableDoStaffSelections(storage, DEFAULT_STAFF_NOTE_SELECTION);
+    expect(loaded[-1].treble).toEqual(["A4"]);
+    expect(loaded[-2]).toEqual(wide);
+    expect(loaded[0]).toEqual(wide);
+    expect(loaded[-1].bass).toEqual(wide.bass);
+  });
+
+  it("uses the card's key for filtering and cropping independently of regular staff", () => {
+    const regular = selectionForPreset("esoteric");
+    const ranges = parseMovableDoStaffSelections({
+      [-1]: { ...regular, treble: ["A4"] },
+      [-2]: { ...regular, treble: ["C5"] },
+    });
+    const keyed = (fifths: number, pitch: string) => ({
+      fields: ["id", "treble", pitch, String(fifths)],
+      tags: "clef::treble mode::major",
+    });
+    expect(staffSelectionForNote(staffNote("treble", "A4"), regular, ranges)).toBe(regular);
+    expect(includesStaffNoteCard(keyed(-1, "A4"), staffSelectionForNote(keyed(-1, "A4"), regular, ranges))).toBe(true);
+    expect(includesStaffNoteCard(keyed(-2, "A4"), staffSelectionForNote(keyed(-2, "A4"), regular, ranges))).toBe(false);
+    const narrow = staffCardVariables(keyed(-1, "A4"), ranges[-1], ["treble"]);
+    const wide = staffCardVariables(keyed(-1, "A4"), regular, ["treble"]);
+    expect(Number(narrow["--staff-clip-top"])).toBeGreaterThan(Number(wide["--staff-clip-top"]));
+    expect(Number(narrow["--staff-clip-bottom"])).toBeGreaterThan(Number(wide["--staff-clip-bottom"]));
+  });
+
+  it("validates stored per-key ranges without losing intentionally empty selections", () => {
+    const parsed = parseMovableDoStaffSelections({
+      [-1]: { ...DEFAULT_STAFF_NOTE_SELECTION, treble: ["A4", "A4", "invalid"] },
+      [-2]: { ...DEFAULT_STAFF_NOTE_SELECTION, treble: [] },
+      0: "invalid",
+    });
+    expect(parsed[-1].treble).toEqual(["A4"]);
+    expect(parsed[-2].treble).toEqual([]);
+    expect(parsed[0]).toEqual(DEFAULT_STAFF_NOTE_SELECTION);
+    const failedStorage = { getItem: () => "not json", setItem: () => {} };
+    expect(loadMovableDoStaffSelections(failedStorage, ALL_STAFF_NOTES)).toEqual(parseMovableDoStaffSelections(null));
+  });
   it("offers six ledger lines either side of every clef", () => {
     for (const clef of ["treble", "bass", "alto", "tenor"] as const) {
       expect(ALL_STAFF_NOTES[clef]).toHaveLength(33);

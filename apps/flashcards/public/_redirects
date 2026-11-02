@@ -1,0 +1,3 @@
+/typography /music-notation-examples/ 301
+/typography/ /music-notation-examples/ 301
+/typography/* /music-notation-examples/:splat 301

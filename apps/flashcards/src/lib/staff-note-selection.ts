@@ -5,6 +5,7 @@ import {
   CARD_STAFF_GEOMETRY,
   CLEF_LABELS,
   CLEFS,
+  MAJOR_KEYS,
   formatPitch,
   isOnStaff,
   ledgerSteps,
@@ -85,6 +86,49 @@ export function selectionForPreset(
 // not to wade through, so a clef begins on Basic.
 export const DEFAULT_STAFF_NOTE_SELECTION = selectionForPreset("basic");
 
+export const MOVABLE_DO_STAFF_SELECTION_KEY = "music-flashcards:movable-do-staff-note-selections";
+export type MovableDoStaffSelections = Readonly<Record<number, StaffNoteSelection>>;
+
+export function parseMovableDoStaffSelections(
+  value: unknown,
+  fallback: StaffNoteSelection = DEFAULT_STAFF_NOTE_SELECTION,
+): MovableDoStaffSelections {
+  const record = typeof value === "object" && value !== null
+    ? value as Record<string, unknown> : {};
+  return Object.fromEntries(MAJOR_KEYS.map(({ fifths }) => [
+    fifths,
+    record[fifths] === undefined ? fallback : parseStaffNoteSelection(record[fifths]),
+  ]));
+}
+
+// Seed each key once from the old shared range, then keep it independent.
+export function loadMovableDoStaffSelections(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  legacy: StaffNoteSelection,
+): MovableDoStaffSelections {
+  let saved: string | null;
+  try { saved = storage.getItem(MOVABLE_DO_STAFF_SELECTION_KEY); }
+  catch { return parseMovableDoStaffSelections(null, legacy); }
+  if (saved !== null) {
+    try { return parseMovableDoStaffSelections(JSON.parse(saved)); }
+    catch { return parseMovableDoStaffSelections(null); }
+  }
+  const migrated = parseMovableDoStaffSelections(null, legacy);
+  try { storage.setItem(MOVABLE_DO_STAFF_SELECTION_KEY, JSON.stringify(migrated)); }
+  catch { /* Keep the ranges usable when preferences cannot be saved. */ }
+  return migrated;
+}
+
+export function staffSelectionForNote(
+  note: Pick<NoteRow, "fields" | "tags">,
+  regular: StaffNoteSelection,
+  movableDo: MovableDoStaffSelections,
+): StaffNoteSelection {
+  return note.tags.split(/\s+/).includes("mode::major")
+    ? movableDo[Number(note.fields[3])] ?? DEFAULT_STAFF_NOTE_SELECTION
+    : regular;
+}
+
 export function presetForClefSelection(
   selection: StaffNoteSelection,
   clef: Clef,
@@ -121,8 +165,8 @@ export function includesStaffNoteCard(
   );
 }
 
-// Every staff deck drills the same positions, so one selection covers the
-// regular reading deck and both octave-number directions alike.
+// Regular reading and both octave-number directions share a range; Movable
+// Do uses a separate range for each key.
 export function staffNoteDeckSetting(
   deckName: string,
 ): StaffNoteDeckSetting | null {
