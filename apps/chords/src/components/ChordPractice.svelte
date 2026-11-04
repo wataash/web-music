@@ -409,7 +409,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 </script>
 
-<svelte:head><style id="music-glyph-style">{MUSIC_GLYPH_CSS}</style></svelte:head>
+<svelte:head>{@html `<style id="music-glyph-style">${MUSIC_GLYPH_CSS}</style>`}</svelte:head>
 
 <svelte:window onbeforeprint={beforePrint} onafterprint={afterPrint} onkeydown={handleKey} onpopstate={handlePopState} />
 

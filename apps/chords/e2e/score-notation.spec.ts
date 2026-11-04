@@ -29,6 +29,24 @@ for (const width of [320, 700]) {
   test.describe(`${width}px notation`, () => {
     test.use({ viewport: { width, height: 1200 } });
 
+    test('sizes chord symbols and hides their accessible text', async ({ page }) => {
+      const sheet = await openScore(page, '[T44Bb^7XyQ|F#7XyQ|C^7XyQZ');
+      await expect(sheet.locator('.glyph.flat').first()).toBeVisible();
+      await expect(sheet.locator('.glyph.sharp').first()).toBeVisible();
+      await expect(sheet.locator('.glyph.triangle').first()).toBeVisible();
+      for (const reading of await sheet.locator('.reading').all()) {
+        await expect(reading).toHaveCSS('position', 'absolute');
+        await expect(reading).toHaveCSS('width', '1px');
+        await expect(reading).toHaveCSS('height', '1px');
+        await expect(reading).toHaveCSS('clip-path', 'inset(50%)');
+      }
+      for (const glyph of await sheet.locator('.glyph').all()) {
+        const size = await glyph.evaluate(el => ({width:el.getBoundingClientRect().width, font:parseFloat(getComputedStyle(el).fontSize)}));
+        expect(size.width).toBeGreaterThan(0);
+        expect(size.width).toBeLessThan(size.font);
+      }
+    });
+
     test('centers compressed single-bar repeats and preserves rows', async ({ page }) => {
       const sheet = await openScore(page, '[T44' + 'C7XyQKcl LZ x LZ x LZ'.repeat(2));
       await expect(sheet.locator('.ireal-row')).toHaveCount(2);
