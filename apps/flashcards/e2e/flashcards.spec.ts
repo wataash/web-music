@@ -1761,12 +1761,14 @@ test("selects 41 interval keys", async ({ page }) => {
 
 test("captures repeated mobile arrange drags", async ({ page, browserName }) => {
   test.skip(browserName !== "chromium", "Native touch input uses CDP");
+  await page.setViewportSize({ width: 390, height: 844 });
   const session = await page.context().newCDPSession(page);
   await session.send("Emulation.setTouchEmulationEnabled", { enabled: true });
   await openDeckList(page);
   await studyIntervals(page);
-  await page.setViewportSize({ width: 390, height: 844 });
   await arrangeCard(page);
+  // Keep native touches clear of the toolbar controls, including on CI fonts.
+  await page.getByRole("button", { name: "Move toolbar to bottom", exact: true }).click();
   const card = page.frameLocator('iframe[title="card"]');
   const keyboard = card.locator('[data-card-part="keyboard"]');
   await expect(card.locator("html")).toHaveAttribute("data-positioning", "");
@@ -1779,6 +1781,7 @@ test("captures repeated mobile arrange drags", async ({ page, browserName }) => 
     const box = (await keyboard.boundingBox())!;
     const x = box.x + box.width / 2;
     const y = box.y + box.height / 2;
+    await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, { x, y })).toBe("IFRAME");
     await keyboard.evaluate((element) => element.removeAttribute("data-captured"));
     await session.send("Input.dispatchTouchEvent", {
       type: "touchStart", touchPoints: [{ x, y }],
