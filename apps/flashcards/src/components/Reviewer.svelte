@@ -117,6 +117,8 @@ SPDX-License-Identifier: Apache-2.0
     describeUndoOp,
     redo,
     subscribeUndoStatus,
+    saveUndoEffect,
+    undoableOp,
     undo,
     undoStatus,
     type UndoStatus,
@@ -786,13 +788,25 @@ SPDX-License-Identifier: Apache-2.0
     try {
       const wasNew = item.state === undefined;
       const wasReview = item.extraReview || item.state?.stateKind === "review";
-      await answerCard(item, grade);
-      if (wasNew) sessionNew += 1;
-      if (wasReview) sessionReview += 1;
-      if (item.extraReview) {
-        extraReviewKeys.delete(item.card.key);
-        completedExtraReviewKeys.add(item.card.key);
-      }
+      const answered = item;
+      const updateSession = (direction: 1 | -1): void => {
+        if (wasNew) sessionNew += direction;
+        if (wasReview) sessionReview += direction;
+        if (answered.extraReview) {
+          if (direction === 1) {
+            extraReviewKeys.delete(answered.card.key);
+            completedExtraReviewKeys.add(answered.card.key);
+          } else {
+            completedExtraReviewKeys.delete(answered.card.key);
+            extraReviewKeys.add(answered.card.key);
+          }
+        }
+      };
+      await undoableOp("answerCard", async () => {
+        await answerCard(answered, grade);
+        updateSession(1);
+        saveUndoEffect(() => updateSession(-1), () => updateSession(1));
+      });
       await advance();
     } finally {
       answering = false;

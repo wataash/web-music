@@ -40,7 +40,8 @@ type UndoableChange =
   | Readonly<{ table: "revlog"; id: number; before?: RevlogRow }>
   | Readonly<{ table: "dailyLimits"; before: string | null }>;
 
-type UndoStep = Readonly<{ op: UndoOp; changes: UndoableChange[] }>;
+type UndoEffect = Readonly<{ undo: () => void; redo: () => void }>;
+type UndoStep = Readonly<{ op: UndoOp; changes: UndoableChange[]; effects: UndoEffect[] }>;
 
 let currentStep: UndoStep | null = null;
 // Most recent first, so the cap is a truncation.
@@ -88,7 +89,7 @@ export async function undoableOp<T>(
     await historyWork;
     return undoableOp(op, body);
   }
-  const step: UndoStep = { op, changes: [] };
+  const step: UndoStep = { op, changes: [], effects: [] };
   currentStep = step;
   try {
     const result = await body();
@@ -102,6 +103,12 @@ export async function undoableOp<T>(
     currentStep = null;
     notify();
   }
+}
+
+// Record synchronous session updates alongside the database operation. These
+// callbacks run only after the corresponding history transaction succeeds.
+export function saveUndoEffect(undo: () => void, redo: () => void): void {
+  currentStep?.effects.push({ undo, redo });
 }
 
 function saveUndo(change: UndoableChange): void {
@@ -204,7 +211,9 @@ function moveHistory(direction: "undo" | "redo"): Promise<UndoOp | null> {
     const changes = await revert(step);
     // A restore may have invalidated this history while the writes ran.
     if (generation !== historyGeneration) return null;
-    const reverse = { op: step.op, changes };
+    const effects = [...step.effects].reverse();
+    for (const effect of effects) effect.undo();
+    const reverse = { op: step.op, changes, effects: effects.map(effect => ({ undo: effect.redo, redo: effect.undo })) };
     if (direction === "undo") {
       undoSteps = undoSteps.slice(1);
       redoSteps = [...redoSteps, reverse];

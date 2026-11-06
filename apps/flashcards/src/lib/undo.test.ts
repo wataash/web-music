@@ -9,6 +9,7 @@ import {
   describeUndoOp,
   redo,
   saveDailyLimitsUndo,
+  saveUndoEffect,
   subscribeUndoStatus,
   undo,
   undoableOp,
@@ -39,6 +40,25 @@ describe("the undo queue", () => {
   beforeEach(() => {
     installMemoryStorage();
     clearUndoQueue();
+  });
+
+  it("moves session state only after a successful undo or redo", async () => {
+    let count = 1;
+    await undoableOp("customStudy", async () => {
+      saveDailyLimitsUndo();
+      addToDailyNewLimit("Intervals", 5);
+      saveUndoEffect(() => { count -= 1; }, () => { count += 1; });
+    });
+    const write = vi.spyOn(localStorage, "setItem").mockImplementationOnce(() => { throw new Error("full"); });
+    await expect(undo()).rejects.toThrow("full");
+    expect(count).toBe(1);
+    write.mockRestore();
+    await undo();
+    expect(count).toBe(0);
+    await redo();
+    expect(count).toBe(1);
+    await undo();
+    expect(count).toBe(0);
   });
 
   it.each(["undo", "redo"] as const)("preserves %s history when storage fails, allowing a retry", async (direction) => {
