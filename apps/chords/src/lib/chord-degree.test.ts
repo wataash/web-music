@@ -9,7 +9,7 @@ it('names a chord by its degree in the key, spelling accidentals from the major 
   expect(chordDegree('G7', 'C')).toBe('V7');
   expect(chordDegree('C^7', 'C')).toBe('I△7');
   expect(chordDegree('Db7', 'C')).toBe('♭II7');
-  expect(chordDegree('F#h7', 'C')).toBe('♯IVh7');
+  expect(chordDegree('F#h7', 'C')).toBe('♯IVø7');
   expect(chordDegree('Bb^7', 'C')).toBe('♭VII△7');
   expect(chordDegree('G/B', 'C')).toBe('V/VII');
   expect(chordDegree('A7(b9,b13)', 'D')).toBe('V7(♭9,♭13)');

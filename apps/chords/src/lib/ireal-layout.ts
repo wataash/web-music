@@ -130,7 +130,8 @@ export function irealChordParts(symbol: string, minor: '-' | 'm' = '-', compact 
   // plain spelling, so the chart opts in and nothing else changes.
   let quality = compact ? match[3].replace(/^(?:m(?!aj|in)|-)7b5$/, 'ø7') : match[3];
   quality = quality.replace(/^mM/, '-△').replace(/^M/, '△')
-    .replace(/^m(?!aj|in)/, '-').replace(/^dim/, '°').replace(/^aug/, '+');
+    .replace(/^m(?!aj|in)/, '-').replace(/^(?:dim|o(?=\d|\^|$))/, '°')
+    .replace(/^h(?=\d|$)/, 'ø').replace(/^aug/, '+');
   if (compact) quality = quality.replace(/\(([#b]\d{1,2})\)/g, '$1');
   quality = quality.replaceAll('^', '△').replaceAll('#', '♯').replaceAll('b', '♭');
   return { root: match[1], accidental: match[2].replaceAll('b', '♭').replaceAll('#', '♯'), quality: minor === 'm' ? quality.replace(/^-/, 'm') : quality,
@@ -140,6 +141,8 @@ export function irealChordParts(symbol: string, minor: '-' | 'm' = '-', compact 
 // A symbol as the card and list headings write it: the app's own spelling,
 // with a minor chord's `-` swapped for `m` when the reader prefers that.
 export function headingChord(symbol: string, minor: '-' | 'm' = '-'): string {
+  // Custom charts retain iReal's input shorthand; render its musical symbols.
+  symbol = symbol.replace(/^([A-G][#b]*)([ho])(?=\d|\^|\/|$)/, (_, root, quality) => root + (quality === 'h' ? 'ø' : '°'));
   if (minor === '-') return symbol;
   const match = /^([A-G][#b]*)(-)(.*)$/.exec(symbol);
   return match ? `${match[1]}m${match[3]}` : symbol;

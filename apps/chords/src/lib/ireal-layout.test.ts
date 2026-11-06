@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { expect, it } from 'vitest';
 import { extractIreal, scramble } from '@web-music/ireal';
-import { layoutIreal, irealChordParts, resolveIreal, commentText } from './ireal-layout';
+import { layoutIreal, headingChord, irealChordParts, resolveIreal, commentText } from './ireal-layout';
 
 function score(raw: string) {
   return extractIreal('irealb://' + encodeURIComponent('Grid=Example==Swing=C==1r34LbKcu7' + scramble(raw) + '==0=0')).score.blocks;
@@ -160,4 +160,16 @@ it('leaves the compact chart spelling out of the degrees and the ChordWiki score
   expect(irealChordParts('Gm7b5', 'm').quality).toBe('m7♭5');
   expect(irealChordParts('C7(b9)').quality).toBe('7(♭9)');
   expect(irealChordParts('Cm7(#13)', 'm').quality).toBe('m7(♯13)');
+});
+
+it('renders iReal diminished shorthands from custom charts without changing bass spelling', () => {
+  for (const minor of ['-', 'm'] as const) {
+    for (const [symbol, quality, heading] of [['Ch7', 'ø7', 'Cø7'], ['Co7', '°7', 'C°7'], ['Co', '°', 'C°'], ['Co^7', '°△7', 'C°^7']]) {
+      expect(irealChordParts(symbol, minor).quality).toBe(quality);
+      expect(irealChordParts(symbol, minor, true).quality).toBe(quality);
+      expect(headingChord(symbol, minor)).toBe(heading);
+    }
+  }
+  expect(irealChordParts('Bbh7/Db')).toEqual({ root: 'B', accidental: '♭', quality: 'ø7', bass: 'D♭' });
+  expect(headingChord('Bbh7/Db')).toBe('Bbø7/Db');
 });

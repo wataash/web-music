@@ -128,6 +128,9 @@ test('sorts imported songs without changing selection and copies an importable l
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await openLibrary(page);
   await importLink(page, copied);
+  // Reimporting the current song does not change its title; wait for the save
+  // before setting filters that importSongs clears when it completes.
+  await expect(page.getByRole('dialog', { name: 'Add chart', exact: true })).not.toBeVisible();
   await expect(page.locator('.song-title')).toHaveText('Zulu test');
   await page.getByLabel('Playlist', { exact: true }).selectOption('playlist:Sort test');
   await expect(picker.locator('button')).toHaveCount(2);

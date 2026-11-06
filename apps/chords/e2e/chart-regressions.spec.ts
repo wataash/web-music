@@ -85,6 +85,21 @@ test('starts with defaults when reading local storage is denied', async ({ page 
   expect(errors).toEqual([]);
 });
 
+test('renders diminished input shorthand in charts, headings and degrees', async ({ page }) => {
+  await createChart(page, 'title: Diminished chords\nCh7 Co7 Co');
+  await expect(page.locator('.full-score .quality')).toHaveText(['ø7', '°7', '°']);
+  await expect(page.locator('.question-heading h2')).toHaveText('Cø7');
+  await page.getByLabel('Song key', { exact: true }).selectOption('D');
+  await expect(page.locator('.question-heading h2')).toHaveText('Dø7');
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await page.getByRole('button', { name: 'IIm7', exact: true }).click();
+  await page.getByRole('button', { name: 'Close settings', exact: true }).click();
+  await expect(page.locator('.question-heading h2')).toHaveText('Iø7');
+  await page.reload();
+  await expect(page.locator('.question-heading h2')).toHaveText('Iø7');
+  await page.getByRole('button', { name: 'Next chord', exact: true }).click();
+  await expect(page.locator('.question-heading h2')).toHaveText('I°7');
+});
 
 for (const [name, source, title] of [
   ['missing', '{key:C}\n[C]one [G]two', 'Untitled'],
