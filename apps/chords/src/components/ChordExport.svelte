@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 <script lang="ts">
   import type { ImportedSong } from '../lib/chord-import';
   import { exportIrealHtml, exportIrealLink } from '../lib/chord-export';
+  import { exportCustomChartText } from '../lib/custom-chart';
   import { chordWikiText } from '../lib/chordwiki-import';
   let { song, songs }: { song?: ImportedSong; songs: ImportedSong[] } = $props();
   let dialog: HTMLDialogElement;
@@ -20,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
   }
   // A chart that came in as text goes out as text: the editor's own, or the
   // ChordWiki source the score preserved.
-  const textOf = (song: ImportedSong) => song.customText ?? chordWikiText(song);
+  const textOf = (song: ImportedSong) => song.customText !== undefined ? exportCustomChartText(song) : chordWikiText(song);
   const text = $derived(song && textOf(song));
   const playlistSongs = $derived(song ? songs.filter(candidate => candidate.playlist === song.playlist && chordWikiText(candidate) === undefined) : []);
   // The text a chart came in as, or iReal's HTML of the song or its playlist.
@@ -44,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
 <dialog bind:this={dialog} aria-labelledby="export-title">
   <h2 id="export-title">{text !== undefined ? 'Export chart text' : 'Export iReal charts'}</h2>
   {#if song && song.customText !== undefined}
-    <p>Save your chart text. Paste it under Custom chart in Add chart to recreate it. Set the original key to {song.originalKey}. The chart can also go to iReal Pro as a link or an HTML file.</p>
+    <p>Save your chart text. Paste it under Custom chart in Add chart to recreate it. The title and original key are included. The chart can also go to iReal Pro as a link or an HTML file.</p>
     <button onclick={() => download('text')}>Download chord text</button>
     <button onclick={copyLink}>Copy song link</button>
     {#if copied}<p role="status">Song link copied.</p>{/if}

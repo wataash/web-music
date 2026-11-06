@@ -127,7 +127,7 @@ SPDX-License-Identifier: Apache-2.0
     return [...CHORD_SONGS, ...stored];
   }
 
-  async function importSongs(incoming: ImportedSong[]) {
+  async function importSongs(incoming: ImportedSong[], isCurrent: () => boolean) {
     await saveImportedSongs(incoming);
     const available = setLibrary(await loadImportedSongs());
     if (!progressReady) {
@@ -138,6 +138,7 @@ SPDX-License-Identifier: Apache-2.0
       Object.assign(savedProgress, { ...restored, views: savedProgress.views });
       progressReady = true;
     }
+    if (!isCurrent()) return;
     libraryError = "";
     songSearch = "";
     playlistFilter = "";
@@ -391,7 +392,9 @@ SPDX-License-Identifier: Apache-2.0
   function selectSong(song: ChordSong): void {
     songId = song.id;
     targetKey = savedProgress.keys[song.id] ?? song.originalKey;
-    index = savedProgress.positions[song.id] ?? 0;
+    // An edited chart may be shorter than its saved practice position.
+    const count = practiceEntries(song.id, song.chords.length).length;
+    index = Math.max(0, Math.min(savedProgress.positions[song.id] ?? 0, count - 1));
   }
 
   function selectScore(indexValue: number): void {
@@ -462,8 +465,9 @@ SPDX-License-Identifier: Apache-2.0
   {/if}
   <!-- Outside the library, so they open from the settings sheet. -->
   <ChordExport bind:this={chordExport} song={importedById.get(selectedSong.id)} songs={importedSongs} />
-  <ChartEditor bind:this={chartEditor} bind:open={importOpen} song={importedById.get(selectedSong.id)} onadd={async (incoming, format, edited) => {
-    await importSongs(incoming);
+  <ChartEditor bind:this={chartEditor} bind:open={importOpen} song={importedById.get(selectedSong.id)} onadd={async (incoming, format, edited, isCurrent) => {
+    await importSongs(incoming, isCurrent);
+    if (!isCurrent()) return;
     // A chart typed or edited here opens on its own full chart, from the
     // start; a playlist keeps the library open to choose from.
     if (format === "ireal" && !edited) return;

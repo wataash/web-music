@@ -40,11 +40,13 @@ export function scoreContext(id: string, index: number): ScoreToken[][] {
 export function chordLyric(id: string, index: number): string {
   const score = songScore(id);
   if (score?.format === "ireal") {
+    const sourceIndex = practiceEntries(id, 0)[index]?.chordIndex;
+    if (sourceIndex === undefined) return "";
     let chordIndex: number | undefined;
     const words: string[] = [];
     for (const token of score.blocks.flat() as ScoreToken[]) {
       if (token.chordIndex !== undefined) chordIndex = token.chordIndex;
-      else if (token.kind === "comment" && token.name === "lyrics" && chordIndex === index) words.push(token.text ?? "");
+      else if (token.kind === "comment" && token.name === "lyrics" && chordIndex === sourceIndex) words.push(token.text ?? "");
     }
     return words.join(" ").replace(/\s+/g, " ").trim();
   }

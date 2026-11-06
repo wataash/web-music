@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { createCustomChart, CHORD_NOTATION_GROUPS, refreshCustomChart } from './custom-chart';
+import { createCustomChart, exportCustomChartText, CHORD_NOTATION_GROUPS, refreshCustomChart } from './custom-chart';
+import { customChartHeaders, setCustomChartHeader } from './custom-chart-parser';
 import { resolveIreal } from './ireal-layout';
 import { describeChord } from './chords';
 import { exportIrealLink } from './chord-export';
@@ -210,4 +211,32 @@ describe('chart notation errors', () => {
   ])('names the bar of %s', (input, where) => {
     expect(() => createCustomChart(input, '', 'C')).toThrow(where);
   });
+});
+
+it('updates only leading metadata headers while preserving modulations and incomplete music', () => {
+  const source = ' TITLE : Old\r\ntitle: Latest\r\nkey: Am\r\n\r\n[A]\r\nAm {unfinished\r\nkey: D\r\nD7';
+  expect(customChartHeaders(source).map(({ name, value }) => [name, value])).toEqual([
+    ['title', 'Old'], ['title', 'Latest'], ['key', 'Am'],
+  ]);
+  const renamed = setCustomChartHeader(source, 'title', 'New $& title');
+  expect(renamed).toContain(' TITLE : New $& title\r\ntitle: New $& title');
+  const rekeyed = setCustomChartHeader(renamed, 'key', 'F');
+  expect(rekeyed).toContain('key: F\r\n');
+  expect(rekeyed).toContain('key: D\r\nD7');
+  expect(setCustomChartHeader('C F G', 'title', 'Name')).toBe('C F G');
+});
+
+it('exports missing title and key headers for lossless text reimport', () => {
+  const song = createCustomChart('F Bb C7', 'My practice', 'F');
+  const exported = exportCustomChartText(song);
+  const restored = createCustomChart(exported, '', 'C');
+  expect(restored).toMatchObject({ title: song.title, originalKey: song.originalKey, chords: song.chords, chordKeys: song.chordKeys });
+  expect(exportCustomChartText(restored)).toBe(exported);
+});
+
+it('preserves existing minor keys, spelling and line endings in text exports', () => {
+  const source = 'title: Minor\r\nkey: Am\r\nAm E7\r\nkey: Dm\r\nDm A7';
+  expect(exportCustomChartText(createCustomChart(source, '', 'C'))).toBe(source);
+  const noTitle = 'key: Am\r\nAm E7';
+  expect(exportCustomChartText(createCustomChart(noTitle, 'Minor', 'C'))).toBe('title: Minor\r\n' + noTitle);
 });

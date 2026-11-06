@@ -3,7 +3,7 @@
 import type { ImportedSong } from './chord-import';
 import { irealScore } from '@web-music/ireal';
 import { formatNote, parseChordSymbol, parseNote, qualityIntervals, SUPPORTED_CHORD_QUALITIES } from './chords';
-import { parseCustomChartSource, type ChartHeaderName, type ChartLexeme } from './custom-chart-parser';
+import { customChartHeaders, parseCustomChartSource, type ChartHeaderName, type ChartLexeme } from './custom-chart-parser';
 
 const PREFIX_FAMILIES = [
   { pattern: /^(maj|M|△|Δ|\^)/, spellings: ['M', '^', 'maj', '△', 'Δ'] },
@@ -99,6 +99,17 @@ export const CHORD_NOTATION_GROUPS = (() => {
 
 // The playlist every custom chart belongs to.
 export const CUSTOM_PLAYLIST = 'Custom charts';
+
+// Make text exports self-contained without rewriting existing spellings or modulations.
+export function exportCustomChartText(song: ImportedSong): string {
+  const text = song.customText ?? '';
+  const headers = customChartHeaders(text);
+  const missing = (['title', 'key'] as const)
+    .filter(name => !headers.some(header => header.name === name))
+    .map(name => name + ': ' + (name === 'title' ? song.title : song.originalKey));
+  const newline = text.includes('\r\n') ? '\r\n' : '\n';
+  return missing.length ? missing.join(newline) + newline + text : text;
+}
 
 export function refreshCustomChart(song: ImportedSong): ImportedSong {
   if (song.customText === undefined) return song;

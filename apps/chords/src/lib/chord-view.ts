@@ -48,9 +48,9 @@ export function chordViewPersistence() {
       frame = requestAnimationFrame(() => {
         frame = requestAnimationFrame(() => {
           if (current !== revision) return;
-          if (value && !(node instanceof HTMLDetailsElement)) {
-            node.scrollLeft = value.x ?? 0;
-            node.scrollTop = value.y ?? 0;
+          if (!(node instanceof HTMLDetailsElement)) {
+            node.scrollLeft = value?.x ?? 0;
+            node.scrollTop = value?.y ?? 0;
           }
           restoring = false;
         });

@@ -16,6 +16,27 @@ export type ChartLine =
 const HEADERS: Readonly<Record<string, ChartHeaderName>> = {
   title: 'title', artist: 'artist', composer: 'artist', key: 'key', style: 'style', tempo: 'tempo', bpm: 'tempo',
 };
+// Read only the leading headers, even while the music below is incomplete.
+export function customChartHeaders(source: string) {
+  const headers: { name: ChartHeaderName; value: string; line: number }[] = [];
+  for (const [line, raw] of source.split(/\r?\n/).entries()) {
+    if (!raw.trim()) continue;
+    const match = /^([a-z]+)\s*:\s*(.*)$/i.exec(raw.trim());
+    const name = match && HEADERS[match[1].toLowerCase()];
+    if (!name || !match) break;
+    headers.push({ name, value: match[2].trim(), line });
+  }
+  return headers;
+}
+
+export function setCustomChartHeader(source: string, name: 'title' | 'key', value: string): string {
+  const lines = source.split(/\r?\n/);
+  for (const header of customChartHeaders(source)) {
+    if (header.name === name) lines[header.line] = lines[header.line].replace(/^(\s*[a-z]+\s*:\s*).*$/i, (_, prefix) => prefix + value);
+  }
+  return lines.join(source.includes('\r\n') ? '\r\n' : '\n');
+}
+
 const BAR_TOKENS = ['|]', '|:', ':|', '||', '|'] as const;
 
 function delimited(line: string, start: number, end: string, description: string, lineNumber: number, arrowSafe = false): number {

@@ -12,7 +12,8 @@ SPDX-License-Identifier: Apache-2.0
   import { irealLabel } from "../lib/ireal-labels";
   import { parseChordImport, type ChordImportFormat, type ImportedSong } from "../lib/chord-import";
   import { chordWikiText } from "../lib/chordwiki-import";
-  import { PRACTICE_KEYS } from "../lib/chords";
+  import { customChartHeaders, setCustomChartHeader } from "../lib/custom-chart-parser";
+  import { formatNote, parseNote, PRACTICE_KEYS } from "../lib/chords";
   import ChordNotationHelp from "./ChordNotationHelp.svelte";
   import SourceScore from "./SourceScore.svelte";
 
@@ -20,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     open?: boolean;
     // The chart on screen, offered for editing when it came in as text.
     song?: ImportedSong;
-    onadd: (songs: ImportedSong[], format: ChordImportFormat, edited: boolean) => Promise<void>;
+    onadd: (songs: ImportedSong[], format: ChordImportFormat, edited: boolean, isCurrent: () => boolean) => Promise<void>;
   } = $props();
 
   const FORMAT_KEY = "chord-import-format";
@@ -28,8 +29,11 @@ SPDX-License-Identifier: Apache-2.0
     { id: "ireal", label: "iReal Pro" }, { id: "chordwiki", label: "ChordWiki" }, { id: "list", label: "Custom chart" },
   ];
   function savedFormat(): ChordImportFormat {
-    const saved = localStorage.getItem(FORMAT_KEY);
-    return FORMATS.some(({ id }) => id === saved) ? saved as ChordImportFormat : "ireal";
+    try {
+      const saved = localStorage.getItem(FORMAT_KEY);
+      if (FORMATS.some(({ id }) => id === saved)) return saved as ChordImportFormat;
+    } catch { /* The choice is optional when storage is unavailable. */ }
+    return "ireal";
   }
   // The last notation chosen is offered first, since a reader tends to add
   // from one source.
@@ -56,7 +60,24 @@ key: C
   let title = $state("");
   let key = $state("C");
   let editingId = $state<string>();
+  function syncHeaderFields(event: Event) {
+    for (const header of customChartHeaders((event.currentTarget as HTMLTextAreaElement).value)) {
+      if (header.name === 'title') title = header.value;
+      if (header.name === 'key') {
+        try { key = formatNote(parseNote(header.value.replaceAll('♭', 'b').replaceAll('♯', '#').replace(/[-m]$/, ''))); }
+        catch { /* The preview reports an incomplete or invalid key. */ }
+      }
+    }
+  }
+  let copying = false;
   let busy = $state(false);
+  // Ignore work from a closed editor or an earlier edit, including late failures.
+  let operation = 0;
+  function close() {
+    operation++;
+    busy = false;
+    open = false;
+  }
   let message = $state("");
   let errors = $state<string[]>([]);
   let notationHelp = $state<{ show: () => void }>();
@@ -75,6 +96,9 @@ key: C
   // copies. Editing keeps the song's id; a copy starts a new chart from the
   // same text, to be added beside the original rather than written over it.
   function start(fields: { id?: string; text?: string; title?: string; key?: string; format?: ChordImportFormat }) {
+    operation++;
+    busy = false;
+    copying = false;
     editingId = fields.id; text = fields.text ?? ""; title = fields.title ?? ""; key = fields.key ?? "C"; message = ""; errors = [];
     if (fields.format) chooseFormat(fields.format);
     open = true;
@@ -86,8 +110,19 @@ key: C
   }
   export function startCopy() {
     if (!song || !editable) return;
-    if (editable.format === "list") start({ ...editable, title: `${song.title} (copy)`, key: song.originalKey });
-    else start({ ...editable, text: editable.text.replace(/^(\{title:[^}]*)(\})/m, "$1 (copy)$2"), key: song.originalKey });
+    if (editable.format === "list") {
+      const title = `${song.title} (copy)`;
+      const text = editable.text.replace(/^([ \t]*title[ \t]*:)[^\r\n]*/gim, (_, prefix) => `${prefix} ${title}`);
+      start({ ...editable, text, title, key: song.originalKey });
+    }
+    else {
+      const title = `{title:${song.title} (copy)}`;
+      const text = /\{title:[^}]*\}/i.test(editable.text)
+        ? editable.text.replace(/\{title:[^}]*\}/i, () => title)
+        : title + "\n" + editable.text;
+      start({ ...editable, text, key: song.originalKey });
+    }
+    copying = true;
   }
 
   // What the text would add, drawn as it is typed: the first song's chart
@@ -109,38 +144,57 @@ key: C
     return () => { current = false; clearTimeout(timer); };
   });
 
-  async function add(value: string) {
+  async function add(value: string | File[]) {
+    const current = ++operation;
+    const active = () => current === operation && open;
+    const notation = format;
+    const edited = editingId !== undefined;
+    const options = { title, key, id: editingId };
+    const copy = copying;
     busy = true;
-    message = editingId ? "Saving…" : "Adding…";
+    message = edited ? "Saving…" : "Adding…";
     errors = [];
     try {
-      const parsed = await parseChordImport(value, format, { title, key, id: editingId });
+      const texts = typeof value === "string" ? [value] : await Promise.all(value.map(file => file.text()));
+      if (!active()) return;
+      const results = await Promise.all(texts.map(text =>
+        parseChordImport(text, notation, { ...options, id: options.id ?? (copy && notation === "chordwiki" ? "chordwiki-" + crypto.randomUUID() : undefined) })));
+      if (!active()) return;
+      const parsed = { songs: results.flatMap(result => result.songs), errors: results.flatMap(result => result.errors) };
       errors = parsed.errors;
-      if (parsed.songs.length) await onadd(parsed.songs, format, editingId !== undefined);
+      if (parsed.songs.length) await onadd(parsed.songs, notation, edited, active);
+      if (!active()) return;
       message = parsed.songs.length
-        ? editingId ? "Saved." : `Added ${parsed.songs.length} ${parsed.songs.length === 1 ? "song" : "songs"}.${parsed.errors.length ? ` ${parsed.errors.length} items could not be added.` : ""}`
-        : editingId ? "Could not save the chart." : "Nothing was added.";
+        ? edited ? "Saved." : `Added ${parsed.songs.length} ${parsed.songs.length === 1 ? "song" : "songs"}.${parsed.errors.length ? ` ${parsed.errors.length} items could not be added.` : ""}`
+        : edited ? "Could not save the chart." : "Nothing was added.";
       if (parsed.songs.length) { text = ""; editingId = undefined; }
       if (parsed.songs.length && !parsed.errors.length) open = false;
     } catch (error) {
-      message = editingId ? "Could not save the chart." : "Nothing was added.";
+      if (!active()) return;
+      message = edited ? "Could not save the chart." : "Nothing was added.";
       errors = [irealLabel(error instanceof Error ? error.message : String(error))];
-    } finally { busy = false; }
+    } finally {
+      if (current === operation) busy = false;
+    }
   }
 
   async function addFiles(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
     const files = [...input.files ?? []];
     if (!files.length) return;
-    try { await add((await Promise.all(files.map(file => file.text()))).join("\n")); }
-    catch (error) { message = "Could not read the file."; errors = [String(error)]; }
+    if (editingId && files.length > 1) {
+      errors = ["Choose one file when editing a chart."];
+      input.value = "";
+      return;
+    }
     input.value = "";
+    await add(files);
   }
 </script>
 
 <div class="chart-editor">
-<dialog bind:this={dialog} onclose={() => open = false} aria-labelledby="chart-editor-title">
-  <div class="dialog-heading"><h2 id="chart-editor-title">{editingId ? "Edit chart" : "Add chart"}</h2><button aria-label="Close chart editor" onclick={() => open = false}>×</button></div>
+<dialog bind:this={dialog} onclose={() => { if (!dialog.open) close(); }} oncancel={close} aria-labelledby="chart-editor-title">
+  <div class="dialog-heading"><h2 id="chart-editor-title">{editingId ? "Edit chart" : "Add chart"}</h2><button aria-label="Close chart editor" onclick={close}>×</button></div>
   <p>Charts are saved in this browser.</p>
   <fieldset class="format" disabled={busy || editingId !== undefined}><legend>Notation</legend>
     {#each FORMATS as candidate}<label><input type="radio" name="chord-import-format" value={candidate.id} checked={format === candidate.id} onchange={() => chooseFormat(candidate.id)} />{candidate.label}</label>{/each}
@@ -154,8 +208,8 @@ key: C
     <label>ChordWiki text<textarea bind:value={text} rows="7" disabled={busy} aria-describedby="chordwiki-paste-help" autocapitalize="off" spellcheck={false} placeholder={CHORDWIKI_PLACEHOLDER}></textarea></label>
     <details><summary>Help</summary><p>Include {"{title:…}"} and {"{key:…}"} lines, then lyrics with chords in brackets before their syllables.</p></details>
   {:else}
-    <div class="fields"><label>Title (optional)<input bind:value={title} disabled={busy} /></label><label>Original key<select aria-label="Original key" bind:value={key} disabled={busy}>{#each PRACTICE_KEYS as note}<option>{note}</option>{/each}</select></label></div>
-    <label>Chord progression<textarea bind:value={text} rows="7" disabled={busy} spellcheck={false} autocapitalize="off" aria-describedby="chord-list-help" placeholder={LIST_PLACEHOLDER}></textarea></label>
+    <div class="fields"><label>Title (optional)<input bind:value={title} oninput={(event) => text = setCustomChartHeader(text, "title", event.currentTarget.value)} disabled={busy} /></label><label>Original key<select aria-label="Original key" bind:value={key} onchange={(event) => text = setCustomChartHeader(text, "key", event.currentTarget.value)} disabled={busy}>{#each PRACTICE_KEYS as note}<option>{note}</option>{/each}</select></label></div>
+    <label>Chord progression<textarea bind:value={text} oninput={syncHeaderFields} rows="7" disabled={busy} spellcheck={false} autocapitalize="off" aria-describedby="chord-list-help" placeholder={LIST_PLACEHOLDER}></textarea></label>
     <p id="chord-list-help">Use | to separate bars.</p>
     <ChordNotationHelp bind:this={notationHelp} />
   {/if}
@@ -174,9 +228,9 @@ key: C
   {#if format === "ireal"}
     <label>HTML file<input type="file" accept=".html,.htm,.txt,text/html,text/plain" multiple disabled={busy} onchange={addFiles} /></label>
   {:else if format === "chordwiki"}
-    <label>ChordWiki text file<input type="file" accept=".wiki,.txt,.md,.cho,text/plain" multiple disabled={busy} onchange={addFiles} /></label>
+    <label>ChordWiki text file<input type="file" accept=".wiki,.txt,.md,.cho,text/plain" multiple={editingId === undefined} disabled={busy} onchange={addFiles} /></label>
   {/if}
-  {#if errors.length}<details open><summary>Songs that could not be added</summary><ul>{#each errors as error}<li>{error}</li>{/each}</ul></details>{/if}
+  {#if errors.length}<details open><summary>Songs that could not be added</summary><ul role="alert">{#each errors as error}<li>{error}</li>{/each}</ul></details>{/if}
 </dialog>
 <p role="status">{message}</p>
 </div>
