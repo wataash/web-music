@@ -13,6 +13,10 @@ const BACKUP_KEY = "musicFlashcardsBackup";
 const DECK_LIST_SCROLL_TOP_KEY = "musicFlashcardsDeckListScrollTop";
 
 const studyDeck = deckHistoryKey(STUDY_DECK_KEY);
+const appearanceDeck = deckHistoryKey("musicFlashcardsAppearanceDeck");
+export const appearanceDeckFromHistoryState = appearanceDeck.read;
+export const historyStateForAppearanceDeck = appearanceDeck.write;
+
 const settingsDeck = deckHistoryKey(NOTE_SETTINGS_DECK_KEY);
 const extraStudyDeck = deckHistoryKey(EXTRA_STUDY_DECK_KEY);
 const resetDeck = deckHistoryKey(RESET_DECK_KEY);

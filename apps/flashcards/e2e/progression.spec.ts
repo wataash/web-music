@@ -81,7 +81,7 @@ test("selects major/minor keys independently on the circle, with cancel and relo
   await expect(frame.locator(".diatonic-answer")).toHaveText(/Gm7→C7→FΔ7|Aø7→D7→Gm7/);
 });
 
-test('shows all six notation controls in What to ask with previews, apply and cancel',async({page,shot})=>{
+test('shows all six notation controls in Appearance with previews, apply and cancel',async({page,shot})=>{
   await page.setViewportSize({width:411,height:841});
   await page.emulateMedia({colorScheme:'dark'});
   await page.addInitScript(()=>{
@@ -101,8 +101,8 @@ test('shows all six notation controls in What to ask with previews, apply and ca
   await page.getByRole('button',{name:'DONE',exact:true}).click();
   await expect(frame.locator('.diatonic-answer')).toBeHidden();
   await page.getByRole('button',{name:'Deck actions',exact:true}).click();
-  await page.getByRole('menuitem',{name:'What to ask',exact:true}).click();
-  const dialog=page.getByRole('dialog',{name:'What to ask',exact:true});
+  await page.getByRole('menuitem',{name:'Appearance',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'Appearance',exact:true});
   await expect(dialog.getByRole('combobox')).toHaveCount(0);
   await expect(dialog.getByRole('radiogroup')).toHaveCount(5);
   const majorOptions=dialog.getByRole('radiogroup',{name:'Major seventh',exact:true});
@@ -127,7 +127,7 @@ test('shows all six notation controls in What to ask with previews, apply and ca
   await dialog.getByRole('button',{name:'CANCEL',exact:true}).click();
   await expect(frame.locator('.diatonic-degree')).toHaveText('iim7→V7→IΔ7');
   await page.getByRole('button',{name:'Deck actions',exact:true}).click();
-  await page.getByRole('menuitem',{name:'What to ask',exact:true}).click();
+  await page.getByRole('menuitem',{name:'Appearance',exact:true}).click();
   await expect(dialog.getByRole('radiogroup',{name:'Major seventh',exact:true}).getByRole('radio',{name:'Δ7',exact:true})).toBeChecked();
   await expect(dialog.getByRole('radiogroup',{name:'Minor chord',exact:true}).getByRole('radio',{name:'m7',exact:true})).toBeChecked();
   await dialog.getByRole('radiogroup',{name:'Major seventh',exact:true}).getByRole('radio',{name:'maj7',exact:true}).check();
@@ -138,7 +138,7 @@ test('shows all six notation controls in What to ask with previews, apply and ca
   await expect(frame.locator('.diatonic-answer')).toHaveText('Dm7→G7→Cmaj7');
 });
 
-test('previews and saves the minor progression hint independently in What to ask',async({page,shot})=>{
+test('previews and saves the minor progression hint independently in Appearance',async({page,shot})=>{
   await page.setViewportSize({width:411,height:841});
   await page.emulateMedia({colorScheme:'dark'});
   await page.addInitScript(()=>{
@@ -154,21 +154,15 @@ test('previews and saves the minor progression hint independently in What to ask
   await expect(hint).toBeVisible();
   await page.getByRole('button',{name:'SHOW ANSWER',exact:true}).click();
   await page.getByRole('button',{name:'Deck actions',exact:true}).click();
-  await page.getByRole('menuitem',{name:'What to ask',exact:true}).click();
-  const dialog=page.getByRole('dialog',{name:'What to ask',exact:true});
-  const minorKeys=dialog.getByRole('region',{name:'Minor',exact:true});
-  const toggle=minorKeys.getByLabel('Relative-major degree',{exact:true});
+  await page.getByRole('menuitem',{name:'Appearance',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'Appearance',exact:true});
+  const toggle=dialog.getByLabel('Relative-major degree',{exact:true});
   await expect(dialog.getByRole('region',{name:'Major',exact:true}).getByRole('checkbox')).toHaveCount(0);
   await expect(dialog.getByRole('region',{name:'Notation settings',exact:true}).getByRole('checkbox')).toHaveCount(0);
   await expect(toggle).toBeChecked();
   await toggle.uncheck();
   await expect(dialog.getByLabel('Relative-major degree hint preview',{exact:true})).toHaveText('G minor · V7');
-  await minorKeys.scrollIntoViewIfNeeded();
-  const heading=await minorKeys.locator('.summary').boundingBox();
-  const checkbox=await toggle.boundingBox();
-  const actions=await minorKeys.locator('.actions').boundingBox();
-  expect(heading!.y + heading!.height).toBeLessThanOrEqual(checkbox!.y);
-  expect(checkbox!.y + checkbox!.height).toBeLessThanOrEqual(actions!.y);
+  await toggle.scrollIntoViewIfNeeded();
   await shot('relative-major-preview-off');
   await dialog.getByRole('button',{name:'APPLY',exact:true}).click();
   await expect(hint).toBeHidden();

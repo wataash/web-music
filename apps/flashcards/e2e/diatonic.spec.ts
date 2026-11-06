@@ -95,7 +95,7 @@ test("selects major and minor keys on the wheel and saves independent ranges", a
   await expect(optional).not.toBeChecked();
   await expect(minorChords.locator('.setting-change.modified')).toHaveCount(0);
   await optional.check();
-  await expect(dialog.getByRole("checkbox",{name:"Relative-major degree"})).not.toBeChecked();
+  await expect(dialog.getByRole("checkbox",{name:"Relative-major degree"})).toHaveCount(0);
   await minor.locator(".wheel").scrollIntoViewIfNeeded();
   await shot("minor-range-with-circle-of-fifths");
   await dialog.getByRole("button",{name:"APPLY",exact:true}).click();
@@ -123,7 +123,7 @@ test("selects major and minor keys on the wheel and saves independent ranges", a
   await expect(reset).toHaveCount(0);
 });
 
-test("previews relative-major hints in What to ask and saves the choice", async ({ page, shot }) => {
+test("previews relative-major hints in Appearance and saves the choice", async ({ page, shot }) => {
   const selections=parseDiatonicSelections(null);
   const dominant=DIATONIC_VARIANTS.find(v=>v.mode==="minor" && v.degree===4 && v.quality==="7")!;
   const range={majorKeys:[],minorKeys:[-2],minorChords:[dominant.id]};
@@ -142,8 +142,8 @@ test("previews relative-major hints in What to ask and saves the choice", async 
     const answer=await frame.locator('.diatonic-answer').textContent();
     const initially=direction==='degree-chord';
     await page.getByRole('button',{name:'Deck actions',exact:true}).click();
-    await page.getByRole('menuitem',{name:'What to ask',exact:true}).click();
-    const dialog=page.getByRole('dialog',{name:'What to ask',exact:true});
+    await page.getByRole('menuitem',{name:'Appearance',exact:true}).click();
+    const dialog=page.getByRole('dialog',{name:'Appearance',exact:true});
     const toggle=dialog.getByLabel('Relative-major degree',{exact:true});
     await expect(dialog.getByLabel('Notation setting',{exact:true})).toHaveCount(0);
     await expect(dialog.getByRole('combobox')).toHaveCount(0);
@@ -156,7 +156,7 @@ test("previews relative-major hints in What to ask and saves the choice", async 
     await expect(frame.locator('.diatonic-relative')).toBeVisible({visible:initially});
     await expect(frame.locator('.diatonic-answer')).toBeVisible();
     await page.getByRole('button',{name:'Deck actions',exact:true}).click();
-    await page.getByRole('menuitem',{name:'What to ask',exact:true}).click();
+    await page.getByRole('menuitem',{name:'Appearance',exact:true}).click();
     await toggle.setChecked(!initially);
     await dialog.getByRole('button',{name:'APPLY',exact:true}).click();
     await expect(frame.locator('.diatonic-relative')).toBeVisible({visible:!initially});
@@ -196,7 +196,7 @@ test("chooses minor degree spelling globally and remembers it without changing a
   await shot("default-im7-answer");
   for (const [style, relative] of [["i7", "vi7"], ["i-7", "vi-7"], ["im7", "vim7"], ["Im7", "VIm7"], ["I-7", "VI-7"]]) {
     await page.getByRole("button", { name: "Deck actions", exact: true }).click();
-    await page.getByRole('menuitem',{name:'What to ask',exact:true}).click();
+    await page.getByRole('menuitem',{name:'Appearance',exact:true}).click();
     const select = page.getByRole("radiogroup", { name: "Minor degree", exact: true });
     await expect(select.getByRole("radio")).toHaveCount(5);
     await select.getByRole("radio",{name:style,exact:true}).check();
@@ -239,7 +239,7 @@ for (const example of [
     await preferDiatonicVariant(page,variant.id,0);
     await page.locator('[data-deck="Diatonic Chords"] .deck-study').click({ position: { x: 20, y: 20 } });
     await page.getByRole("button", { name: "Deck actions", exact: true }).click();
-    await page.getByRole('menuitem',{name:'What to ask',exact:true}).click();
+    await page.getByRole('menuitem',{name:'Appearance',exact:true}).click();
     await page.getByRole("radiogroup", { name: example.label, exact: true }).getByRole("radio",{name:example.value,exact:true}).check();
     await shot(`${example.key}-settings`);
     const frame = page.frameLocator('iframe[title="card"]');

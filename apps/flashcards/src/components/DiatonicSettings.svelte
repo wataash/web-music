@@ -4,15 +4,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
   import SettingChange from "./SettingChange.svelte";
-  import RelativeMajorDegreeToggle from "./RelativeMajorDegreeToggle.svelte";
-  import DiatonicNotationSelect from "./DiatonicNotationSelect.svelte";
   import type { MinorDegreeNotation, ChordNotation } from "../lib/diatonic-selection";
   import { diatonicDegreeLabel } from "../lib/diatonic-selection";
   import MovableDoKeySettings from "./MovableDoKeySettings.svelte";
   import { DIATONIC_VARIANTS, defaultDiatonicSelection, type DiatonicDirection, type DiatonicSelections } from "../lib/diatonic-selection";
   const modes = ["major", "minor"] as const;
   const defaults = defaultDiatonicSelection();
-  let { directions, selection, onchange, minorNotation = $bindable(), chordNotation = $bindable() }: {
+  let { directions, selection, onchange, minorNotation, chordNotation }: {
     minorNotation: MinorDegreeNotation;
     chordNotation: ChordNotation;
     directions: readonly DiatonicDirection[];
@@ -30,14 +28,10 @@ SPDX-License-Identifier: Apache-2.0
   const origins = { major: "Major", natural: "Natural", harmonic: "Harmonic", melodic: "Melodic" };
 </script>
 <section aria-label="Diatonic chord range">
-  <DiatonicNotationSelect bind:minorNotation bind:chordNotation />
   {#each modes as mode}
     {@const keyField = mode === "major" ? "majorKeys" : "minorKeys"}
     <section class="tonality" aria-label={mode === "major" ? "Major" : "Minor"}>
       <MovableDoKeySettings {mode} selection={current[keyField]} defaultSelection={defaults[keyField]} showReference={false} onchange={keys => update({ [keyField]: keys })}>
-        {#snippet afterHeading()}
-          {#if mode === "minor"}<RelativeMajorDegreeToggle defaultChecked={false} checked={current.relativeMajor} onchange={value => update({ relativeMajor:value })} />{/if}
-        {/snippet}
       </MovableDoKeySettings>
     </section>
   {/each}

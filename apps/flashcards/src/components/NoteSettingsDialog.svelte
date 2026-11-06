@@ -3,7 +3,6 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import DiatonicNotationSelect from "./DiatonicNotationSelect.svelte";
   import SettingChange from "./SettingChange.svelte";
   import { DEFAULT_FRETBOARD_FRET_COUNT } from "../lib/fretboard-card";
   import { untrack } from "svelte";
@@ -22,8 +21,7 @@ SPDX-License-Identifier: Apache-2.0
   import ProgressionSettings from "./ProgressionSettings.svelte";
   import DiatonicSettings from "./DiatonicSettings.svelte";
   import { type ProgressionSelection } from "../lib/progression-selection";
-  import { diatonicNotationPreference, setDiatonicNotation, setChordNotation } from "../lib/diatonic-notation.svelte";
-  import { CHORD_NOTATION_OPTIONS } from "../lib/diatonic-selection";
+  import { diatonicNotationPreference } from "../lib/diatonic-notation.svelte";
   import type { DiatonicSelections } from "../lib/diatonic-selection";
   import SettingsDialog from "./SettingsDialog.svelte";
   import StaffNoteSettings from "./StaffNoteSettings.svelte";
@@ -92,8 +90,6 @@ SPDX-License-Identifier: Apache-2.0
   let staff = $state<StaffNoteSelection>(
     untrack(() => ({ ...noteSelections.staff })),
   );
-  let minorNotation = $state(untrack(() => diatonicNotationPreference.value));
-  let chordNotation = $state(untrack(() => ({ ...diatonicNotationPreference.chords })));
   let progressions = $state(untrack(() => noteSelections.progressions));
   let diatonic = $state(untrack(() => noteSelections.diatonic));
   let movableDoKeys = $state<readonly number[]>(untrack(() => [...noteSelections.movableDoKeys]));
@@ -178,10 +174,6 @@ SPDX-License-Identifier: Apache-2.0
   // each kind once, however many decks under the one being studied asked for
   // it.
   function apply(): void {
-    if (targetKinds.has("diatonic") || targetKinds.has("progression") || targetKinds.has("chord-tones")) {
-      setDiatonicNotation(minorNotation);
-      for (const option of CHORD_NOTATION_OPTIONS) setChordNotation(option.key, chordNotation[option.key]);
-    }
     if (targetKinds.has("progression")) onprogressionselectionchange(progressions);
     if (targetKinds.has("diatonic")) ondiatonicselectionchange(diatonic);
     if (movableDoDecks || sections.some((target) => target.kind === "staff")) onstaffnoteselectionchange(staff, movableDoStaff);
@@ -233,14 +225,13 @@ SPDX-License-Identifier: Apache-2.0
   oncancel={onclose}
 >
   {#if targetKinds.has("progression")}
-    <ProgressionSettings bind:minorNotation bind:chordNotation selection={progressions} onchange={value => progressions = value} />
+    <ProgressionSettings selection={progressions} onchange={value => progressions = value} />
   {/if}
   {#if diatonicDirections.length > 0}
-    <DiatonicSettings bind:minorNotation bind:chordNotation directions={diatonicDirections} selection={diatonic} onchange={value => diatonic = value} />
+    <DiatonicSettings minorNotation={diatonicNotationPreference.value} chordNotation={diatonicNotationPreference.chords} directions={diatonicDirections} selection={diatonic} onchange={value => diatonic = value} />
   {/if}
   {#each sections as target}
     {#if target.kind === "chord-tones"}
-      <DiatonicNotationSelect bind:minorNotation bind:chordNotation showDegrees={false} triads={target.setting.triads} />
       <p class="hint">Most common chords first · iReal Pro Jazz 1460</p>
     {/if}
   {/each}

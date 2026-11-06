@@ -21,16 +21,29 @@ Every key circle shows a change line and reset icon when its selected keys diffe
 from that deck's defaults. Reset affects that circle only and edits the dialog draft;
 APPLY saves it and CANCEL discards it.
 
-Notation settings live in **What to ask**, with all controls shown directly.
+## Appearance
+
+**Appearance** opens from both the deck-list context menu and the study-screen
+menu. Its fixed card preview has Front / Back buttons; settings scroll below it.
+The study screen previews the current card, and the deck list loads a sample
+without touching the study queue or progress. Preview changes do not add browser
+history entries. Apply saves the draft; Cancel, Escape and browser Back discard it.
+
+Note fonts are global and shown for decks whose note labels use them. Harmony
+cards keep their dedicated music typeface and offer notation instead. The UI
+states which settings apply to all decks and which apply only to this deck.
+Existing storage keys and defaults are retained.
+
+Notation settings live in **Appearance**, with all controls shown directly.
 The five spelling controls show every option as a rendered, selectable tile.
 Each group allows one selection, marked with a border and background tint.
 Notation groups and optional minor chords use `SettingChange.svelte` to show a
 left-edge line and an individual reset icon only while differing from the default.
 Markers remain after saving and reloading; returning to the default removes them.
 Reset edits the dialog draft, so APPLY saves it and CANCEL discards it.
-Key-and-degree decks
-also show a relative-major hint checkbox with a live minor-key example, directly
-below **Minor keys** and above its selection buttons and circle of fifths.
+Key-and-degree decks also show a relative-major hint checkbox below the notation
+choices, with a live minor-key example. The card preview updates too when the
+current card is minor.
 The examples update while editing; APPLY saves the draft and CANCEL discards it.
 Chord spellings are shared across harmony decks; the relative-major hint is
 saved independently for each deck direction and for II–V–I. The independent Chord Tones decks have no key/degree context. Four-note cards show the four chord spelling controls; triads show only the minor-chord spelling choices, without a seventh.
@@ -43,12 +56,12 @@ reveal or rate the study card; leaving arrangement restores its original side.
 
 | Setting | Current location | Recommendation |
 | --- | --- | --- |
-| Note font | Deck actions; Preview decks | Offer in Arrange card, retaining a quick rendered note example. Chord fonts are independent. |
+| Note font | Appearance | Preview the font before saving. Chord fonts are independent. |
 | Answer size | Deck actions, for staff/interval cards | Put beside the answer in Arrange card; an answer preview is needed to judge the size. |
 | Optional keyboard on/off | Deck actions | Put beside keyboard range in Arrange card. |
 | Front: root note / answer note | Deck actions, Intervals | Offer in Arrange card with an explicit front preview. |
 | Minimize app bar | Deck actions | Offer in Arrange card because it changes available space. |
-| Relative-major degree hint | What to ask, Diatonic Chords and II–V–I | Rendered minor-key example updates as the checkbox changes; saved per deck. |
+| Relative-major degree hint | Appearance, Diatonic Chords and II–V–I | Rendered minor-key example updates as the checkbox changes; saved per deck. |
 | Keyboard key counts, fret count, board height, rotation, scale and position | Arrange card | Already edited beside the live card. |
 | Staff note range and guitar tuning | What to ask, with reference diagrams | Keep with study content; use the existing diagrams to preview the range or tuning. |
 | Keys, chord qualities and intervals to study | What to ask | Keep separate from visual arrangement; these determine which cards are eligible. |
@@ -56,7 +69,7 @@ reveal or rate the study card; leaving arrangement restores its original side.
 
 The recommendations in this table are an inventory, not additional settings
 migrations. Avoid expanding an arrangement toolbar into a full settings sheet:
-keep notation controls with their previews in What to ask.
+keep fonts, notation and relative-major hints with their previews in Appearance.
 
 ## UI text sizes
 

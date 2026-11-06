@@ -15,6 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     onaddnew,
     onstudymore,
     onnotesettings,
+    onappearance,
     switches = [],
     sizes = [],
     arrange,
@@ -37,6 +38,7 @@ SPDX-License-Identifier: Apache-2.0
     // add cards to.
     onstudymore?: () => void;
     onnotesettings?: () => void;
+    onappearance?: () => void;
     // What the card draws or leaves out, each a row that stays where it is
     // when pressed: the card behind the sheet is the answer to it.
     switches?: readonly Readonly<{
@@ -109,6 +111,11 @@ SPDX-License-Identifier: Apache-2.0
     {#if onnotesettings}
       <button class="action" role="menuitem" onclick={onnotesettings}>
         <span class="icon" aria-hidden="true">?</span>What to ask
+      </button>
+    {/if}
+    {#if onappearance}
+      <button class="action" role="menuitem" onclick={onappearance}>
+        <span class="icon" aria-hidden="true">Aa</span>Appearance
       </button>
     {/if}
     {#if arrange}

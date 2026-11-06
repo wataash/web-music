@@ -13,9 +13,9 @@ for (const width of [320, 411]) {
     await expect(page.locator('[data-deck="Guitar Fretboard"]')).toBeVisible({ timeout: 30000 });
     await page.locator('[data-deck="II–V–I Progressions"] .deck-study').click({ position: { x: 20, y: 20 } });
     await page.getByRole('button', { name: 'Deck actions', exact: true }).click();
-    await expect(page.getByRole('menuitem', { name: 'What to ask', exact: true })).toHaveCSS('font-size', '16px');
-    await page.getByRole('menuitem', { name: 'What to ask', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'What to ask', exact: true });
+    await expect(page.getByRole('menuitem', { name: 'Appearance', exact: true })).toHaveCSS('font-size', '16px');
+    await page.getByRole('menuitem', { name: 'Appearance', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Appearance', exact: true });
     await expect(dialog.locator('.default-label')).toHaveCount(0);
     await expect(dialog.locator('.setting-label').first()).toHaveCSS('font-size', '16px');
     const major = dialog.getByRole('radiogroup', { name:'Major seventh', exact:true });

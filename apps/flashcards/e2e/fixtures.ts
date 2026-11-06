@@ -75,7 +75,7 @@ export const test = base.extend<ScreenshotFixtures>({
 export { expect };
 
 // Settings share the row's context menu; no permanent icon occupies name space.
-export async function openDeckSettings(row: Locator): Promise<void> {
+export async function openDeckSettings(row: Locator, section = "What to ask"): Promise<void> {
   await row.click({ button: "right" });
-  await row.page().getByRole("menuitem", { name: "What to ask", exact: true }).click();
+  await row.page().getByRole("menuitem", { name: section, exact: true }).click();
 }

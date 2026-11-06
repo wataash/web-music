@@ -29,10 +29,12 @@ test("note fonts load in sandboxed cards and persist across screens", async ({ p
   await row.locator(".deck-study").click({ timeout: 30_000 });
   await expect(page.locator('iframe[title="card"]')).toBeVisible();
   await page.getByRole("button", { name: "Deck actions" }).click();
+  await page.getByRole("menuitem", { name: "Appearance", exact: true }).click();
   await expect(page.getByLabel("Note font", { exact: true })).toHaveValue("heros");
   const cardStyle = page.locator('iframe[title="card"]').contentFrame().locator("#card-style");
   const previousStyle = await cardStyle.textContent();
   await page.getByLabel("Note font", { exact: true }).selectOption("termes");
+  await page.getByRole("button", { name: "APPLY", exact: true }).click();
   await expect.poll(() => cardStyle.textContent()).not.toBe(previousStyle);
   expect(await cardStyle.textContent()).toContain("data:font/woff2;base64,");
 });

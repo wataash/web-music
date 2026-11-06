@@ -28,7 +28,7 @@ for(const deck of ['Intervals','Interval Identification'])test(`${deck} resets a
  const d=await settings(page,deck);await expect(reset(page,'Interval pairs')).toHaveCount(0);const cell=d.locator('button.cell').first();const before=await cell.getAttribute('aria-pressed');await cell.click();await reset(page,'Interval pairs').click();await expect(cell).toHaveAttribute('aria-pressed',before!);await expect(reset(page,'Interval pairs')).toHaveCount(0);
 });
 for(const [deck,initial] of [['Diatonic Chords',false],['II–V–I Progressions',true]] as const)test(`${deck} restores its own relative-degree default`,async({page})=>{
- const d=await settings(page,deck);const check=d.getByLabel('Relative-major degree',{exact:true});await expect(check).toBeChecked({checked:initial});await check.click();await reset(page,'Relative-major degree').click();await expect(check).toBeChecked({checked:initial});await expect(reset(page,'Relative-major degree')).toHaveCount(0);
+ await openDeckSettings(page.locator(`[data-deck="${deck}"]`),'Appearance');const d=page.getByRole('dialog',{name:'Appearance'});const check=d.getByLabel('Relative-major degree',{exact:true});await expect(check).toBeChecked({checked:initial});await check.click();await reset(page,'Relative-major degree').click();await expect(check).toBeChecked({checked:initial});await expect(reset(page,'Relative-major degree')).toHaveCount(0);
 });
 test('guitar range, map and fret sides reset independently',async({page})=>{
  const d=await settings(page,'Guitar Intervals');await d.locator('#guitar-difficulty').fill('8');await d.locator('#fret-reach-left').fill('2');await d.locator('#fret-reach-right').fill('4');
@@ -45,11 +45,11 @@ test('arrange resets rotation, frets and height separately and saves immediately
  await page.reload();await arrange(page);await expect(reset(page,'Fretboard height')).toHaveCount(0);await expect(page.getByLabel('Fretboard frets',{exact:true})).toHaveValue('24');
 });
 test('menu resets restore each factory value without toggling neighbouring settings',async({page})=>{
- await study(page,'Intervals');let m=await menu(page);for(const name of ['Sound','Minimize app bar','Front: root note','Front: answer note'])await m.getByRole('menuitemcheckbox',{name,exact:true}).click();await m.getByLabel('Answer size larger',{exact:true}).click();await m.getByLabel('Note font',{exact:true}).selectOption('roboto');
- for(const name of ['Answer size','Sound','Minimize app bar','Front: root note','Front: answer note','Note font']){await expect(reset(page,name)).toBeVisible();}
+ await study(page,'Intervals');let m=await menu(page);for(const name of ['Sound','Minimize app bar','Front: root note','Front: answer note'])await m.getByRole('menuitemcheckbox',{name,exact:true}).click();await m.getByLabel('Answer size larger',{exact:true}).click();
+ for(const name of ['Answer size','Sound','Minimize app bar','Front: root note','Front: answer note']){await expect(reset(page,name)).toBeVisible();}
  await reset(page,'Sound').click();await expect(m.getByRole('menuitemcheckbox',{name:'Sound',exact:true})).toHaveAttribute('aria-checked','true');await expect(reset(page,'Front: root note')).toBeVisible();
- for(const name of ['Answer size','Minimize app bar','Front: root note','Front: answer note','Note font'])await reset(page,name).click();
- await expect(m.locator('.reset-setting')).toHaveCount(0);await expect(m.getByLabel('Note font',{exact:true})).toHaveValue('termes');
+ for(const name of ['Answer size','Minimize app bar','Front: root note','Front: answer note'])await reset(page,name).click();
+ await expect(m.locator('.reset-setting')).toHaveCount(0);
  await page.reload();m=await menu(page);await expect(m.locator('.reset-setting')).toHaveCount(0);
 });
 for(const deck of ['Music Staff::Staff → Note::Treble Clef','Music Staff (with Octave Numbers)::Staff → Note::Treble Clef','Music Staff (Movable Do)::Staff → Solfege::Treble Clef'])test(`${deck} restores basic note range`,async({page})=>{

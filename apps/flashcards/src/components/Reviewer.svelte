@@ -12,7 +12,8 @@ SPDX-License-Identifier: Apache-2.0
   import { DEFAULT_FRETBOARD_FRET_COUNT } from "../lib/fretboard-card";
   import CardFrame from "./CardFrame.svelte";
   import DeckActionsSheet from "@web-music/practice-ui/DeckActionsSheet.svelte";
-  import NoteFontSelect from "./NoteFontSelect.svelte";
+  import AppearanceDialog from "./AppearanceDialog.svelte";
+  import { appearanceDeckFromHistoryState, historyStateForAppearanceDeck } from "../lib/navigation";
   import { isChordToneCard, chordToneDisplayFields } from "../lib/chord-tone-selection";
   import { diatonicNotationPreference } from "../lib/diatonic-notation.svelte";
   import { noteFontPreference } from "../lib/note-font.svelte";
@@ -440,6 +441,16 @@ SPDX-License-Identifier: Apache-2.0
   let sessionNew = $state(0);
   let sessionReview = $state(0);
   let loadingExtraAvailability = $state(false);
+  let appearanceOpen = $state(untrack(() => appearanceDeckFromHistoryState(history.state) === deckName));
+  function openAppearance(): void {
+    openOverDeckActions(historyStateForAppearanceDeck);
+    appearanceOpen = true;
+  }
+  function closeAppearance(): void {
+    if (appearanceDeckFromHistoryState(history.state) === deckName) history.back();
+    else appearanceOpen = false;
+  }
+
   let settingsOpen = $state(
     untrack(() => settingsDeckFromHistoryState(history.state) === deckName),
   );
@@ -943,6 +954,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function handlePopState(event: PopStateEvent): void {
+    appearanceOpen = appearanceDeckFromHistoryState(event.state) === deckName;
     settingsOpen = settingsDeckFromHistoryState(event.state) === deckName;
     actionsOpen = deckActionsFromHistoryState(event.state) === deckName;
     applyExtraOptionsHistory(event.state);
@@ -951,7 +963,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function handleKey(event: KeyboardEvent): void {
-    if (event.repeat) return;
+    if (event.repeat || appearanceOpen) return;
     if (positioning) {
       if (event.key === "Escape") closeCardLayout();
       return;
@@ -1300,6 +1312,7 @@ SPDX-License-Identifier: Apache-2.0
     onnotesettings={settingsTargets.length === 0
       ? undefined
       : openNoteSettings}
+    onappearance={openAppearance}
     sizes={cardSizes}
     arrange={{ onopen: openCardLayout }}
     switches={cardSwitches}
@@ -1309,8 +1322,12 @@ SPDX-License-Identifier: Apache-2.0
     {#snippet settingRow(content, modified, name, onreset)}
       <div class="menu-setting"><SettingChange {modified} settingName={name} {onreset}>{#snippet heading()}{@render content()}{/snippet}</SettingChange></div>
     {/snippet}
-    <NoteFontSelect menu />
+
   </DeckActionsSheet>
+{/if}
+
+{#if appearanceOpen}
+  <AppearanceDialog {deckName} preview={item} {noteSelections} {ondiatonicselectionchange} {onprogressionselectionchange} onclose={closeAppearance} />
 {/if}
 
 {#if resetOpen}

@@ -12,6 +12,8 @@ SPDX-License-Identifier: Apache-2.0
   import DeckVisibilitySettings from "./DeckVisibilitySettings.svelte";
   import type { FretWindow } from "../lib/guitar-interval-selection";
   import type { Tuning } from "../lib/guitar-tuning";
+  import AppearanceDialog from "./AppearanceDialog.svelte";
+  import { appearanceDeckFromHistoryState, historyStateForAppearanceDeck } from "../lib/navigation";
   import NoteSettingsDialog from "./NoteSettingsDialog.svelte";
   import type { DiatonicSelections } from "../lib/diatonic-selection";
   import type {
@@ -156,6 +158,16 @@ SPDX-License-Identifier: Apache-2.0
   ): DeckSettingsTarget | null {
     const deckName = settingsDeckFromHistoryState(state);
     return deckName === null ? null : deckSettingsTarget(deckName);
+  }
+
+  let appearanceDeck = $state(appearanceDeckFromHistoryState(history.state));
+  function openAppearance(deckName: string): void {
+    history.pushState(historyStateForAppearanceDeck(history.state, deckName), "");
+    appearanceDeck = deckName;
+  }
+  function closeAppearance(): void {
+    if (appearanceDeckFromHistoryState(history.state) !== null) history.back();
+    else appearanceDeck = null;
   }
 
   let settingsTarget = $state<DeckSettingsTarget | null>(
@@ -371,6 +383,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function handleKey(event: KeyboardEvent): void {
+    if (appearanceDeck !== null) return;
     if (event.key === "Escape") {
       if (settingsTarget !== null) closeNoteSettings();
       else if (choosingDecks) closeDeckChooser();
@@ -425,6 +438,7 @@ SPDX-License-Identifier: Apache-2.0
   }
 
   function handlePopState(event: PopStateEvent): void {
+    appearanceDeck = appearanceDeckFromHistoryState(event.state);
     settingsTarget = settingsTargetFromHistoryState(event.state);
     actionsDeckName = deckActionsFromHistoryState(event.state);
     choosingDecks = deckChooserFromHistoryState(event.state);
@@ -608,6 +622,10 @@ SPDX-License-Identifier: Apache-2.0
   />
 {/if}
 
+{#if appearanceDeck !== null}
+  <AppearanceDialog deckName={appearanceDeck} {noteSelections} {ondiatonicselectionchange} {onprogressionselectionchange} onclose={closeAppearance} />
+{/if}
+
 {#if actionsDeckName !== null}
   <DeckActionsSheet
     deckLabel={deckPathLabel(actionsDeckName)}
@@ -634,6 +652,7 @@ SPDX-License-Identifier: Apache-2.0
     onnotesettings={deckSettingsTarget(actionsDeckName) === null
       ? undefined
       : () => runDeckAction(openNoteSettings)}
+    onappearance={() => runDeckAction(openAppearance)}
     onreset={() => runDeckAction(onresetdeck)}
     onclose={closeDeckActions}
   >
