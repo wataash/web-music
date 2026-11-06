@@ -609,6 +609,9 @@ SPDX-License-Identifier: Apache-2.0
       }`;
     }
     await refresh();
+    // Saved preferences and local decks are ready; network updates must not
+    // prevent studying the collection already on this device.
+    initializing = false;
     if (import.meta.env.PROD) {
       const entries = await changedBundledDeckEntries(
         (await db.decks.count()) === 0,

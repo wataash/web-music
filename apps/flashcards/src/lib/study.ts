@@ -189,7 +189,8 @@ export async function listDecksWithCounts(
 ): Promise<readonly DeckInfo[]> {
   const decks = await db.decks.toArray();
   const hidden = hiddenDeckNamesFor(decks, options);
-  const scoped = await studyCards(await db.cards.toArray(), options);
+  const cards = await db.cards.toArray();
+  const scoped = await studyCards(cards, options);
   const didName = new Map(decks.map((d) => [d.did, d.name]));
   const counted = scoped.filter(
     ({ card }) => !hidden.has(didName.get(card.did) ?? ""),
@@ -199,7 +200,8 @@ export async function listDecksWithCounts(
   );
 
   const usedNames = new Set<string>();
-  for (const { card } of scoped) {
+  // Keep settings reachable even when the current selection excludes every card.
+  for (const card of cards) {
     const name = didName.get(card.did);
     if (name !== undefined) usedNames.add(name);
   }
