@@ -29,9 +29,6 @@ SPDX-License-Identifier: Apache-2.0
   import { parseCollapsedDeckNames } from "./lib/deck-collapse";
   import { parseHiddenDeckNames } from "./lib/deck-hiding";
   import { db, importDeckData } from "./lib/db";
-  import { restoreBackup } from "./lib/backup";
-  import { counted } from "./lib/format";
-  import { decodeHandoff, handoffFromHash } from "./lib/handoff";
   import {
     DEFAULT_CIRCLE_NOTE_SELECTION,
     parseCircleNoteSelection,
@@ -110,8 +107,7 @@ SPDX-License-Identifier: Apache-2.0
   let deckListScrollTop = $state(0);
   let busy = $state(false);
   let initializing = $state(true);
-  let error = $state<string | null>(null);
-  let notice = $state<string | null>(null);
+  let { error = null, notice = null }: { error?: string | null; notice?: string | null } = $props();
   // The queue is the collection's: a reset undone from the list is the same
   // step the reviewer would have offered.
   let undoable = $state<UndoStatus>(undoStatus());
@@ -451,7 +447,6 @@ SPDX-License-Identifier: Apache-2.0
   ): Promise<readonly T[]> {
     if (jobs.length === 0) return [];
     busy = true;
-    error = null;
     const imported: T[] = [];
     const failures = new Set<string>();
     const recordFailure = (reason: unknown): void => {
@@ -580,34 +575,7 @@ SPDX-License-Identifier: Apache-2.0
     void applyHistoryState(listState);
   }
 
-  // The old domain sends the reader here with their progress in the URL. It
-  // is restored before the decks are imported: the cards it schedules are
-  // keyed by note guid, so they wait for the notes rather than the other way
-  // round, and the deck list is right the first time it is drawn.
-  async function receiveHandoff(): Promise<void> {
-    const payload = handoffFromHash(location.hash);
-    if (payload === null) return;
-    // Dropped before the restore rather than after: a reload must not apply it
-    // a second time, and the reader's progress has no business sitting in an
-    // address bar.
-    history.replaceState(history.state, "", location.pathname + location.search);
-    const summary = await restoreBackup(await decodeHandoff(payload));
-    notice =
-      `Brought ${counted(summary.statesWritten, "card")} and ` +
-      `${counted(summary.reviewsAdded, "answer")} over from ` +
-      "learnmusic.wataash.com.";
-  }
-
   async function initialize(): Promise<void> {
-    try {
-      await receiveHandoff();
-    } catch (e) {
-      // The decks are still worth importing, and what the old domain sent is
-      // still on the old domain: it can be exported and restored by hand.
-      error = `The progress from the old domain could not be restored: ${
-        e instanceof Error ? e.message : String(e)
-      }`;
-    }
     await refresh();
     // Saved preferences and local decks are ready; network updates must not
     // prevent studying the collection already on this device.

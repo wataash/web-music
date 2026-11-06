@@ -39,8 +39,14 @@ SPDX-License-Identifier: Apache-2.0
     }
   }
 
+  let active = true;
   onMount(() => {
     void countWhatIsHere();
+    return () => {
+      active = false;
+      // Browser Back and Escape unmount this dialog without calling oncancel.
+      if (restored !== null) reload();
+    };
   });
 
   function message(reason: unknown): string {
@@ -94,6 +100,8 @@ SPDX-License-Identifier: Apache-2.0
     error = null;
     try {
       restored = await restoreBackup(chosen.backup);
+      // A restore may finish after the reader has already closed the dialog.
+      if (!active) { reload(); return; }
       chosen = null;
       await countWhatIsHere();
     } catch (e) {

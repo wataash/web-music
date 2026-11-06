@@ -16,6 +16,8 @@ import {
   type BackupSettings,
 } from "./backup";
 import type { StateRow } from "./db";
+import { newEmptyCard, scheduleAnswer, serializeFsrsCard, Rating } from "./scheduler";
+
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
@@ -32,10 +34,12 @@ function memoryStorage(initial: Record<string, string> = {}) {
 }
 
 function state(key: string, updatedAt: number): StateRow {
+  const now = new Date(updatedAt);
+  const card = scheduleAnswer(newEmptyCard(now), Rating.Easy, now).card;
   return {
     key,
-    fsrs: { due: updatedAt },
-    due: updatedAt,
+    fsrs: serializeFsrsCard(card),
+    due: card.due.getTime(),
     stateKind: "review",
     introducedDay: 0,
     updatedAt,
@@ -207,5 +211,49 @@ describe("backup filenames", () => {
     expect(backupFilename("2026-09-02T03:04:05.678Z")).toBe(
       "music-flashcards-2026-09-02-030405.json",
     );
+  });
+});
+
+describe("backup schedule validation", () => {
+  const fields = ["due", "last_review", "state", "stability", "difficulty", "elapsed_days", "scheduled_days", "reps", "lapses"];
+  it.each(fields)("rejects a schedule missing %s", (field) => {
+    const row = state("note#0", 10);
+    const fsrs = { ...row.fsrs };
+    delete fsrs[field];
+    expect(() => parseBackupDocument(document({ states: [{ ...row, fsrs }] }))).toThrow(/invalid backup study state/);
+  });
+  it.each([
+    ["state", 9], ["state", "Review"], ["stability", 0], ["stability", NaN],
+    ["difficulty", 11], ["difficulty", -1], ["elapsed_days", Infinity],
+    ["scheduled_days", -1], ["reps", 0], ["reps", 1.5], ["lapses", 2],
+    ["learning_steps", -1], ["last_review", null], ["last_review", 9e15],
+  ])("rejects an invalid %s (%s)", (field, value) => {
+    const row = state("note#0", 10);
+    expect(() => parseBackupDocument(document({ states: [{ ...row, fsrs: { ...row.fsrs, [field as string]: value } }] }))).toThrow(/invalid backup study state/);
+  });
+  it.each([{ fsrs: {} }, { due: 1 }, { stateKind: "learning" }, { updatedAt: Infinity }, { introducedDay: 1.5 }])("rejects inconsistent state metadata: %j", (changes) => {
+    expect(() => parseBackupDocument(document({ states: [{ ...state("note#0", 10), ...changes }] }))).toThrow(/invalid backup study state/);
+  });
+  it("accepts schedules produced by every answer and subsequent transition", () => {
+    for (const first of [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy] as const) {
+      for (const second of [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy] as const) {
+        const now = new Date(1000);
+        const initial = scheduleAnswer(newEmptyCard(now), first, now).card;
+        const next = scheduleAnswer(initial, second, initial.due).card;
+        for (const card of [initial, next]) {
+          const row = { ...state("note#0", 10), fsrs: serializeFsrsCard(card), due: card.due.getTime(), stateKind: card.state === 2 ? "review" : "learning" };
+          expect(parseBackupDocument(document({ states: [row] })).states).toEqual([row]);
+        }
+      }
+    }
+  });
+  it("accepts older schedules without learning_steps", () => {
+    const row = state("note#0", 10);
+    const fsrs = { ...row.fsrs };
+    delete fsrs.learning_steps;
+    expect(parseBackupDocument(document({ states: [{ ...row, fsrs }] })).states).toHaveLength(1);
+  });
+  it.each([{ rating: 0 }, { rating: 5 }, { rating: 1.5 }, { ts: 9e15 }, { key: "" }])("rejects an invalid review: %j", (changes) => {
+    expect(() => parseBackupDocument(document({ revlog: [{ ...review("a"), ...changes }] }))).toThrow(/invalid backup review log/);
   });
 });

@@ -8,7 +8,8 @@
 // straight into this one's. See `deploy/old-domain/index.html` for the half
 // that writes it.
 
-import { parseBackupDocument, type BackupDocument } from "./backup";
+import { counted } from "./format";
+import { restoreBackup, parseBackupDocument, type BackupDocument } from "./backup";
 
 const HANDOFF_KEY = "import";
 
@@ -45,4 +46,19 @@ async function gunzip(bytes: Uint8Array): Promise<string> {
     .stream()
     .pipeThrough(new DecompressionStream("gzip"));
   return await new Response(stream).text();
+}
+
+/** Restore data before the application or its preference modules are loaded. */
+export async function receiveHandoff(): Promise<{ notice?: string; error?: string }> {
+  const payload = handoffFromHash(location.hash);
+  if (payload === null) return {};
+  // A reload must not restore twice or keep progress in the address bar.
+  history.replaceState(history.state, "", location.pathname + location.search);
+  try {
+    const summary = await restoreBackup(await decodeHandoff(payload));
+    return { notice: "Brought " + counted(summary.statesWritten, "card") + " and " + counted(summary.reviewsAdded, "answer") + " over from learnmusic.wataash.com." };
+  } catch (e) {
+    // Keep the app usable; the old origin still has the original progress.
+    return { error: "The progress from the old domain could not be restored: " + (e instanceof Error ? e.message : String(e)) };
+  }
 }

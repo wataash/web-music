@@ -69,7 +69,7 @@ async function storeProgress(
           for (const key of keys) {
             transaction.objectStore("states").put({
               key,
-              fsrs: { due: 1, state: 1 },
+              fsrs: { due: 1, state: 1, stability: 1, difficulty: 5, elapsed_days: 0, scheduled_days: 0, learning_steps: 0, reps: 1, lapses: 0, last_review: 1 },
               due: 1,
               stateKind: "learning",
               introducedDay: 1,
@@ -202,4 +202,55 @@ test("asks for a file when there is too much to send in a link", async ({
   expect(written.format).toBe("music-flashcards-backup");
   expect(written.states).toHaveLength(4000);
   expect(page.url()).toBe(`${OLD_ORIGIN}/`);
+});
+
+test("uses transferred preferences before showing or editing cards", async ({ page }) => {
+  await serveOldDomain(page);
+  await page.goto(`${OLD_ORIGIN}/seed`);
+  await storeProgress(page, ["a#0"], ["e1"]);
+  await page.evaluate(() => {
+    localStorage.setItem('music-flashcards:hidden-decks', '["Guitar Intervals"]');
+    localStorage.setItem('music-flashcards:minor-degree-notation', 'i7');
+    localStorage.setItem('music-flashcards:chord-notation', '{"majorSeventh":"maj7"}');
+    localStorage.setItem('music-flashcards:note-font', 'heros');
+    localStorage.setItem('music-flashcards:ii-v-i-keys', '{"majorKeys":[0],"minorKeys":[],"relativeMajor":false}');
+  });
+  await page.goto(`${OLD_ORIGIN}/`);
+  await page.waitForURL(/^https:\/\/mf\.wataash\.com\/#import=/);
+  await page.goto(`/${new URL(page.url()).hash}`);
+  await expect(page.getByRole('status')).toHaveText(/Brought 1 card and 1 answer over/, { timeout: IMPORT_TIMEOUT });
+  await expect(page.locator('[data-deck="Guitar Fretboard"]')).toBeVisible({ timeout: IMPORT_TIMEOUT });
+  await expect(page.locator('[data-deck="Guitar Intervals"]')).toHaveCount(0);
+  const row = page.locator('[data-deck="II–V–I Progressions"]');
+  const open = async (name: string) => {
+    await row.click({ button: 'right' });
+    await page.getByRole('menuitem', { name, exact: true }).click();
+  };
+  await open('What to ask');
+  await expect(page.getByRole('button', { name: 'C major', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'D major', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: 'A minor', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: 'APPLY', exact: true }).click();
+  await open('Appearance');
+  await expect(page.getByRole('radiogroup', { name: 'Minor degree', exact: true }).getByRole('radio', { name: 'i7', exact: true })).toBeChecked();
+  await expect(page.getByRole('radiogroup', { name: 'Major seventh', exact: true }).getByRole('radio', { name: 'maj7', exact: true })).toBeChecked();
+  await expect(page.getByLabel('Relative-major degree', { exact: true })).not.toBeChecked();
+  await page.getByRole('button', { name: 'APPLY', exact: true }).click();
+  expect(await page.evaluate(() => localStorage.getItem('music-flashcards:minor-degree-notation'))).toBe('i7');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('music-flashcards:ii-v-i-keys')!))).toEqual({ majorKeys: [0], minorKeys: [], relativeMajor: false });
+  await page.locator('[data-deck="Music Staff"]').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Appearance', exact: true }).click();
+  await expect(page.getByLabel('Note font', { exact: true })).toHaveValue('heros');
+  await page.getByRole('button', { name: 'APPLY', exact: true }).click();
+  await page.reload();
+  await expect(row).toBeVisible();
+  await expect(page.locator('[data-deck="Guitar Intervals"]')).toHaveCount(0);
+});
+
+test("a malformed transfer reports an error and leaves the app usable", async ({ page }) => {
+  await page.goto('/#import=invalid');
+  await expect(page.locator('[data-deck="Guitar Fretboard"]')).toBeVisible({ timeout: IMPORT_TIMEOUT });
+  await expect(page.getByText('Preparing more decks...', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('alert')).toContainText('could not be restored');
+  expect(new URL(page.url()).hash).toBe('');
 });

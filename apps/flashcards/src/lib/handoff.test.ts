@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
+import { newEmptyCard, scheduleAnswer, serializeFsrsCard, Rating } from "./scheduler";
+
+const card = scheduleAnswer(newEmptyCard(new Date(1)), Rating.Easy, new Date(1)).card;
 
 import { BACKUP_FORMAT, BACKUP_VERSION } from "./backup";
 import { decodeHandoff, handoffFromHash } from "./handoff";
@@ -13,8 +16,8 @@ const BACKUP = {
   states: [
     {
       key: "note#0",
-      fsrs: { due: 1 },
-      due: 1,
+      fsrs: serializeFsrsCard(card),
+      due: card.due.getTime(),
       stateKind: "review",
       introducedDay: 0,
       updatedAt: 1,

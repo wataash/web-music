@@ -191,27 +191,44 @@ export async function restoreBackup(
   // The rows the undo queue holds before-images of are about to be written
   // from elsewhere, and undoing to them afterwards would put the reader back
   // somewhere they never were.
-  clearUndoQueue();
+  const storage = browserStorage();
+  const previousSettings = readSettings(storage);
+  let settingsStarted = false;
+  let settingsWritten = 0;
   let statesWritten = 0;
   let reviewsAdded = 0;
-  await db.transaction("rw", [db.states, db.revlog, db.notes, db.cards], async (transaction) => {
-    const writable = statesToWrite(await db.states.toArray(), backup.states);
-    await db.states.bulkPut([...writable]);
-    statesWritten = writable.length;
+  try {
+    await db.transaction("rw", [db.states, db.revlog, db.notes, db.cards], async (transaction) => {
+      const writable = statesToWrite(await db.states.toArray(), backup.states);
+      await db.states.bulkPut([...writable]);
+      statesWritten = writable.length;
 
-    const known = new Set(
-      (await db.revlog.toArray()).map(({ eventId }) => eventId),
-    );
-    const added = reviewsToAdd(known, backup.revlog);
-    await db.revlog.bulkAdd([...added]);
-    reviewsAdded = added.length;
-    await normalizeGuitarStudy(transaction);
-  });
+      const known = new Set(
+        (await db.revlog.toArray()).map(({ eventId }) => eventId),
+      );
+      const added = reviewsToAdd(known, backup.revlog);
+      await db.revlog.bulkAdd([...added]);
+      reviewsAdded = added.length;
+      await normalizeGuitarStudy(transaction);
+      // A settings failure must abort the study-data transaction too.
+      settingsStarted = true;
+      settingsWritten = writeSettings(backup.settings, storage);
+    });
+  } catch (error) {
+    if (settingsStarted && storage) {
+      // Free the partially imported values before restoring the snapshot,
+      // including when IndexedDB fails to commit after settings were written.
+      for (const key of Object.keys(readSettings(storage))) storage.removeItem(key);
+      writeSettings(previousSettings, storage);
+    }
+    throw error;
+  }
+  clearUndoQueue();
   return {
     statesWritten,
     statesKept: backup.states.length - statesWritten,
     reviewsAdded,
-    settingsWritten: writeSettings(backup.settings),
+    settingsWritten,
   };
 }
 
@@ -226,26 +243,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isTimestamp(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && Math.abs(value) <= 8.64e15;
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isNonnegative(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function isNonemptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
 function isStateRow(value: unknown): value is StateRow {
-  return (
-    isRecord(value) &&
-    typeof value.key === "string" &&
-    isRecord(value.fsrs) &&
-    typeof value.due === "number" &&
-    (value.stateKind === "learning" || value.stateKind === "review") &&
-    typeof value.introducedDay === "number" &&
-    typeof value.updatedAt === "number" &&
-    typeof value.updatedBy === "string"
-  );
+  if (!isRecord(value) || !isRecord(value.fsrs)) return false;
+  const card = value.fsrs;
+  // Stored states have already been answered. New cards have no state row.
+  return isNonemptyString(value.key) && isNonemptyString(value.updatedBy) &&
+    isTimestamp(value.updatedAt) && Number.isSafeInteger(value.introducedDay) &&
+    isTimestamp(value.due) && card.due === value.due && isTimestamp(card.last_review) &&
+    (card.state === 1 || card.state === 2 || card.state === 3) &&
+    value.stateKind === (card.state === 2 ? "review" : "learning") &&
+    isNonnegative(card.stability) && card.stability > 0 &&
+    isNonnegative(card.difficulty) && card.difficulty >= 1 && card.difficulty <= 10 &&
+    isNonnegative(card.elapsed_days) && isNonnegative(card.scheduled_days) &&
+    isCount(card.reps) && card.reps > 0 && isCount(card.lapses) && card.lapses <= card.reps &&
+    // Older ts-fsrs exports omit this field; the scheduler treats it as zero.
+    (card.learning_steps === undefined || isCount(card.learning_steps));
 }
 
 function isBackupReview(value: unknown): value is BackupReview {
-  return (
-    isRecord(value) &&
-    typeof value.eventId === "string" &&
-    typeof value.deviceId === "string" &&
-    typeof value.key === "string" &&
-    typeof value.rating === "number" &&
-    typeof value.ts === "number"
-  );
+  return isRecord(value) &&
+    isNonemptyString(value.eventId) && isNonemptyString(value.deviceId) &&
+    isNonemptyString(value.key) && isCount(value.rating) && value.rating >= 1 && value.rating <= 4 &&
+    isTimestamp(value.ts);
 }
