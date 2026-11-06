@@ -759,7 +759,9 @@ SPDX-License-Identifier: Apache-2.0
   });
 </script>
 
-{#if studyDeck !== null}
+{#if initializing}
+  <p class="preparing" role="status">Preparing decks…</p>
+{:else if studyDeck !== null}
   <Reviewer
     deckName={studyDeck}
     {decks}

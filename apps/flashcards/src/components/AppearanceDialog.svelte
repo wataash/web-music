@@ -62,7 +62,8 @@ SPDX-License-Identifier: Apache-2.0 -->
 
   const doc = $derived(row ? previewDocument({ ...row, model: { ...row.model, css: row.model.css + `
     :root { --diatonic-relative-display: ${relativeMajor ? "block" : "none"}; --progression-relative-display: ${relativeMajor ? "block" : "none"}; }
-    body { overflow: hidden; }
+    html { height:100%; overflow:hidden; }
+    body { height:100%; overflow:auto; overscroll-behavior:contain; }
     .diatonic-card { gap:12px; padding:12px 16px; }
     .diatonic-question, .diatonic-answer { font-size:30px; }
     .diatonic-key { margin-bottom:6px; }
@@ -88,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0 -->
       <button aria-pressed={back} onclick={() => back = true}>Back</button>
     </div>
     {#if error}<p role="alert">{error}</p>
-    {:else if row}{#key doc}<iframe title="Appearance preview" srcdoc={doc} sandbox="allow-scripts" tabindex="-1"></iframe>{/key}
+    {:else if row}{#key doc}<iframe title="Appearance preview" srcdoc={doc} sandbox="allow-scripts"></iframe>{/key}
     {:else}<p role="status">Loading preview…</p>{/if}
   </div>
   <div class="settings">
