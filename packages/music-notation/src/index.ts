@@ -210,6 +210,45 @@ function enhanceMusicGlyphs(glyphs: Record<string, Glyph>, css: string, formatCh
     text.setAttribute('data-music-glyph-enhanced', '');
   }
 
+  // Center the visible spelling, not the advance of a native accidental that
+  // has been replaced by an SVG outline. Keep stacked rows and scale intact.
+  function centerCircleSpellings(): void {
+    const context = document.createElement('canvas').getContext('2d');
+    if (!context) return;
+    for (const group of document.querySelectorAll<SVGGElement>('.circle-of-fifths__note')) {
+      if (group.hasAttribute('data-spelling-centered') || group.getBoundingClientRect().width === 0) continue;
+      const text = group.querySelector<SVGTextElement>('.circle-of-fifths__spelling,.circle-of-fifths__letter');
+      const letter = text?.textContent?.[0];
+      const matrix = group.getScreenCTM();
+      if (!text || !letter || !matrix) continue;
+      const style = getComputedStyle(text);
+      if (style.textAnchor !== 'middle') continue;
+      context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const metrics = context.measureText(letter);
+      const start = text.getStartPositionOfChar(0).x;
+      let left = start - metrics.actualBoundingBoxLeft;
+      let right = start + metrics.actualBoundingBoxRight;
+      for (const path of group.querySelectorAll<SVGGraphicsElement>('.glyph path')) {
+        const transform = path.getScreenCTM();
+        if (!transform) continue;
+        const local = matrix.inverse().multiply(transform);
+        const box = path.getBBox();
+        for (const x of [box.x, box.x + box.width]) {
+          for (const y of [box.y, box.y + box.height]) {
+            const point = new DOMPoint(x, y).matrixTransform(local);
+            left = Math.min(left, point.x);
+            right = Math.max(right, point.x);
+          }
+        }
+      }
+      const shift = Number(text.getAttribute('x') ?? 0) - (left + right) / 2;
+      for (const element of group.querySelectorAll<SVGElement>('text,svg.glyph')) {
+        element.setAttribute('x', String(Number(element.getAttribute('x') ?? 0) + shift));
+      }
+      group.setAttribute('data-spelling-centered', '');
+    }
+  }
+
   const run = () => {
     if (!document.getElementById('music-glyph-style')) {
       const style = document.createElement('style');
@@ -236,6 +275,7 @@ function enhanceMusicGlyphs(glyphs: Record<string, Glyph>, css: string, formatCh
     }
     for (const root of document.querySelectorAll('.question,.answer,.key-name')) enhanceHtml(root);
     for (const text of document.querySelectorAll('svg text')) enhanceSvg(text as SVGTextElement);
+    centerCircleSpellings();
   };
   const ready = () => {
     void Promise.all([

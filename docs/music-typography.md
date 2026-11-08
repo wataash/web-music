@@ -173,3 +173,16 @@ The formatter preserves text for accessibility and does not change card IDs,
 answers or notation preferences. Unit tests cover the supported spellings;
 `chord-typography.spec.ts` and `progression.spec.ts` check actual card rendering
 and fixed question positions across the flip.
+
+## Circle spelling alignment
+
+The browser glyph enhancement centers each circle spelling from the visible
+letter ink and engraved accidental paths after fonts have loaded. Native
+accidental advances and fixed offsets are not the visible bounds of the
+replacement glyphs. Reposition the letters and paths together, preserving
+the original row heights, anchors and scale. Explicit start-aligned layouts
+are left to their renderer. The operation is idempotent.
+
+`apps/flashcards/e2e/circle-alignment.spec.ts` checks outer and inner notes,
+stacked enharmonic spellings and interval cards at 390px and 640px in Chromium
+and WebKit.
