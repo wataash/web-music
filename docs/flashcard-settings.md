@@ -23,16 +23,17 @@ APPLY saves it and CANCEL discards it.
 
 ## Appearance
 
-**Appearance** opens from both the deck-list context menu and the study-screen
+For harmony decks, **Appearance** opens from both the deck-list context menu and the study-screen
 menu. Its fixed card preview has Front / Back buttons; settings scroll below it.
 The study screen previews the current card, and the deck list loads a sample
 without touching the study queue or progress. Preview changes do not add browser
 history entries. Apply saves the draft; Cancel, Escape and browser Back discard it.
 
-Note fonts are global and shown for decks whose note labels use them. Harmony
-cards keep their dedicated music typeface and offer notation instead. The UI
-states which settings apply to all decks and which apply only to this deck.
-Existing storage keys and defaults are retained.
+All card text uses embedded Edwin Roman, including note names, chord letters,
+degrees, diagram labels and explanatory text. Leland Text supplies chord symbols;
+Maestro supplies the existing engraved glyphs. App controls use self-hosted Roboto.
+Fonts are fixed: there is no font selector or font-only Appearance screen.
+Harmony Appearance retains notation and relative-major hint settings.
 
 Notation settings live in **Appearance**, with all controls shown directly.
 The five spelling controls show every option as a rendered, selectable tile.
@@ -56,7 +57,6 @@ reveal or rate the study card; leaving arrangement restores its original side.
 
 | Setting | Current location | Recommendation |
 | --- | --- | --- |
-| Note font | Appearance | Preview the font before saving. Chord fonts are independent. |
 | Answer size | Deck actions, for staff/interval cards | Put beside the answer in Arrange card; an answer preview is needed to judge the size. |
 | Optional keyboard on/off | Deck actions | Put beside keyboard range in Arrange card. |
 | Front: root note / answer note | Deck actions, Intervals | Offer in Arrange card with an explicit front preview. |
@@ -69,7 +69,7 @@ reveal or rate the study card; leaving arrangement restores its original side.
 
 The recommendations in this table are an inventory, not additional settings
 migrations. Avoid expanding an arrangement toolbar into a full settings sheet:
-keep fonts, notation and relative-major hints with their previews in Appearance.
+keep notation and relative-major hints with their previews in Appearance.
 
 ## UI text sizes
 
@@ -89,7 +89,7 @@ Verify `e2e/ui-typography.spec.ts` and the affected settings/arrangement flows.
 
 Flashcards uses a blue line and an individual reset icon only when a setting differs from its factory default. Study ranges compare selections as sets; staff ranges reset the current clef and key, and circle ranges reset the current ring. Guitar shape overrides compare against the current learning range and fret window. Resetting a draft still requires Apply; Cancel discards it.
 
-Arrange card offers individual resets for rotation, counts, fretboard height, answer-button position and the selected part's scale/position. Keyboard part resets affect only the current key count. The existing whole-layout Reset remains available. Sound, app-bar visibility, optional keyboard, front-note switches, answer size, note font use the same indicator. In Choose decks, each row that differs from its shipped visibility has a blue line; toggles have no reset button. Instrument/tuning, temporary previews, navigation and study-history deletion do not use it.
+Arrange card offers individual resets for rotation, counts, fretboard height, answer-button position and the selected part's scale/position. Keyboard part resets affect only the current key count. The existing whole-layout Reset remains available. Sound, app-bar visibility, optional keyboard, front-note switches, answer size use the same indicator. In Choose decks, each row that differs from its shipped visibility has a blue line; toggles have no reset button. Instrument/tuning, temporary previews, navigation and study-history deletion do not use it.
 
 Settings dialogs use the footer Cancel action and browser Back to dismiss without applying changes. They have no duplicate header close button. The reviewer retains its Back action for standalone PWA navigation.
 

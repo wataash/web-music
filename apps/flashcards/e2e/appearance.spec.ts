@@ -41,33 +41,6 @@ test('Appearance previews notation without changing the study card until Apply',
   await expect(page.locator('.wheel')).toHaveCount(2);
 });
 
-test('deck-list Appearance previews and resets fonts, cancels on Escape, and never records study progress', async ({ page }) => {
-  await page.goto('/');
-  const row = page.locator('[data-deck="Music Staff::Staff → Note::Treble Clef"]');
-  await expect(row).toBeVisible({ timeout: 30000 });
-  await openDeckSettings(row, 'Appearance');
-  const dialog = page.getByRole('dialog', { name: 'Appearance', exact: true });
-  const frame = page.frameLocator('iframe[title="Appearance preview"]');
-  await expect(frame.locator('#card-style')).toHaveCount(1);
-  const initial = await frame.locator('#card-style').textContent();
-  await dialog.getByLabel('Note font', { exact: true }).selectOption('roboto');
-  await expect.poll(() => frame.locator('#card-style').textContent()).not.toBe(initial);
-  expect(await page.evaluate(() => localStorage.getItem('music-flashcards:note-font'))).toBeNull();
-  await dialog.getByRole('button', { name: 'Reset Note font to default', exact: true }).click();
-  await expect(dialog.getByLabel('Note font', { exact: true })).toHaveValue('termes');
-  await dialog.getByLabel('Note font', { exact: true }).selectOption('heros');
-  await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
-  await openDeckSettings(row, 'Appearance');
-  await expect(dialog.getByLabel('Note font', { exact: true })).toHaveValue('termes');
-  await dialog.getByLabel('Note font', { exact: true }).selectOption('heros');
-  await dialog.getByRole('button', { name: 'APPLY', exact: true }).click();
-  await page.reload();
-  await openDeckSettings(row, 'Appearance');
-  await expect(dialog.getByLabel('Note font', { exact: true })).toHaveValue('heros');
-  expect(await page.evaluate(async () => { const path = '/src/lib/db.ts'; const { db } = await import(path); return [await db.states.count(), await db.revlog.count()]; })).toEqual([0, 0]);
-});
-
 for (const [deck, defaultHint] of [['Diatonic Chords', false], ['II–V–I Progressions', true]] as const) {
   for (const entry of ['list', 'study']) {
     test(`restores ${deck} appearance drafts after reload from ${entry}`, async ({ page }) => {
@@ -102,7 +75,6 @@ for (const [deck, defaultHint] of [['Diatonic Chords', false], ['II–V–I Prog
 }
 
 for (const [deck, width, height, content] of [
-  ['(Experimental) Circle of Fifths', 411, 841, '.circle-of-fifths'],
   ['II–V–I Progressions', 841, 411, '.diatonic-answer'],
 ] as const) {
   test(`can scroll the entire ${deck} preview at ${width}px`, async ({ page }) => {

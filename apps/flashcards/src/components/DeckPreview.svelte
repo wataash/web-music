@@ -4,8 +4,6 @@ SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
   import { onMount } from "svelte";
-  import NoteFontSelect from "./NoteFontSelect.svelte";
-  import { noteFontPreference } from "../lib/note-font.svelte";
   import { diatonicNotationPreference } from "../lib/diatonic-notation.svelte";
   import { changedBundledDeckEntries, fetchBundledDeck } from "../lib/bundled-decks";
   import { changedDevDeckEntries, fetchDevDeck } from "../lib/dev-decks";
@@ -59,7 +57,6 @@ SPDX-License-Identifier: Apache-2.0
     <h1>Deck preview</h1>
     <p>One sample per deck, including Experimental decks. Default card layouts; study progress is unchanged. Guitar Fretboard uses your saved fret count.</p>
     <div class="controls">
-      <NoteFontSelect />
       <label>Filter decks <input type="search" bind:value={query} /></label>
       <label>Card width
         <select bind:value={width}>
@@ -87,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
               <h3>{back ? "Back" : "Front"}</h3>
               <iframe
                 title={`${label(row.deckName)} — ${back ? "Back" : "Front"}`}
-                srcdoc={previewDocument(row, back, showKeyboard, noteFontPreference.value, fretCount, diatonicNotationPreference.value, diatonicNotationPreference.chords)}
+                srcdoc={previewDocument(row, back, showKeyboard, fretCount, diatonicNotationPreference.value, diatonicNotationPreference.chords)}
                 loading="lazy"
                 sandbox="allow-scripts"
               ></iframe>

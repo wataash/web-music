@@ -31,12 +31,12 @@ test("keeps the diatonic answer focused and the question fixed", async ({ page, 
     await expect(question).toContainText("F major");
     await expect(question).toContainText("IΔ7");
     await expect(question.locator(".chord-triangle")).toBeVisible();
-    await expect(question).toHaveCSS("font-family", /"?Flashcard Notes"?, serif/);
+    await expect(question).toHaveCSS("font-family", /"?Flashcard Chords"?, serif/);
     const before=await question.boundingBox();
     await expect(frame.locator(".diatonic-answer")).toBeHidden();
     await page.getByRole("button",{name:"SHOW ANSWER",exact:true}).click();
     await expect(frame.locator(".diatonic-answer")).toBeVisible();
-    await expect(frame.locator(".diatonic-answer")).toHaveCSS("font-family", /"?Flashcard Notes"?, serif/);
+    await expect(frame.locator(".diatonic-answer")).toHaveCSS("font-family", /"?Flashcard Chords"?, serif/);
 
     await expect(frame.locator(".diatonic-answer")).toHaveText("FΔ7");
     await expect(frame.locator(".diatonic-notes")).toHaveCount(0);

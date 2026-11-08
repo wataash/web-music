@@ -126,3 +126,9 @@ export function deckSettingsTarget(
   if (movableDo !== null) return { kind: "movable-do-keys", setting: movableDo };
   return null;
 }
+
+/** Only harmony decks have editable notation now that card fonts are fixed. */
+export function hasAppearanceSettings(deckName: string): boolean {
+  const kind = deckSettingsTarget(deckName)?.kind;
+  return kind === "diatonic" || kind === "progression" || kind === "chord-tones";
+}

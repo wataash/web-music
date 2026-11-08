@@ -8,3 +8,23 @@
   --ui-font-size-secondary: 0.9375rem;
   --ui-font-size-label: 1rem;
 }
+
+/* Self-host the UI face; card documents embed their own Edwin/Leland faces. */
+@font-face {
+  font-family: "Flashcards UI";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../../packages/music-notation/src/fonts/roboto-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Flashcards UI";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../../packages/music-notation/src/fonts/roboto-bold.woff2") format("woff2");
+}
+body {
+  font-family: "Flashcards UI", Roboto, "Noto Sans", system-ui, sans-serif;
+  font-size-adjust: from-font;
+}

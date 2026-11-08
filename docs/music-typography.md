@@ -53,9 +53,10 @@ alterations and slash bass, rather than relying on a plain concatenated string
 and one font-size setting. Compare suffix scale, baseline, spacing and line
 wrapping using the reference score before rolling out a style across apps.
 
-Keep the existing shared note-font preference and licensed glyph system as
-the integration points: `packages/music-notation/src/note-fonts.ts` owns text
-faces, and `packages/music-notation/src/index.ts` owns music glyphs. Chord
+Flashcards fixes all card text to Edwin Roman via `lib/note-font-css.ts` and the
+shared `packages/music-notation/src/chord-font.ts` font faces. The independent
+Circle of Fifths Playground still uses `note-fonts.ts` for its selectable fonts.
+`packages/music-notation/src/index.ts` owns music glyphs. Chord
 symbols must retain a consistent minor `m`, major Δ, half-diminished ø and
 fully diminished °. Roman analysis can use IΔ7, ii7, V7 and viiø7; it is distinct
 from the letter-name chord symbol Dm7. Only the visual key-picker label uses
@@ -163,9 +164,10 @@ without replacing them with Maestro outlines.
 Front and back receive identical formatting.
 
 The Vite-only `@web-music/music-notation/chord-font` entry embeds the unmodified
-Edwin and Leland Text fonts. Flashcards includes them only for Diatonic and II–V–I documents,
-independently of the note-font preference. Other note names, keyboards and
-staff glyphs retain that preference and their existing glyph renderer.
+Edwin and Leland Text fonts. Flashcards includes them in every card and preview.
+Edwin supplies letters, degrees, diagram numbers and prose; Leland supplies chord
+symbols. Note-name and staff accidentals keep their Maestro SVG renderer.
+App controls use self-hosted Roboto. Font choices are not exposed in Flashcards.
 
 The formatter preserves text for accessibility and does not change card IDs,
 answers or notation preferences. Unit tests cover the supported spellings;

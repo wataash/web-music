@@ -8,11 +8,10 @@ import { DEFAULT_FRET_WINDOW, fretWindowVariables } from "./guitar-interval-sele
 import { DEFAULT_FRETBOARD_FRET_COUNT, includesFretboardFretCard } from "./fretboard-card";
 import { DEFAULT_STAFF_NOTE_SELECTION, staffCardVariables } from "./staff-note-selection";
 import { buildCardDocument, renderTemplate, resolveMediaReferences } from "./template";
-import type { NoteFont } from "./note-font.svelte";
-import { noteFontCss } from "./note-font-css";
-import { isChordToneCard, chordToneDisplayFields } from "./chord-tone-selection";
-import { isProgressionCard, progressionDisplayFields } from "./progression-selection";
-import { diatonicDirection, diatonicDisplayFields, DEFAULT_CHORD_NOTATION, type ChordNotation, type MinorDegreeNotation } from "./diatonic-selection";
+import { CARD_FONT_CSS } from "./note-font-css";
+import { chordToneDisplayFields } from "./chord-tone-selection";
+import { progressionDisplayFields } from "./progression-selection";
+import { diatonicDisplayFields, DEFAULT_CHORD_NOTATION, type ChordNotation, type MinorDegreeNotation } from "./diatonic-selection";
 
 export type DeckPreviewRow = Readonly<{
   deckName: string;
@@ -53,7 +52,7 @@ export function representativeCards(data: DeckData, fretCount = DEFAULT_FRETBOAR
 }
 
 /** A standalone iframe document; no database, storage, or object URL lifetime. */
-export function previewDocument(row: DeckPreviewRow, back: boolean, showKeyboard: boolean, noteFont?: NoteFont, fretCount = DEFAULT_FRETBOARD_FRET_COUNT, minorNotation: MinorDegreeNotation = "im7", chordNotation: ChordNotation = DEFAULT_CHORD_NOTATION): string {
+export function previewDocument(row: DeckPreviewRow, back: boolean, showKeyboard: boolean, fretCount = DEFAULT_FRETBOARD_FRET_COUNT, minorNotation: MinorDegreeNotation = "im7", chordNotation: ChordNotation = DEFAULT_CHORD_NOTATION): string {
   const fields = Object.fromEntries(row.model.fieldNames.map((name, index) =>
     [name, row.note.fields[index] ?? ""],
   ));
@@ -71,7 +70,7 @@ export function previewDocument(row: DeckPreviewRow, back: boolean, showKeyboard
   }));
   return buildCardDocument({
     html: resolveMediaReferences(html, mediaUrls),
-    css: row.model.css + noteFontCss(noteFont, diatonicDirection(row.note) !== null || isChordToneCard(row.note) || isProgressionCard(row.note)),
+    css: row.model.css + CARD_FONT_CSS,
     nightMode: true,
     keyboardKeys: DEFAULT_DECK_CARD_SETTINGS.keyboardKeys,
     referenceKeyboardKeys: defaultDeckCardSettings(row.deckName).referenceKeyboardKeys,

@@ -239,9 +239,8 @@ test("uses transferred preferences before showing or editing cards", async ({ pa
   expect(await page.evaluate(() => localStorage.getItem('music-flashcards:minor-degree-notation'))).toBe('i7');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('music-flashcards:ii-v-i-keys')!))).toEqual({ majorKeys: [0], minorKeys: [], relativeMajor: false });
   await page.locator('[data-deck="Music Staff"]').click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Appearance', exact: true }).click();
-  await expect(page.getByLabel('Note font', { exact: true })).toHaveValue('heros');
-  await page.getByRole('button', { name: 'APPLY', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Appearance', exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await page.reload();
   await expect(row).toBeVisible();
   await expect(page.locator('[data-deck="Guitar Intervals"]')).toHaveCount(0);

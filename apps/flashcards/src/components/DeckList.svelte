@@ -36,6 +36,7 @@ SPDX-License-Identifier: Apache-2.0
   } from "../lib/navigation";
   import {
     deckSettingsTarget,
+    hasAppearanceSettings,
     type DeckSettingsTarget,
     type NoteSelections,
   } from "../lib/note-selection";
@@ -652,7 +653,7 @@ SPDX-License-Identifier: Apache-2.0
     onnotesettings={deckSettingsTarget(actionsDeckName) === null
       ? undefined
       : () => runDeckAction(openNoteSettings)}
-    onappearance={() => runDeckAction(openAppearance)}
+    onappearance={hasAppearanceSettings(actionsDeckName) ? () => runDeckAction(openAppearance) : undefined}
     onreset={() => runDeckAction(onresetdeck)}
     onclose={closeDeckActions}
   >

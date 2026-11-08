@@ -2,7 +2,6 @@
 SPDX-License-Identifier: Apache-2.0 -->
 <script lang="ts">
   import { onMount, untrack } from "svelte";
-  import NoteFontSelect from "./NoteFontSelect.svelte";
   import DiatonicNotationSelect from "./DiatonicNotationSelect.svelte";
   import RelativeMajorDegreeToggle from "./RelativeMajorDegreeToggle.svelte";
   import { db } from "../lib/db";
@@ -10,7 +9,6 @@ SPDX-License-Identifier: Apache-2.0 -->
   import { previewDocument, type DeckPreviewRow } from "../lib/deck-preview";
   import { mediaFilenamesIn } from "../lib/template";
   import { deckSettingsTarget, type NoteSelections } from "../lib/note-selection";
-  import { noteFontPreference, parseNoteFont, setNoteFont } from "../lib/note-font.svelte";
   import { diatonicNotationPreference, setDiatonicNotation, setChordNotation } from "../lib/diatonic-notation.svelte";
   import { CHORD_NOTATION_OPTIONS, type DiatonicSelections } from "../lib/diatonic-selection";
   import type { ProgressionSelection } from "../lib/progression-selection";
@@ -27,7 +25,6 @@ SPDX-License-Identifier: Apache-2.0 -->
   const target = $derived(deckSettingsTarget(deckName));
   const harmony = $derived(target?.kind === "diatonic" || target?.kind === "progression" || target?.kind === "chord-tones");
   const direction = $derived(target?.kind === "diatonic" ? target.setting.directions[0] : null);
-  let font = $state(untrack(() => noteFontPreference.value));
   let minorNotation = $state(untrack(() => diatonicNotationPreference.value));
   let chordNotation = $state(untrack(() => ({ ...diatonicNotationPreference.chords })));
   let relativeMajor = $state(untrack(() => target?.kind === "progression"
@@ -68,13 +65,13 @@ SPDX-License-Identifier: Apache-2.0 -->
     .diatonic-question, .diatonic-answer { font-size:30px; }
     .diatonic-key { margin-bottom:6px; }
     .diatonic-relative, .progression-relative, .diatonic-source { margin-top:4px; }
-  ` } }, back, true, font, noteSelections.fretboardFretCount, minorNotation, chordNotation) : "");
+  ` } }, back, true, noteSelections.fretboardFretCount, minorNotation, chordNotation) : "");
 
   function apply() {
     if (harmony) {
       setDiatonicNotation(minorNotation);
       for (const option of CHORD_NOTATION_OPTIONS) setChordNotation(option.key, chordNotation[option.key]);
-    } else setNoteFont(font);
+    }
     if (target?.kind === "progression") onprogressionselectionchange({ ...noteSelections.progressions, relativeMajor });
     if (direction) ondiatonicselectionchange({ ...noteSelections.diatonic, [direction]: { ...noteSelections.diatonic[direction], relativeMajor } });
     onclose();
@@ -100,9 +97,6 @@ SPDX-License-Identifier: Apache-2.0 -->
         <p class="scope">Additional information for this deck</p>
         <RelativeMajorDegreeToggle checked={relativeMajor} defaultChecked={target?.kind === "progression"} onchange={value => relativeMajor = value} />
       {/if}
-    {:else}
-      <NoteFontSelect value={font} onchange={value => font = parseNoteFont(value)} />
-      <p class="scope">Applies to note labels in all decks. Chord symbols keep their music typeface.</p>
     {/if}
   </div>
   <footer><button onclick={onclose}>CANCEL</button><button class="apply" onclick={apply}>APPLY</button></footer>

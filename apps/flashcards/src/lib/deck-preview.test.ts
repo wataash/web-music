@@ -103,7 +103,7 @@ describe("previewDocument", () => {
     expect(front).toContain('data-piano-keys="88"');
     expect(front).not.toContain('data-show-keyboard="on"');
     expect(back).toContain('data-show-keyboard="on"');
-    expect(previewDocument(row, false, false, undefined, 12)).toContain("--fretboard-fret-count: 12");
+    expect(previewDocument(row, false, false, 12)).toContain("--fretboard-fret-count: 12");
     expect(front).not.toContain("{{");
     expect(back).not.toContain("{{FrontSide}}");
     expect(previewDocument(row, false, false)).toBe(front);

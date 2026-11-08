@@ -16,8 +16,7 @@ SPDX-License-Identifier: Apache-2.0
   import { appearanceDeckFromHistoryState, historyStateForAppearanceDeck } from "../lib/navigation";
   import { isChordToneCard, chordToneDisplayFields } from "../lib/chord-tone-selection";
   import { diatonicNotationPreference } from "../lib/diatonic-notation.svelte";
-  import { noteFontPreference } from "../lib/note-font.svelte";
-  import { noteFontCss } from "../lib/note-font-css";
+  import { CARD_FONT_CSS } from "../lib/note-font-css";
   import ResetProgressDialog from "./ResetProgressDialog.svelte";
   import ExtraStudyDialog, {
     type ExtraStudySelection,
@@ -45,6 +44,7 @@ SPDX-License-Identifier: Apache-2.0
   } from "../lib/guitar-interval-selection";
   import {
     deckSettingsTarget,
+    hasAppearanceSettings,
     includesSelectedNote,
     type DeckSettingsTarget,
     type NoteSelections,
@@ -634,7 +634,7 @@ SPDX-License-Identifier: Apache-2.0
           });
     return buildCardDocument({
       html: resolveMediaReferences(html, mediaUrls),
-      css: item.model.css + noteFontCss(noteFontPreference.value, harmonyCard),
+      css: item.model.css + CARD_FONT_CSS,
       nightMode,
       keyboardKeys: deckSettings.keyboardKeys,
       referenceKeyboardKeys: deckSettings.referenceKeyboardKeys,
@@ -1326,7 +1326,7 @@ SPDX-License-Identifier: Apache-2.0
     onnotesettings={settingsTargets.length === 0
       ? undefined
       : openNoteSettings}
-    onappearance={openAppearance}
+    onappearance={hasAppearanceSettings(deckName) ? openAppearance : undefined}
     sizes={cardSizes}
     arrange={{ onopen: openCardLayout }}
     switches={cardSwitches}

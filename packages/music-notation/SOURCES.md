@@ -22,13 +22,13 @@ Reserved Font Name Leland. The complete notice and license are in
 [`OFL-Leland.txt`](OFL-Leland.txt), also shipped at
 [`apps/flashcards/public/licenses/Leland.txt`](../../apps/flashcards/public/licenses/Leland.txt).
 
-The Vite-only `chord-font` entry embeds these faces for Diatonic Chords and
-II–V–I cards, using regular weight and baseline extensions, following the
+The Vite-only `chord-font` entry embeds these faces for all Flashcards cards, using regular weight and baseline extensions, following the
 Standard / Edwin atlas profile. Leland Text supplies U+ED60–U+ED64 accidentals
 and U+E870–U+E874 chord qualities; the original Unicode spelling remains in
 accessible text. The corresponding symbols are documented in
 [MuseScore 4.7.4's Standard chord definitions](https://github.com/musescore/MuseScore/blob/v4.7.4/src/engraving/data/chords/chords_std.xml).
-These fonts do not change the selectable note-name fonts below.
+Flashcards uses Edwin for all card text. The selectable note-name fonts below
+remain available to the independent Circle of Fifths Playground.
 
 ## Note fonts
 
@@ -58,9 +58,9 @@ fonts and glyphs and ships the same files in
 
 The LaTeX Project Public License 1.3c referenced by the GUST license is
 included verbatim as `LPPL-1.3c.tex`. The WOFF2 files are converted, subsetted
-derivatives. The default note font is Termes; readers can choose Roboto or
-Heros in the Flashcards Note font setting and the Circle of Fifths Playground,
-whose exported SVGs embed the chosen font.
+derivatives. The Circle of Fifths Playground defaults to Termes and also offers Roboto or
+Heros;
+its exported SVGs embed the chosen font.
 
 The shared `engraved` note-name accidentals are extracted from Finale Maestro
 Text; staff accidentals and clefs are extracted from Finale Maestro. Both
