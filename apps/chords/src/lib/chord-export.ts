@@ -29,7 +29,10 @@ function songPayload(score: ImportedSong['metadata']['score']): string {
   }
   // Source spelling includes compressed spacing, alternatives and annotations.
   // Never serialize the expanded practice sequence or the transposed display.
-  const raw = score.blocks.flat().map(token => token.raw).join('');
+  const tokens = score.blocks.flat();
+  const unsupportedMeter = tokens.find(token => token.name === 'custom-meter');
+  if (unsupportedMeter) throw new Error(`iReal Pro does not support ${unsupportedMeter.text} time. Use text export to keep this meter.`);
+  const raw = tokens.map(token => token.raw).join('');
   validateIrealField(raw, 'Chart notation');
   return [...before, IREAL_MUSIC_PREFIX + scramble(raw), ...after].join('=');
 }

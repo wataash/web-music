@@ -208,6 +208,10 @@ key: C
 describe('chart notation errors', () => {
   it.each([
     ['A7 wrong', 'Line 1, bar 2'], ['| A7 | wrong |', 'Line 1, bar 2'], ['A7 | wrong', 'Line 1, bar 2'], ['| wrong', 'Line 1, bar 1'], ['\n[A]\n| A7 | D7 | wrong', 'Line 3, bar 3'],
+    ['[A] 4/4 | wrong |', 'Line 1, bar 1'],
+    ['title: Study\n[A] 4/4 |: C | wrong :|', 'Line 2, bar 2'],
+    ['[A] C | wrong', 'Line 1, bar 2'],
+    ['C G (wrong)', 'Line 1, bar 2'],
   ])('names the bar of %s', (input, where) => {
     expect(() => createCustomChart(input, '', 'C')).toThrow(where);
   });
@@ -221,7 +225,7 @@ it('updates only leading metadata headers while preserving modulations and incom
   const renamed = setCustomChartHeader(source, 'title', 'New $& title');
   expect(renamed).toContain(' TITLE : New $& title\r\ntitle: New $& title');
   const rekeyed = setCustomChartHeader(renamed, 'key', 'F');
-  expect(rekeyed).toContain('key: F\r\n');
+  expect(rekeyed).toContain('key: Fm\r\n');
   expect(rekeyed).toContain('key: D\r\nD7');
   expect(setCustomChartHeader('C F G', 'title', 'Name')).toBe('C F G');
 });
@@ -239,4 +243,70 @@ it('preserves existing minor keys, spelling and line endings in text exports', (
   expect(exportCustomChartText(createCustomChart(source, '', 'C'))).toBe(source);
   const noTitle = 'key: Am\r\nAm E7';
   expect(exportCustomChartText(createCustomChart(noTitle, 'Minor', 'C'))).toBe('title: Minor\r\n' + noTitle);
+});
+
+ it.each(['Am', 'A-', 'A'])('preserves the mode of %s when editing its tonic', (key) => {
+  const source = setCustomChartHeader('key: ' + key + '\nAm E7', 'key', 'D');
+  const song = createCustomChart(source, 'Minor', 'D');
+  expect(song.metadata.score.fields).toContainEqual({label: 'Original key', value: key === 'A' ? 'D' : 'D-'});
+  expect(extractIrealPlaylist(exportIrealLink([song])).songs[0].originalKey).toBe(key === 'A' ? 'D' : 'D-');
+ });
+
+it('round-trips minor modulations and Unicode lyrics across scramble blocks', () => {
+  const lyrics = 'ラ'.repeat(46) + '🎵𝄪歌詞'.repeat(16);
+  const song = createCustomChart('| C {' + lyrics + '} |\nkey: D-\nDm', '', 'C');
+  const raw = song.metadata.score.blocks.flat().map(token => token.raw).join('');
+  expect(raw).toContain(lyrics);
+  expect(raw).toContain('<Key: Dm>');
+  expect(song.chordKeys).toEqual(['C', 'D']);
+  const restored = extractIrealPlaylist(exportIrealLink([song]));
+  expect(restored.errors).toEqual([]);
+  expect(restored.songs[0].score.blocks.flat().map(token => token.raw).join('')).toBe(raw);
+});
+
+it('keeps lyrics, notes and alternate chords inside implicit bars', () => {
+  const compact = createCustomChart('3/4 C {one} <soft> (Am) G {two}', 'Bars', 'C');
+  const explicit = createCustomChart('|| 3/4 C {one} <soft> (Am) | G {two} |', 'Bars', 'C');
+  expect(compact.metadata.annotations).toEqual([{ chordIndex: 0, comments: ['soft'] }]);
+  expect(compact.metadata.score.blocks).toEqual(explicit.metadata.score.blocks);
+  expect(exportIrealLink([compact])).toBe(exportIrealLink([explicit]));
+});
+
+it.each(['(Db7) C', '| C | (Db7) G |', 'C\n(Db7) G'])('rejects an alternate with no preceding chord in its bar: %s', source => {
+  expect(() => createCustomChart(source, '', 'C')).toThrow(`Line ${source.split('\n').length}: write an alternate after a chord in the same bar.`);
+});
+
+it('reads CR-delimited charts and preserves line endings when editing or exporting', () => {
+  const source = 'key: Am\rAm E7\rkey: Dm\rDm A7';
+  const song = createCustomChart(source, 'Changes', 'C');
+  expect(song.chordKeys).toEqual(['A', 'A', 'D', 'D']);
+  expect(resolveIreal(song.metadata.score.blocks).rows).toHaveLength(2);
+  const exported = exportCustomChartText(song);
+  expect(exported).toBe('title: Changes\r' + source);
+  expect(createCustomChart(exported, '', 'C').metadata.score).toEqual(song.metadata.score);
+
+  const mixed = 'title: Old\nkey: Am\r\nAm E7\rkey: Dm\rDm A7';
+  expect(setCustomChartHeader(mixed, 'key', 'G')).toBe(mixed.replace('key: Am', 'key: Gm'));
+});
+
+it('keeps a minor starting key supplied separately from the chart text', () => {
+  const source = 'F#m C#7\r\nkey: Bm\r\nBm F#7';
+  const song = createCustomChart(source, 'Changes', 'F#m');
+  const saved = { ...song, customText: source };
+  for (const chart of [song, refreshCustomChart(saved)]) {
+    const text = exportCustomChartText(chart);
+    const reopened = createCustomChart(text, '', 'C');
+    expect(reopened.metadata.score).toEqual(song.metadata.score);
+    expect(reopened.chordKeys).toEqual(['F#', 'F#', 'B', 'B']);
+    expect(createCustomChart(chart.customText!, chart.title, chart.originalKey).metadata.score).toEqual(song.metadata.score);
+  }
+  expect(createCustomChart(exportCustomChartText(saved), '', 'C').metadata.score).toEqual(song.metadata.score);
+});
+
+it('keeps lyrics on the main chord across alternatives and bar repeats', () => {
+  const song = createCustomChart('| C {one} (Am) (Em) {two} G {three} | % |', 'Lyrics', 'C');
+  setImportedMetadata([song]);
+  const events = resolveIreal(song.metadata.score.blocks).events;
+  expect(events.map(event => song.chords[event.chordIndex])).toEqual(['C', 'A-', 'E-', 'G', 'C', 'G']);
+  expect(events.map((_, index) => chordLyric(song.id, index))).toEqual(['one two', '', '', 'three', 'one two', 'three']);
 });

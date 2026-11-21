@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 import type { ImportedSong } from './chord-import';
+import { irealLabel } from './ireal-labels';
 import { irealScore } from '@web-music/ireal';
 import { formatNote, parseChordSymbol, parseNote, qualityIntervals, SUPPORTED_CHORD_QUALITIES } from './chords';
-import { customChartHeaders, parseCustomChartSource, type ChartHeaderName, type ChartLexeme } from './custom-chart-parser';
+import { CHART_LINE_BREAK, customChartHeaders, parseCustomChartSource, type ChartHeaderName, type ChartLexeme } from './custom-chart-parser';
 
 const PREFIX_FAMILIES = [
   { pattern: /^(maj|M|△|Δ|\^)/, spellings: ['M', '^', 'maj', '△', 'Δ'] },
@@ -100,14 +101,20 @@ export const CHORD_NOTATION_GROUPS = (() => {
 // The playlist every custom chart belongs to.
 export const CUSTOM_PLAYLIST = 'Custom charts';
 
+// The practice key is just the tonic. The score field also records the mode.
+function writtenChartKey(song: ImportedSong): string {
+  const field = song.metadata.score.fields.find(field => irealLabel(field.label) === 'Original key');
+  return field?.value.replace(/-$/, 'm') || song.originalKey;
+}
+
 // Make text exports self-contained without rewriting existing spellings or modulations.
 export function exportCustomChartText(song: ImportedSong): string {
   const text = song.customText ?? '';
   const headers = customChartHeaders(text);
   const missing = (['title', 'key'] as const)
     .filter(name => !headers.some(header => header.name === name))
-    .map(name => name + ': ' + (name === 'title' ? song.title : song.originalKey));
-  const newline = text.includes('\r\n') ? '\r\n' : '\n';
+    .map(name => name + ': ' + (name === 'title' ? song.title : writtenChartKey(song)));
+  const newline = text.match(CHART_LINE_BREAK)?.[0] ?? '\n';
   return missing.length ? missing.join(newline) + newline + text : text;
 }
 
@@ -115,7 +122,7 @@ export function refreshCustomChart(song: ImportedSong): ImportedSong {
   if (song.customText === undefined) return song;
   // Reinterpret saved input with the current rules, keeping identity and order.
   // Leave an unreadable record intact rather than losing the rest of the library.
-  try { return { ...song, ...createCustomChart(song.customText, song.title, song.originalKey, song.id) }; }
+  try { return { ...song, ...createCustomChart(song.customText, song.title, writtenChartKey(song), song.id) }; }
   catch { return song; }
 }
 
@@ -138,7 +145,9 @@ const BARS: Readonly<Record<string, string>> = { '|]': 'Z', '|:': '{', ':|': '}'
 const WORDS: Readonly<Record<string, string>> = {
   '%': 'x', '%%': 'r', '/': 'p', segno: 'S', coda: 'Q', fermata: 'f', fine: '<Fine>', 'd.s.': '<D.S.>', 'd.c.': '<D.C.>',
 };
-type ChartToken = { kind: 'bar' | 'cell' | 'mark' | 'lyrics'; raw: string; chord?: string; alternate?: string; section?: string; lyric?: string; annotation?: string };
+// Supported meters: https://www.irealpro.com/learn/time-signatures/
+const IREAL_METERS = new Set(['2/2', '3/2', '2/4', '3/4', '4/4', '5/4', '6/4', '7/4', '3/8', '5/8', '6/8', '7/8', '9/8', '12/8']);
+type ChartToken = { kind: 'bar' | 'cell' | 'mark' | 'lyrics' | 'meter'; raw: string; chord?: string; alternate?: string; section?: string; lyric?: string; annotation?: string };
 const irealComment = (text: string) => `<${text.replaceAll('->', '→').replaceAll('>', '＞')}>`;
 
 function chartToken(token: ChartLexeme): ChartToken {
@@ -165,8 +174,7 @@ function chartToken(token: ChartLexeme): ChartToken {
     const marker = /^intro$/i.test(section) ? 'i' : /^[A-Za-z]/.test(section) ? section[0].toUpperCase() : 'A';
     return { kind: 'mark', raw: '*' + marker, section };
   }
-  const time = /^(\d{1,2})\/(\d{1,2})$/.exec(text);
-  if (time) return { kind: 'mark', raw: 'T' + (time[1] === '12' && time[2] === '8' ? '12' : time[1] + time[2]) };
+  if (/^\d{1,2}\/\d{1,2}$/.test(text)) return { kind: 'meter', raw: text };
   if (/^\d\.$/.test(text)) return { kind: 'mark', raw: 'N' + text[0] };
   if (token.kind === 'alternate') return { kind: 'mark', raw: '', alternate: normalizeInputChord(token.value) };
   return { kind: 'cell', raw: '', chord: normalizeInputChord(text) };
@@ -185,9 +193,15 @@ export function createCustomChart(text: string, title: string, key: string, id =
   let currentKey = normalizedKey(key);
   // iReal writes the time signature after the bar that opens the row.
   let pendingTime = '';
-  const emit = (token: ChartToken) => {
-    if (token.kind === 'mark' && token.raw.startsWith('T')) { pendingTime = token.raw; return; }
-    if (token.kind !== 'bar') { raw += pendingTime; pendingTime = ''; }
+  const emitTime = () => {
+    if (!pendingTime) return;
+    if (!IREAL_METERS.has(pendingTime)) tokenOverrides.set(raw.length, { name: 'custom-meter', text: pendingTime });
+    raw += 'T' + (pendingTime === '12/8' ? '12' : pendingTime.replace('/', ''));
+    pendingTime = '';
+  };
+  const emit = (token: ChartToken, line: number) => {
+    if (token.kind === 'meter') { pendingTime = token.raw; return; }
+    if (token.kind !== 'bar') emitTime();
     if (token.kind === 'lyrics') {
       if (chordInMeasure === undefined) throw new Error('Write lyrics after a chord in the same bar.');
       tokenOverrides.set(raw.length, { name: 'lyrics', text: token.lyric ?? '' });
@@ -200,6 +214,7 @@ export function createCustomChart(text: string, title: string, key: string, id =
       chordKeys.push(currentKey);
       raw += spelled;
     } else if (token.alternate !== undefined) {
+      if (chordInMeasure === undefined) throw new Error(`Line ${line}: write an alternate after a chord in the same bar.`);
       positions.push({ start: raw.length + 1, end: raw.length + 1 + token.alternate.length, chordIndex: chords.length });
       chords.push(token.alternate);
       chordKeys.push(currentKey);
@@ -216,8 +231,8 @@ export function createCustomChart(text: string, title: string, key: string, id =
         tokenOverrides.set(raw.length, { text: annotation });
         annotations.push({ chordIndex: chordInMeasure ?? chords.length, comments: [annotation] });
       }
-      raw += token.raw + pendingTime;
-      pendingTime = '';
+      raw += token.raw;
+      emitTime();
     }
   };
   for (const line of parseCustomChartSource(text)) {
@@ -228,8 +243,9 @@ export function createCustomChart(text: string, title: string, key: string, id =
     }
     if (line.kind === 'key-change') {
       currentKey = normalizedKey(line.value);
-      tokenOverrides.set(raw.length, { name: 'key-change', text: currentKey });
-      raw += `<Key: ${currentKey}>`;
+      const label = currentKey + (/[-m]$/.test(line.value) ? 'm' : '');
+      tokenOverrides.set(raw.length, { name: 'key-change', text: label });
+      raw += `<Key: ${label}>`;
       continue;
     }
     if (line.kind === 'blank') { raw += 'Y'; continue; }
@@ -238,14 +254,28 @@ export function createCustomChart(text: string, title: string, key: string, id =
     for (const token of line.tokens) {
       try { tokens.push(chartToken(token)); }
       catch {
-        const bar = 1 + tokens.filter(token => token.kind === (barred ? 'bar' : 'cell')).length - (barred && tokens[0]?.kind === 'bar' ? 1 : 0);
+        const boundaries = tokens.filter(t => t.kind === (barred ? 'bar' : 'cell')).length;
+        const firstCellOrBar = tokens.find(t => t.kind === 'cell' || t.kind === 'bar');
+        const countIncludesCurrentBar = barred ? firstCellOrBar?.kind === 'bar' : token.kind === 'alternate';
+        const bar = Math.max(1, boundaries + (countIncludesCurrentBar ? 0 : 1));
         throw new Error(`Line ${line.line}, bar ${bar}: unrecognized chord “${token.raw}”.`);
       }
     }
-    if (!tokens.some(token => token.kind === 'bar')) {
+    if (!barred) {
       // Each chord in a bar of its own, as a list of bars.
       if (tokens.some(token => token.kind === 'cell')) tokens.unshift({ kind: 'bar', raw: '[' });
-      for (let i = tokens.length - 1; i > 0; i--) if (tokens[i].kind === 'cell') tokens.splice(i + 1, 0, { kind: 'bar', raw: '|' });
+      for (let i = 0; i < tokens.length; i++) {
+        if (tokens[i].kind !== 'cell') continue;
+        // Close the bar after everything written on this chord.
+        let next = i + 1;
+        while (next < tokens.length) {
+          const token = tokens[next];
+          if (token.kind !== 'lyrics' && token.alternate === undefined && !token.raw.startsWith('<')) break;
+          next++;
+        }
+        tokens.splice(next, 0, { kind: 'bar', raw: '|' });
+        i = next;
+      }
     } else {
       const first = tokens.findIndex(token => token.kind === 'bar');
       const last = tokens.findLastIndex(token => token.kind === 'bar');
@@ -276,7 +306,7 @@ export function createCustomChart(text: string, title: string, key: string, id =
       let cell = 0;
       if (measure.width && !measure.tokens.some(token => token.kind === 'cell')) raw += ' '.repeat(span);
       for (const token of measure.tokens) {
-        emit(token);
+        emit(token, line.line);
         if (token.kind !== 'cell') continue;
         cell++;
         raw += ' '.repeat(Math.floor(cell * span / measure.width) - Math.floor((cell - 1) * span / measure.width) - 1);
@@ -293,6 +323,10 @@ export function createCustomChart(text: string, title: string, key: string, id =
   for (const token of score.blocks.flat()) {
     Object.assign(token, tokenOverrides.get(offset));
     offset += token.raw.length;
+  }
+  if (header.key === undefined && written.endsWith('-')) {
+    const newline = text.match(CHART_LINE_BREAK)?.[0] ?? '\n';
+    text = 'key: ' + originalKey + 'm' + newline + text;
   }
   return { id, title, artist: header.artist ?? '', originalKey, chords, chordKeys, playlist: CUSTOM_PLAYLIST, customText: text,
     metadata: { comments: [], annotations, score } };

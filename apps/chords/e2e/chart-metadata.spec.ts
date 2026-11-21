@@ -69,3 +69,32 @@ test('restores a text export in a fresh browser without entering title or key ag
   await expect(restored.locator('.full-score .chord')).toHaveCount(3);
   await context.close();
 });
+
+test('keeps minor mode through tonic edits and reloads', async ({ page }) => {
+ await newChart(page);
+ await page.getByLabel('Chord progression').fill('key: Am\nAm E7');
+ await page.getByLabel('Original key', { exact: true }).selectOption('D');
+ await expect(page.getByLabel('Chord progression')).toHaveValue('key: Dm\nAm E7');
+ await save(page, 'Add');
+ await page.reload();
+ await action(page, 'Edit current chart');
+ await expect(page.getByLabel('Chord progression')).toHaveValue('key: Dm\nAm E7');
+});
+
+test('reports reserved iReal separators for both exports and still downloads lossless text', async ({ page }) => {
+ await newChart(page);
+ await page.getByLabel('Chord progression').fill('title: A = B\nkey: Am\nAm E7');
+ await save(page, 'Add');
+ await action(page, 'Export current chart');
+ const downloads: string[] = [];
+ page.on('download', download => downloads.push(download.suggestedFilename()));
+ await page.getByRole('button', { name: 'Copy song link', exact: true }).click();
+ await expect(page.getByRole('alert')).toContainText('Title contains "="');
+ await page.getByRole('button', { name: 'Export song for iReal Pro: A = B', exact: true }).click();
+ await expect(page.getByRole('alert')).toContainText('Title contains "="');
+ expect(downloads).toEqual([]);
+ const pending = page.waitForEvent('download');
+ await page.getByRole('button', { name: 'Download chord text', exact: true }).click();
+ const download = await pending;
+ expect(readFileSync((await download.path())!, 'utf8')).toBe('title: A = B\nkey: Am\nAm E7');
+});

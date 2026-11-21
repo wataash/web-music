@@ -43,9 +43,12 @@ export function chordLyric(id: string, index: number): string {
     const sourceIndex = practiceEntries(id, 0)[index]?.chordIndex;
     if (sourceIndex === undefined) return "";
     let chordIndex: number | undefined;
+    let alternate = false;
     const words: string[] = [];
     for (const token of score.blocks.flat() as ScoreToken[]) {
-      if (token.chordIndex !== undefined) chordIndex = token.chordIndex;
+      if (token.kind === "text" && token.raw === "(") alternate = true;
+      else if (token.kind === "text" && token.raw === ")") alternate = false;
+      else if (!alternate && token.chordIndex !== undefined) chordIndex = token.chordIndex;
       else if (token.kind === "comment" && token.name === "lyrics" && chordIndex === sourceIndex) words.push(token.text ?? "");
     }
     return words.join(" ").replace(/\s+/g, " ").trim();

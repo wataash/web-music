@@ -3,7 +3,9 @@
 import { expect, it } from 'vitest';
 import { scramble } from '@web-music/ireal';
 import { parseChordImport } from './chord-import';
+import { createCustomChart, exportCustomChartText } from './custom-chart';
 import { exportIrealLink, exportIrealHtml } from './chord-export';
+import { describeChord } from './chords';
 import { legacyIrealLabel } from './ireal-labels';
 
 const chart = (name: string, music: string) => `${name}=Writer=Note=Swing=C-=-2=1r34LbKcu7${scramble(music)}=Jazz=123=2`;
@@ -32,6 +34,15 @@ it.skipIf(!process.env.IREAL_PLAYLIST_PATH)('round-trips every chart in the loca
   expect(await parseChordImport(exportIrealHtml(first.songs, first.songs[0].playlist))).toEqual(first);
 }, 30000);
 
+it.each([
+ ['title: A = B\nC', 'Title'], ['artist: A = B\nC', 'Composer / artist'],
+ ['| C {a=b} |', 'Chart notation'],
+])('rejects reserved separators in %s without changing the source', (source, label) => {
+ const song = createCustomChart(source, '', 'C');
+ expect(() => exportIrealLink([song])).toThrow(label + ' contains "="');
+ expect(() => exportIrealHtml([song])).toThrow('contains "="');
+ expect(exportCustomChartText(song)).toContain(source);
+});
 it('round-trips equals signs in playlist names through song links and playlist HTML', async () => {
   const input = [chart('Study', 'C7Z'), chart('Encore', 'F7Z'), 'Set A=B'].join('===');
   const imported = await parseChordImport('irealb://' + encodeURIComponent(input));
@@ -59,6 +70,15 @@ it('rejects a playlist name that would be read as a chorus count', async () => {
   expect(() => exportIrealLink(songs, '3===Set')).toThrow('Rename the playlist');
   const valid = await parseChordImport(exportIrealHtml(songs, 'Set===Three'));
   expect(valid.songs[0].playlist).toBe('Set===Three');
+});
+
+it('restores practice keys and transposable annotations across modulations', async () => {
+  const chart = createCustomChart('C\nkey: Dm\nDm A7\nkey: Eb\nEb', '', 'C');
+  const { songs: [song] } = await parseChordImport(exportIrealLink([chart]));
+  expect(song.chordKeys).toEqual(['C', 'D', 'D', 'Eb']);
+  const changes = song.metadata.score.blocks.flat().filter(token => token.name === 'key-change');
+  expect(changes.map(token => token.text)).toEqual(['Dm', 'Eb']);
+  expect((await parseChordImport(exportIrealLink([song]))).songs[0]).toEqual(song);
 });
 
 it.each([['===3=Extra', 'Choruses', '3'], ['=Jazz===Extra', 'Accompaniment style', 'Jazz'], ['=Jazz=120===Extra', 'Tempo (BPM)', '120']])('preserves extended fields in every song position with %s', async (settings, label, value) => {
@@ -90,6 +110,40 @@ it('rejects a playlist that would silently shift metadata between songs', async 
   expect(() => exportIrealLink([first, second], 'Set')).toThrow('metadata');
 });
 
+it('restores custom tensions and slash basses through links and HTML with a URL-like title', async () => {
+  const chart = createCustomChart('Am7(13) C/Ebb G7(b9,13) D/F##', 'irealb://Example', 'C');
+  for (const exportChart of [exportIrealLink, exportIrealHtml]) {
+    const result = await parseChordImport(exportChart([chart]));
+    expect(result.errors).toEqual([]);
+    expect(result.songs).toHaveLength(1);
+    expect(result.songs[0].title).toBe(chart.title);
+    const describe = (symbol: string) => describeChord(symbol, 'C', 'C');
+    expect(result.songs[0].chords.map(describe)).toEqual(chart.chords.map(describe));
+  }
+});
+
+it('exports compact barlines with the same notation as spaced barlines', async () => {
+  const compact = createCustomChart('|:Dm7|G7(b9)/B:|Cmaj7||F7|]', 'Changes', 'C');
+  const spaced = createCustomChart('|: Dm7 | G7(b9)/B :| Cmaj7 || F7 |]', 'Changes', 'C');
+  expect(compact.chords).toEqual(spaced.chords);
+  expect(compact.metadata.score).toEqual(spaced.metadata.score);
+  expect(await parseChordImport(exportIrealHtml([compact]))).toEqual(await parseChordImport(exportIrealHtml([spaced])));
+});
+
+it('keeps written meters in custom charts and only exports meters iReal can represent', async () => {
+  const meters = (song: ReturnType<typeof createCustomChart>) =>
+    song.metadata.score.blocks.flat().filter(token => token.label === 'Time signature').map(token => token.text);
+  const custom = createCustomChart('1/2 | C |\n3/16 | G |', 'Meter study', 'C');
+  expect(meters(custom)).toEqual(['1/2', '3/16']);
+  expect(exportCustomChartText(custom)).toContain(custom.customText);
+  for (const write of [exportIrealHtml, exportIrealLink]) expect(() => write([custom])).toThrow('1/2');
+
+  const supported = createCustomChart('12/8 | C |\n3/8 | G |', 'Meter study', 'C');
+  const parsed = await parseChordImport(exportIrealHtml([supported]));
+  expect(parsed.errors).toEqual([]);
+  expect(meters(parsed.songs[0])).toEqual(['12/8', '3/8']);
+});
+
 it('keeps encoding-marker text in titles and composers when round-tripping a playlist', async () => {
   const marker = '1r34LbKcu7';
   const entries = [
@@ -108,6 +162,17 @@ it('keeps encoding-marker text in titles and composers when round-tripping a pla
     expect(marked.playlist).toBe('Practice');
     expect(await parseChordImport(exportIrealHtml(imported.songs, 'Practice'))).toEqual(imported);
   }
+});
+
+it('keeps parenthesized tensions inside an alternate chord on export and import', async () => {
+  const chart = createCustomChart('| Dm7 (G7(b9,13)/B) | C |', 'Alternates', 'C');
+  const imported = await parseChordImport(exportIrealHtml([chart]));
+  expect(imported.errors).toEqual([]);
+  expect(imported.songs[0].chords).toEqual(['Dm7', 'G7(b9,13)/B', 'C']);
+  const tokens = imported.songs[0].metadata.score.blocks.flat();
+  const alternate = tokens.findIndex(token => token.chordIndex === 1);
+  expect(tokens.slice(alternate - 1, alternate + 2).map(token => token.raw)).toEqual(['(', 'G7(b9,13)/B', ')']);
+  expect(() => createCustomChart('| Dm7 (G7(b9) |', '', 'C')).toThrow('Line 1: close the alternate with ).');
 });
 
 it('restores written keys with musical accidentals and positioned modulation marks', async () => {
