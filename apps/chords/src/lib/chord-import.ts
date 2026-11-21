@@ -12,15 +12,53 @@ import { parseChordWiki } from "./chordwiki-import";
 
 export type ChordImportFormat = "ireal" | "chordwiki" | "list";
 
-export type ImportedSong = ChordSong & { metadata: SongMetadata; playlist: string; importedAt?: number; customText?: string };
+export type ImportedSong = ChordSong & { metadata: SongMetadata; playlist: string; additionalPlaylists?: string[]; playlistPositions?: Record<string, number[]>; importedAt?: number; customText?: string };
+
+export function songPlaylists(song: ImportedSong): string[] {
+  return [song.playlist, ...(song.additionalPlaylists ?? [])];
+}
+
+function mergeMembership(song: ImportedSong, existing?: ImportedSong): ImportedSong {
+  if (!existing) return song;
+  const [playlist, ...additionalPlaylists] = new Set([...songPlaylists(existing), ...songPlaylists(song)]);
+  return additionalPlaylists.length ? { ...song, playlist, additionalPlaylists } : song;
+}
+
+function uniqueSongs(songs: ImportedSong[]): ImportedSong[] {
+  const unique = new Map<string, ImportedSong>();
+  for (const song of songs) unique.set(song.id, mergeMembership(song, unique.get(song.id)));
+  return [...unique.values()];
+}
 
 // IndexedDB has room for whole playlists, including their source notation.
 // No uploaded chart is sent to a server or added to the built-in song data.
 class ChordLibrary extends Dexie {
   songs!: Table<ImportedSong, string>;
+  playlistOrders!: Table<{ name: string; ids: string[] }, string>;
   constructor() {
     super("music-flashcards-chord-library");
     this.version(1).stores({ songs: "id" });
+    this.version(2).stores({ playlistOrders: "name" });
+    this.version(3).stores({}).upgrade(async tx => {
+      const orders = tx.table<{ name: string; ids: string[] }>("playlistOrders");
+      const songs = await tx.table<ImportedSong>("songs").toArray();
+      songs.sort((a, b) => (a.importedAt ?? 0) - (b.importedAt ?? 0));
+      const memberships = new Map<string, string[]>();
+      for (const song of songs) {
+        if (!song.id.startsWith("ireal-")) continue;
+        for (const name of songPlaylists(song)) {
+          const ids = memberships.get(name) ?? [];
+          ids.push(song.id);
+          memberships.set(name, ids);
+        }
+      }
+      for (const [name, members] of memberships) {
+        const order = await orders.get(name);
+        const ranked = new Set(order?.ids);
+        const missing = members.filter(id => !ranked.has(id));
+        if (missing.length) await orders.put({ name, ids: missing.concat(order?.ids ?? []) });
+      }
+    });
   }
 }
 function normalizeAccidentals(note: string): string {
@@ -52,23 +90,76 @@ function restoreChartKeys(song: ImportedSong): ImportedSong {
 const library = new ChordLibrary();
 export const loadImportedSongs = async () => {
   await library.open();
-  return (await library.songs.toArray()).map(restoreChartKeys);
+  return library.transaction("r", library.songs, library.playlistOrders, async () => {
+    const songs = (await library.songs.toArray()).map(restoreChartKeys);
+    const byId = new Map(songs.map(song => [song.id, song]));
+    for (const { name, ids } of await library.playlistOrders.toArray()) {
+      ids.forEach((id, index) => {
+        const song = byId.get(id);
+        if (song) {
+          const positions = song.playlistPositions ??= Object.create(null);
+          (positions[name] ??= []).push(index);
+        }
+      });
+    }
+    return songs;
+  });
 };
 export const saveImportedSongs = async (songs: ImportedSong[]) => {
   // Dexie retains a failed automatic open. Explicitly open again so a later
   // import can recover after a temporary storage failure without a reload.
   await library.open();
-  return library.transaction("rw", library.songs, async () => {
-    const existing = await library.songs.bulkGet(songs.map(song => song.id));
+  return library.transaction("rw", library.songs, library.playlistOrders, async () => {
+    const groups = new Map<string, string[]>();
+    for (const song of songs) {
+      if (!song.id.startsWith("ireal-")) continue;
+      let ids = groups.get(song.playlist);
+      if (!ids) groups.set(song.playlist, ids = []);
+      ids.push(song.id);
+    }
+    for (const [name, incoming] of groups) {
+      const previous = (await library.playlistOrders.get(name))?.ids ?? [];
+      // A partial import is already represented if its entries appear in order.
+      let matched = 0;
+      for (const id of previous) {
+        if (id === incoming[matched]) matched++;
+      }
+      if (matched === incoming.length) continue;
+
+      // Replace one slot per incoming occurrence, keeping extra repeats in place.
+      const remaining = new Map<string, number>();
+      for (const id of incoming) remaining.set(id, (remaining.get(id) ?? 0) + 1);
+      const ids: string[] = [];
+      let index = 0;
+      for (const id of previous) {
+        const count = remaining.get(id) ?? 0;
+        if (count > 0) {
+          ids.push(incoming[index++]);
+          remaining.set(id, count - 1);
+        } else ids.push(id);
+      }
+      ids.push(...incoming.slice(index));
+      await library.playlistOrders.put({ name, ids });
+    }
+    const batch = uniqueSongs(songs);
+    const existing = await library.songs.bulkGet(batch.map(song => song.id));
     const start = Date.now();
-    return library.songs.bulkPut(songs.map((song, index) => ({ ...song, importedAt: existing[index]?.importedAt ?? start + index / Math.max(1, songs.length) })));
+    return library.songs.bulkPut(batch.map((song, index) => ({ ...mergeMembership(song, existing[index]), importedAt: existing[index]?.importedAt ?? start + index / batch.length })));
   });
 };
-export const deleteImportedSong = (id: string) => library.songs.delete(id);
+export const deleteImportedSong = (id: string) => library.transaction("rw", library.songs, library.playlistOrders, async () => {
+  const song = await library.songs.get(id);
+  if (!song) return;
+  for (const name of songPlaylists(song)) {
+    const order = await library.playlistOrders.get(name);
+    if (order) await library.playlistOrders.put({ name, ids: order.ids.filter(member => member !== id) });
+  }
+  await library.songs.delete(id);
+});
 
 // What a chart typed as a chord list needs besides its text, and what an
 // edited chart keeps.
-export type ChordImportOptions = Readonly<{ title?: string; key?: string; id?: string }>;
+export type ChordImportOptions = Readonly<{ title?: string; key?: string; id?: string; retainPlaylistEntries?: boolean }>;
 
 // The reader names the notation; a paste that plainly belongs to another
 // one is pointed there rather than parsed as nothing.
@@ -108,5 +199,5 @@ export async function parseChordImport(text: string, format: ChordImportFormat =
       errors.push(`${source.title}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  return { songs: [...new Map(songs.map(song => [song.id, song])).values()], errors };
+  return { songs: options.retainPlaylistEntries ? songs : uniqueSongs(songs), errors };
 }

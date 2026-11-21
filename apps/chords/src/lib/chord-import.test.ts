@@ -58,3 +58,19 @@ it("preserves pre-English-parser song IDs while storing English labels", async (
   expect(result.songs[0].metadata.score.fields[0].label).toBe('Title');
   expect(result.songs[0].metadata.score.blocks.flat()).toContainEqual(expect.objectContaining({ label: 'Time signature' }));
 });
+
+it("keeps each link's playlist and leaves unlisted songs unlisted", async () => {
+  const links = [link(song('First', 'C') + '===Morning'), link(song('Second', 'F') + '===Evening'), link(song('Third', 'G'))];
+  const result = await parseChordImport(links.join('\n'));
+  expect(result.errors).toEqual([]);
+  expect(result.songs.map(song => song.playlist)).toEqual(['Morning', 'Evening', '']);
+});
+
+it("retains both memberships for one chart while keeping its original ID", async () => {
+  const entry = song("Shared", "C7");
+  const morning = link(entry + "===Morning");
+  const evening = link(entry + "===Evening");
+  const first = await parseChordImport(morning);
+  const both = await parseChordImport([morning, evening, morning].join("\n"));
+  expect(both.songs).toEqual([{ ...first.songs[0], additionalPlaylists: ["Evening"] }]);
+});

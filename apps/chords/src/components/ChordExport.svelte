@@ -3,11 +3,12 @@ SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.co
 SPDX-License-Identifier: Apache-2.0
 -->
 <script lang="ts">
-  import type { ImportedSong } from '../lib/chord-import';
+  import { songPlaylists, type ImportedSong } from '../lib/chord-import';
   import { exportIrealHtml, exportIrealLink } from '../lib/chord-export';
   import { exportCustomChartText } from '../lib/custom-chart';
   import { chordWikiText } from '../lib/chordwiki-import';
-  let { song, songs }: { song?: ImportedSong; songs: ImportedSong[] } = $props();
+  let { song, songs, selectedPlaylist }: { selectedPlaylist?: string; song?: ImportedSong; songs: ImportedSong[] } = $props();
+  const exportPlaylist = $derived(song && selectedPlaylist !== undefined && songPlaylists(song).includes(selectedPlaylist) ? selectedPlaylist : song?.playlist);
   let dialog: HTMLDialogElement;
   let error = $state('');
   let copied = $state(false);
@@ -17,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     if (!song) return;
     error = ''; copied = false;
     let link: string;
-    try { link = exportIrealLink([song], song.playlist); }
+    try { link = exportIrealLink([song], exportPlaylist); }
     catch (cause) { error = cause instanceof Error ? cause.message : String(cause); return; }
     try { await navigator.clipboard.writeText(link); copied = true; }
     catch { error = 'Could not copy the link. Export an HTML file instead.'; }
@@ -26,14 +27,19 @@ SPDX-License-Identifier: Apache-2.0
   // ChordWiki source the score preserved.
   const textOf = (song: ImportedSong) => song.customText !== undefined ? exportCustomChartText(song) : chordWikiText(song);
   const text = $derived(song && textOf(song));
-  const playlistSongs = $derived(song ? songs.filter(candidate => candidate.playlist === song.playlist && chordWikiText(candidate) === undefined) : []);
+  const playlists = $derived((song ? songPlaylists(song) : []).map(name => ({
+    name, members: songs.filter(candidate => songPlaylists(candidate).includes(name) && chordWikiText(candidate) === undefined)
+      .flatMap(song => (song.playlistPositions?.[name] ?? [Infinity]).map(position => ({ song, position })))
+      .sort((a, b) => a.position - b.position || (a.song.importedAt ?? 0) - (b.song.importedAt ?? 0))
+      .map(entry => entry.song),
+  })));
   // The text a chart came in as, or iReal's HTML of the song or its playlist.
-  function download(kind: 'text' | 'song' | 'playlist') {
+  function download(kind: 'text' | 'song' | 'playlist', group?: { name: string; members: ImportedSong[] }) {
     if (!song) return;
     try {
       const custom = kind === 'text';
-      const title = kind === 'playlist' ? song.playlist || 'Unlisted imports' : song.title;
-      const content = custom ? text! : exportIrealHtml(kind === 'playlist' ? playlistSongs : [song], song.playlist);
+      const title = group ? group.name || 'Unlisted imports' : song.title;
+      const content = custom ? text! : exportIrealHtml(group?.members ?? [song], group?.name ?? exportPlaylist);
       const url = URL.createObjectURL(new Blob([content], { type: custom ? 'text/plain;charset=utf-8' : 'text/html;charset=utf-8' }));
       const anchor = document.createElement('a');
       anchor.href = url;
@@ -61,7 +67,9 @@ SPDX-License-Identifier: Apache-2.0
     <button onclick={copyLink}>Copy song link</button>
     {#if copied}<p role="status">Song link copied.</p>{/if}
     <button onclick={() => download('song')}>Export song: {song.title}</button>
-    <button onclick={() => download('playlist')}>Export playlist: {song.playlist || 'Unlisted imports'} ({playlistSongs.length})</button>
+    {#each playlists as group}
+      <button onclick={() => download('playlist', group)}>Export playlist: {group.name || 'Unlisted imports'} ({group.members.length})</button>
+    {/each}
   {/if}
   {#if error}<p role="alert">{error}</p>{/if}
   <button onclick={() => dialog.close()}>Cancel</button>

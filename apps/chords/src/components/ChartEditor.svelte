@@ -133,7 +133,7 @@ key: C
   let preview = $state<{ songs: ImportedSong[]; errors: string[] } | null>(null);
   let previewStale = $state(false);
   $effect(() => {
-    const value = text; const notation = format; const options = { title, key, id: editingId };
+    const value = text; const notation = format; const options = { title, key, id: editingId, retainPlaylistEntries: true };
     if (!value.trim()) { preview = null; previewStale = false; return; }
     previewStale = true;
     let current = true;
@@ -155,17 +155,26 @@ key: C
     message = edited ? "Saving…" : "Adding…";
     errors = [];
     try {
-      const texts = typeof value === "string" ? [value] : await Promise.all(value.map(file => file.text()));
-      if (!active()) return;
-      const results = await Promise.all(texts.map(text =>
-        parseChordImport(text, notation, { ...options, id: options.id ?? (copy && notation === "chordwiki" ? "chordwiki-" + crypto.randomUUID() : undefined) })));
+      const parse = (source: string) => parseChordImport(source, notation, { ...options, retainPlaylistEntries: true,
+        id: options.id ?? (copy && notation === "chordwiki" ? "chordwiki-" + crypto.randomUUID() : undefined) });
+      const results = typeof value === "string" ? [await parse(value)] : await Promise.all(value.map(async file => {
+        try {
+          const source = await file.text();
+          if (!active()) return { songs: [], errors: [] };
+          const result = await parse(source);
+          return { songs: result.songs, errors: result.errors.map(error => file.name + ": " + irealLabel(error)) };
+        } catch (error) {
+          return { songs: [], errors: [file.name + ": " + irealLabel(error instanceof Error ? error.message : String(error))] };
+        }
+      }));
       if (!active()) return;
       const parsed = { songs: results.flatMap(result => result.songs), errors: results.flatMap(result => result.errors) };
       errors = parsed.errors;
       if (parsed.songs.length) await onadd(parsed.songs, notation, edited, active);
       if (!active()) return;
-      message = parsed.songs.length
-        ? edited ? "Saved." : `Added ${parsed.songs.length} ${parsed.songs.length === 1 ? "song" : "songs"}.${parsed.errors.length ? ` ${parsed.errors.length} items could not be added.` : ""}`
+      const count = new Set(parsed.songs.map(song => song.id)).size;
+      message = count
+        ? edited ? "Saved." : `Added ${count} ${count === 1 ? "song" : "songs"}.${parsed.errors.length ? ` ${parsed.errors.length} ${parsed.errors.length === 1 ? "item" : "items"} could not be added.` : ""}`
         : edited ? "Could not save the chart." : "Nothing was added.";
       if (parsed.songs.length) { text = ""; editingId = undefined; }
       if (parsed.songs.length && !parsed.errors.length) open = false;

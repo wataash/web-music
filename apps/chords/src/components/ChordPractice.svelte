@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
   import { CHORD_SONGS, type ChordSong } from "../lib/chord-songs";
   import ChordExport from "./ChordExport.svelte";
   import ChartEditor from "./ChartEditor.svelte";
-  import { loadImportedSongs, saveImportedSongs, deleteImportedSong, type ImportedSong } from "../lib/chord-import";
+  import { songPlaylists, loadImportedSongs, saveImportedSongs, deleteImportedSong, type ImportedSong } from "../lib/chord-import";
   import { CUSTOM_PLAYLIST } from "../lib/custom-chart";
   import { CHORDWIKI_PLAYLIST } from "../lib/chordwiki-import";
   import { loadChordFavorites, saveChordFavorites } from "../lib/chord-favorites";
@@ -73,15 +73,15 @@ SPDX-License-Identifier: Apache-2.0
   function playlistRank(playlist: string): number {
     return playlist === CUSTOM_PLAYLIST ? 0 : playlist === CHORDWIKI_PLAYLIST ? 1 : playlist ? 2 : 3;
   }
-  const playlists = $derived([...new Set(importedSongs.map(song => song.playlist))].sort((a, b) => playlistRank(a) - playlistRank(b) || a.localeCompare(b)));
+  const playlists = $derived([...new Set(importedSongs.flatMap(songPlaylists))].sort((a, b) => playlistRank(a) - playlistRank(b) || a.localeCompare(b)));
   const songStyles = $derived(new Map(importedSongs.map(song => [song.id, song.metadata.score.fields.find(field => irealLabel(field.label) === 'Style')?.value ?? ""])));
   // How many songs each playlist holds, shown in its option; the counts
   // ignore the other filters.
-  const playlistCounts = $derived(new Map(playlists.map(playlist => [playlist, importedSongs.filter(song => song.playlist === playlist).length])));
+  const playlistCounts = $derived(new Map(playlists.map(playlist => [playlist, importedSongs.filter(song => songPlaylists(song).includes(playlist)).length])));
   const searchText = $derived(songSearch.toLocaleLowerCase());
   function matchesLibrary(song: ChordSong): boolean {
     const imported = importedById.get(song.id);
-    return (!playlistFilter || (playlistFilter === 'examples' ? !imported : !!imported && 'playlist:' + imported.playlist === playlistFilter)) &&
+    return (!playlistFilter || (playlistFilter === 'examples' ? !imported : !!imported && songPlaylists(imported).some(name => 'playlist:' + name === playlistFilter))) &&
       (song.title + " " + song.artist).toLocaleLowerCase().includes(searchText);
   }
   let favoriteIds = $state(loadChordFavorites());
@@ -464,7 +464,7 @@ SPDX-License-Identifier: Apache-2.0
     </dialog>
   {/if}
   <!-- Outside the library, so they open from the settings sheet. -->
-  <ChordExport bind:this={chordExport} song={importedById.get(selectedSong.id)} songs={importedSongs} />
+  <ChordExport selectedPlaylist={playlistFilter.startsWith('playlist:') ? playlistFilter.slice(9) : undefined} bind:this={chordExport} song={importedById.get(selectedSong.id)} songs={importedSongs} />
   <ChartEditor bind:this={chartEditor} bind:open={importOpen} song={importedById.get(selectedSong.id)} onadd={async (incoming, format, edited, isCurrent) => {
     await importSongs(incoming, isCurrent);
     if (!isCurrent()) return;
