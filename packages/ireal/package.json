@@ -22,6 +22,9 @@
   "scripts": {
     "test": "node --test src/*.test.js"
   },
+  "dependencies": {
+    "entities": "^8.0.0"
+  },
   "engines": {
     "node": ">=22.5"
   }

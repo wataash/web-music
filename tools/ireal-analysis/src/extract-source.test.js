@@ -16,6 +16,9 @@ test("CLI supports stdin and both output formats and reports errors", () => {
   const json = run(["-"], html("C-7"));
   assert.equal(json.status, 0);
   assert.deepEqual(JSON.parse(json.stdout).chords, ["Cm7"]);
+  const legacy = run(["--output", "chords", "-"], "irealbook://Example=Writer=Swing=C=n=G7");
+  assert.equal(legacy.status, 0, legacy.stderr);
+  assert.equal(legacy.stdout, "G7\n");
   const invalid = run(["--output", "csv", "-"], "[C]");
   assert.equal(invalid.status, 1);
   assert.equal(invalid.stdout, "");

@@ -1,15 +1,22 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Wataru Ashihara <wataash0607@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
-import { IREAL_HEADER_LABELS as headers, IREAL_MUSIC_PREFIX, IREAL_PLAYBACK_LABELS as playback, scramble } from '@web-music/ireal';
+import { extractIrealPlaylist, IREAL_HEADER_LABELS as headers, IREAL_MUSIC_PREFIX, IREAL_PLAYBACK_LABELS as playback, scramble } from '@web-music/ireal';
 import { irealLabel } from './ireal-labels';
 import type { ImportedSong } from './chord-import';
 
-function songPayload(song: ImportedSong): string {
-  if (song.metadata.score.format === 'chordwiki') throw new Error('Use text export for ChordWiki charts.');
+function validateIrealField(value: string, label: string): void {
+  if (value.includes('=')) throw new Error(
+    'Cannot export to iReal Pro: ' + label + ' contains "=". Remove it or use text export to preserve the original chart.',
+  );
+}
+
+function songPayload(score: ImportedSong['metadata']['score']): string {
+  if (score.format === 'chordwiki') throw new Error('Use text export for ChordWiki charts.');
   const before: string[] = Array(headers.length).fill('');
   const after: string[] = [];
-  for (const field of song.metadata.score.fields) {
+  for (const field of score.fields) {
     const label = irealLabel(field.label);
+    validateIrealField(field.value, label);
     const headerIndex = headers.indexOf(label);
     const playbackIndex = playback.indexOf(label);
     const extraHeader = /^Additional information (\d+)$/.exec(label);
@@ -22,14 +29,28 @@ function songPayload(song: ImportedSong): string {
   }
   // Source spelling includes compressed spacing, alternatives and annotations.
   // Never serialize the expanded practice sequence or the transposed display.
-  const raw = song.metadata.score.blocks.flat().map(token => token.raw).join('');
+  const raw = score.blocks.flat().map(token => token.raw).join('');
+  validateIrealField(raw, 'Chart notation');
   return [...before, IREAL_MUSIC_PREFIX + scramble(raw), ...after].join('=');
 }
 
 export function exportIrealLink(songs: readonly ImportedSong[], playlist = ''): string {
   if (!songs.length) throw new Error('No imported songs to export.');
-  const payload = songs.map(songPayload).join('===') + (playlist ? '===' + playlist : '');
-  return 'irealb://' + encodeURIComponent(payload).replaceAll("'", '%27');
+  const entries = songs.map(song => songPayload(song.metadata.score));
+  // Empty playback fields can look like a playlist delimiter. Terminate them explicitly.
+  const last = entries.at(-1)!;
+  if (playlist || last.includes('===', last.indexOf(IREAL_MUSIC_PREFIX))) entries.push(playlist);
+  const payload = entries.join('===');
+  const link = 'irealb://' + encodeURIComponent(payload).replaceAll("'", '%27');
+  const decoded = extractIrealPlaylist(link);
+  if (decoded.name !== playlist) {
+    throw new Error('Cannot export this playlist name unambiguously. Rename the playlist to remove "===".');
+  }
+  if (decoded.errors.length || decoded.songs.length !== songs.length ||
+      decoded.songs.some((song, index) => songPayload(song.score) !== entries[index])) {
+    throw new Error('Cannot export this chart without changing its notation or metadata.');
+  }
+  return link;
 }
 
 export function exportIrealHtml(songs: readonly ImportedSong[], playlist = ''): string {

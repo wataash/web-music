@@ -3,7 +3,7 @@
 
 import { legacyIrealLabel } from "./ireal-labels";
 import Dexie, { type Table } from "dexie";
-import { extractIrealPlaylist } from "@web-music/ireal";
+import { containsIrealLink, extractIrealPlaylist } from "@web-music/ireal";
 import type { ChordSong } from "./chord-songs";
 import type { SongMetadata } from "./chord-metadata";
 import { describeChord, parseNote } from "./chords";
@@ -23,10 +23,36 @@ class ChordLibrary extends Dexie {
     this.version(1).stores({ songs: "id" });
   }
 }
+function normalizeAccidentals(note: string): string {
+  return note.replaceAll("♭", "b").replaceAll("♯", "#");
+}
+
+// Interpret the same key annotations on fresh imports and previously saved songs.
+function restoreChartKeys(song: ImportedSong): ImportedSong {
+  if (song.customText !== undefined) return refreshCustomChart(song);
+  if (song.metadata.score.format !== 'ireal') return song;
+  let tonic = song.originalKey;
+  let keys: string[] | undefined;
+  for (const block of song.metadata.score.blocks) {
+    for (const token of block) {
+      const change = token.kind === 'comment' && /^<(?:\*\d+)?Key: ([A-G](?:b*|#*))([m-]?)>$/.exec(normalizeAccidentals(token.raw));
+      if (change) {
+        tonic = change[1];
+        keys ??= Array(song.chords.length).fill(song.originalKey);
+        token.name = 'key-change';
+        token.text = tonic + (change[2] ? 'm' : '');
+      } else if (keys && token.chordIndex !== undefined) {
+        keys[token.chordIndex] = tonic;
+      }
+    }
+  }
+  return keys ? { ...song, chordKeys: keys } : song;
+}
+
 const library = new ChordLibrary();
 export const loadImportedSongs = async () => {
   await library.open();
-  return (await library.songs.toArray()).map(refreshCustomChart);
+  return (await library.songs.toArray()).map(restoreChartKeys);
 };
 export const saveImportedSongs = async (songs: ImportedSong[]) => {
   // Dexie retains a failed automatic open. Explicitly open again so a later
@@ -48,7 +74,7 @@ export type ChordImportOptions = Readonly<{ title?: string; key?: string; id?: s
 // one is pointed there rather than parsed as nothing.
 export async function parseChordImport(text: string, format: ChordImportFormat = "ireal", options: ChordImportOptions = {}) {
   const songs: ImportedSong[] = [];
-  const irealLink = /ireal(?:book|b)?:\/\//.test(text);
+  const irealLink = containsIrealLink(text);
   if (format === "list") {
     try { songs.push(createCustomChart(text, options.title ?? "", options.key ?? "C", options.id)); }
     catch (error) { return { songs, errors: [error instanceof Error ? error.message : String(error)] }; }
@@ -61,23 +87,23 @@ export async function parseChordImport(text: string, format: ChordImportFormat =
     return { songs, errors: [] };
   }
   if (!irealLink && /\[[A-G][^\]]*\]/.test(text)) return { songs, errors: ["No iReal Pro link found. This looks like a ChordWiki chart: choose ChordWiki to import it."] };
-  const parsed = extractIrealPlaylist(text);
+  const parsed = extractIrealPlaylist(text, { includeLegacyIdSource: true });
   const errors = parsed.errors.map(error => `${error.title}: ${error.message}`);
-  for (const source of parsed.songs) {
+  for (const { playlist, legacyIdSource, ...source } of parsed.songs) {
     try {
-      const originalKey = source.originalKey.replace(/[-m]$/, "");
+      const originalKey = normalizeAccidentals(source.originalKey).replace(/[-m]$/, "");
       parseNote(originalKey);
       for (const chord of new Set(source.chords)) describeChord(chord, originalKey, originalKey, true);
-      const content = JSON.stringify(source, function (key, value) {
+      const content = JSON.stringify(legacyIdSource ?? source, function (key, value) {
         if (key === "label") return legacyIrealLabel(value);
         if (key === "text" && this.kind === "size") return value === "Narrow" ? "狭" : value === "Standard" ? "標準" : value;
         return value;
       });
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(content));
       const id = "ireal-" + [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
-      songs.push({ id, title: source.title || "Untitled", artist: source.artist,
-        originalKey, chords: source.chords, playlist: parsed.name,
-        metadata: { comments: source.comments, annotations: source.annotations, score: source.score } });
+      songs.push(restoreChartKeys({ id, title: source.title || "Untitled", artist: source.artist,
+        originalKey, chords: source.chords, playlist,
+        metadata: { comments: source.comments, annotations: source.annotations, score: source.score } }));
     } catch (error) {
       errors.push(`${source.title}: ${error instanceof Error ? error.message : String(error)}`);
     }

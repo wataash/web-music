@@ -49,3 +49,71 @@ test("skips malformed links before, between and after valid links", () => {
   assert.deepEqual(invalid.songs, []);
   assert.equal(invalid.errors.length, 1);
 });
+
+test("keeps apostrophes in HTML and pasted song links", () => {
+  const url = link(song("It's You", "G7"));
+  for (const input of [url, `<a href="${url}">Song</a>`]) {
+    const result = extractIrealPlaylist(input);
+    assert.deepEqual(result.errors, []);
+    assert.deepEqual(result.songs.map(song => song.title), ["It's You"]);
+  }
+});
+
+test("keeps a parenthesized no-chord marker separate from chord modifiers", () => {
+  const result = extractIrealPlaylist(link(song("Alternatives", "C(n)G7(b9,#11)")));
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.songs[0].chords, ["C", "N.C.", "G7(b9,#11)"]);
+});
+
+test("decodes character references once in HTML attributes only", () => {
+  const url = link(song("Don't", "C"));
+  for (const ref of ["&#39;", "&#x27;", "&apos;"]) {
+    const html = `<a href='${url.replace("'", ref)}'>song</a>`;
+    assert.equal(extractIrealPlaylist(html).songs[0].title, "Don't");
+  }
+  const literal = url.replace("'", "&amp;");
+  assert.equal(extractIrealPlaylist(literal).songs[0].title, "Don&amp;t");
+  assert.equal(extractIrealPlaylist(`<a href="${literal.replace("&", "&amp;")}">song</a>`).songs[0].title, "Don&amp;t");
+});
+
+test("reads spacing controls adjacent to chord qualities", () => {
+  const raw = "C7sG7susadd3lF7altsDadd9/A";
+  const result = extractIrealPlaylist(link(song("Spacing", raw)));
+  assert.deepEqual(result.errors, []);
+  const [chart] = result.songs;
+  assert.deepEqual(chart.chords, ["C7", "G7susadd3", "F7alt", "Dadd9/A"]);
+  const tokens = chart.score.blocks.flat();
+  assert.deepEqual(tokens.filter(t => t.kind === "size").map(t => t.raw), ["s", "l", "s"]);
+  assert.deepEqual(tokens.filter(t => t.kind === "chord").map(t => Boolean(t.narrow)), [false, true, false, true]);
+  assert.equal(tokens.map(t => t.raw).join(""), raw);
+});
+
+test("accepts mixed-case schemes in pasted links and HTML without changing song text", () => {
+  for (const url of [link(song("MiXeD", "G7")).replace("irealb:", "IRealB:"), "IRealBook://MiXeD=Writer=Swing=C=n=G7"]) {
+    for (const input of [url, `<a href="${url}">song</a>`]) {
+      const result = extractIrealPlaylist(input);
+      assert.deepEqual(result.errors, []);
+      assert.deepEqual(result.songs.map(song => [song.title, song.chords]), [["MiXeD", ["G7"]]]);
+    }
+  }
+});
+
+test("reports incomplete links without taking the next playlist's name", () => {
+  const urls = ["irealbook://Broken=Writer=Swing=C", "irealb://", "irealbook://Good=Writer=Swing=C=n=G7=Practice"];
+  for (const text of [urls.join("\n"), urls.map(url => `<a href="${url}">Import</a>`).join("")]) {
+    const result = extractIrealPlaylist(text);
+    assert.equal(result.name, "Practice");
+    assert.deepEqual(result.songs.map(song => [song.title, song.playlist]), [["Good", "Practice"]]);
+    assert.deepEqual(result.errors.map(error => error.title), ["Broken", "Link 2"]);
+  }
+});
+
+test("only takes the collection name from a playlist with an imported song", () => {
+  const broken = link(song("Broken chart", "C?") + "===Rejected set");
+  const good = link(song("Good chart", "F7") + "===Practice");
+  const result = extractIrealPlaylist([broken, good].join("\n"));
+  assert.deepEqual(result.errors.map(error => error.title), ["Broken chart"]);
+  assert.deepEqual(result.songs.map(song => [song.title, song.playlist]), [["Good chart", "Practice"]]);
+  assert.equal(result.name, "Practice");
+  assert.equal(extractIrealPlaylist(broken).name, "");
+});

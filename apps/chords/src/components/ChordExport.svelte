@@ -16,7 +16,10 @@ SPDX-License-Identifier: Apache-2.0
   async function copyLink() {
     if (!song) return;
     error = ''; copied = false;
-    try { await navigator.clipboard.writeText(exportIrealLink([song], song.playlist)); copied = true; }
+    let link: string;
+    try { link = exportIrealLink([song], song.playlist); }
+    catch (cause) { error = cause instanceof Error ? cause.message : String(cause); return; }
+    try { await navigator.clipboard.writeText(link); copied = true; }
     catch { error = 'Could not copy the link. Export an HTML file instead.'; }
   }
   // A chart that came in as text goes out as text: the editor's own, or the
