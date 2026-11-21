@@ -109,7 +109,7 @@ export function resolveIreal(blocks: ScoreToken[][]): { rows: IrealRow[]; events
         if (item.token.chordIndex !== undefined) append(item.token.chordIndex, item);
         else if (isRepeat(item)) {
           const twoBars = item.token.text === '𝄎';
-          item.repeatColumn = (twoBars ? end : (start + end) / 2) - row * 16;
+          if (item.token.text !== '/') item.repeatColumn = (twoBars ? end : (start + end) / 2) - row * 16;
           const previous = item.token.text === '/' ? (measure.length ? measure.slice(-1) : history.at(-1)?.slice(-1) ?? []) : history.at(twoBars ? -2 : -1) ?? [];
           for (const chord of previous) append(chord, item);
           if (twoBars && previous.length) continuation = { chords: history.at(-1) ?? [], owner: item };

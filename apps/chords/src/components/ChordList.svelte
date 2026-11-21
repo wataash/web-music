@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
     editable = false,
     originalKey,
     targetKey,
-    heading = (symbol: string) => headingChord(symbol, minorNotation()),
+    heading = (chord: AnnotatedChord) => headingChord(chord.symbol, minorNotation()),
     subheading = () => undefined,
     sublabels,
     scaleFor = () => "",
@@ -54,8 +54,8 @@ SPDX-License-Identifier: Apache-2.0
     originalKey?: string;
     targetKey?: string;
     // What a card calls its chord: its name, or its degree in the key.
-    heading?: (symbol: string) => string;
-    subheading?: (symbol: string) => string | undefined;
+    heading?: (chord: AnnotatedChord) => string;
+    subheading?: (chord: AnnotatedChord) => string | undefined;
     sublabels?: string[];
     // The scale laid over a chord, read and changed from its card.
     scaleFor?: (chord: AnnotatedChord) => string;
@@ -71,19 +71,23 @@ SPDX-License-Identifier: Apache-2.0
   const entries: HTMLLIElement[] = [];
   let scrollElement: HTMLElement;
   let loaded = $state<Set<number>>(new Set());
-  onMount(() => {
-    const observer = new IntersectionObserver((changes) => {
+  let observer: IntersectionObserver | undefined;
+  function observeBoard(node: HTMLElement) {
+    observer ??= new IntersectionObserver((changes) => {
       const next = new Set(loaded);
       for (const entry of changes) {
         if (!entry.isIntersecting) continue;
         next.add(Number((entry.target as HTMLElement).dataset.listBoard));
-        observer.unobserve(entry.target);
+        observer?.unobserve(entry.target);
       }
       loaded = next;
-    }, { root: scrollElement, rootMargin: "600px 0px" });
-    scrollElement.querySelectorAll("[data-list-board]").forEach((board) => observer.observe(board));
+    }, { root: node.closest(".chord-list"), rootMargin: "600px 0px" });
+    observer.observe(node);
+    return { destroy: () => observer?.unobserve(node) };
+  }
+  onMount(() => {
     if (currentIndex > 0 && !hasView(viewKey("list-scroll"))) entries[currentIndex]?.scrollIntoView({ block: "start", behavior: "instant" });
-    return () => observer.disconnect();
+    return () => observer?.disconnect();
   });
 
   function selectChord(index: number): void {
@@ -131,13 +135,13 @@ SPDX-License-Identifier: Apache-2.0
           {#if !fullChartOpen}<ChordSource {songId} onselect={(value) => void jumpToSource(value)} indices={chord.sourceIndices ?? []} symbols={sourceSymbols} {sublabels} {originalKey} {targetKey} />{/if}
           <div class="heading">
             <span class="number">{index + 1} / {chords.length}</span>
-            <h2>{heading(chord.symbol)}{#if subheading(chord.symbol)}<span class="chord-name">{subheading(chord.symbol)}</span>{/if}</h2>
+            <h2>{heading(chord)}{#if subheading(chord)}<span class="chord-name">{subheading(chord)}</span>{/if}</h2>
             {#if lyric}<p class="lyric" aria-label="Lyrics">{lyric}</p>{/if}
             {#if !chord.noChord}
               <button disabled={!soundEnabled} aria-label={`${index + 1}: Play ${chord.symbol}`} onclick={() => selectChord(index)}><span aria-hidden="true">▶</span></button>
             {/if}
           </div>
-          <div data-list-board={index} class="list-board" class:loaded={loaded.has(index)} style:aspect-ratio={loaded.has(index) ? undefined : `${CHORD_BOARD_NUT_X + fretCount * CHORD_BOARD_FRET_WIDTH} / ${chordBoardHeight(tuning.length)}`}>
+          <div use:observeBoard data-list-board={index} class="list-board" class:loaded={loaded.has(index)} style:aspect-ratio={loaded.has(index) ? undefined : `${CHORD_BOARD_NUT_X + fretCount * CHORD_BOARD_FRET_WIDTH} / ${chordBoardHeight(tuning.length)}`}>
             {#if loaded.has(index)}
               <ChordFretboard {tuning} {chord} {fretCount} {bassStrings} bind:scale={boardScale} bind:chordScale={() => scaleFor(chord), (id) => onscale(chord, id)} onplay={onplayfret} />
             {/if}

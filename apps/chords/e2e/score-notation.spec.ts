@@ -516,3 +516,37 @@ test('prints only the transposed chart and restores the screen', async ({ page }
   await page.pdf({ path: info.outputPath('list-chart.pdf'), format: 'A4' });
   await expect(output).toHaveCount(0);
 });
+
+test('shows degrees relative to the current modulation', async ({ page }) => {
+  const sheet = await openScore(page, '[A7|<Key: Dm>A7Z');
+  for (const option of ['IIm7', 'Dm7 + IIm7']) {
+    await page.getByRole('button', { name: 'Chord practice settings' }).click();
+    await page.getByRole('group', { name: 'Chord names' }).getByRole('button', { name: option, exact: true }).click();
+    await page.keyboard.press('Escape');
+    const labels = sheet.locator(option === 'IIm7' ? '.chord' : '.sublabel');
+    await expect(labels.nth(0)).toContainText('VI7');
+    await expect(labels.nth(1)).toContainText('V7');
+  }
+});
+
+test('draws the extra fretboard when degree display splits a list row', async ({ page }) => {
+  await openScore(page, '[A7|<Key: Dm>A7Z');
+  await page.getByRole('button', { name: 'List', exact: true }).click();
+  await expect(page.locator('.list-board')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Chord practice settings' }).click();
+  await page.getByRole('button', { name: 'Dm7 + IIm7', exact: true }).click();
+  await page.keyboard.press('Escape');
+  const board = page.locator('.list-board').nth(1);
+  await board.scrollIntoViewIfNeeded();
+  await expect(board.locator('svg').first()).toBeVisible();
+});
+
+test('moves vertically from a chord repeat at its written column', async ({ page }) => {
+  const sheet = await openScore(page, '[Cp' + ' '.repeat(14) + '|FG' + ' '.repeat(6) + 'AZ');
+  const slash = sheet.getByRole('button', { name: 'Practice Repeat previous chord', exact: true });
+  await slash.press('ArrowDown');
+  const below = sheet.getByRole('button', { name: 'G', exact: true });
+  await expect(below).toBeFocused();
+  await below.press('ArrowUp');
+  await expect(slash).toBeFocused();
+});

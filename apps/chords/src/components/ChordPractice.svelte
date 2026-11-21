@@ -254,7 +254,8 @@ SPDX-License-Identifier: Apache-2.0
   const sourceChords = $derived(selectedSong.chords.map((chord, chordIndex) => {
     const sourceKey = selectedSong.chordKeys?.[chordIndex] ?? selectedSong.originalKey;
     const chordTargetKey = transposeChordSymbol(sourceKey, selectedSong.originalKey, targetKey);
-    return describeChord(chord, sourceKey, chordTargetKey, /^(ireal|chordwiki)-/.test(selectedSong.id));
+    const description = describeChord(chord, sourceKey, chordTargetKey, /^(ireal|chordwiki)-/.test(selectedSong.id));
+    return { ...description, degree: chordNames === "names" ? undefined : chordDegree(description.symbol, chordTargetKey, minorNotation) };
   }));
   const entries = $derived(practiceEntries(selectedSong.id, selectedSong.chords.length));
   // Under the chord's name, the words it is sung on, when the chart has them.
@@ -267,14 +268,12 @@ SPDX-License-Identifier: Apache-2.0
       sourceSymbol: selectedSong.chords[entry.chordIndex],
     })),
   );
-  const sourceSymbols = $derived(sourceChords.map(chord => chord.symbol));
   // What the charts and headings call each chord: its name, its degree in
   // the key being practised, or the name with the degree in small under it.
-  const degreeOf = (symbol: string) => chordDegree(symbol, targetKey, minorNotation);
-  const displaySymbols = $derived(chordNames === "degrees" ? sourceSymbols.map(degreeOf) : sourceSymbols);
-  const displaySublabels = $derived(chordNames === "both" ? sourceSymbols.map(degreeOf) : undefined);
-  const heading = (symbol: string) => chordNames === "degrees" ? degreeOf(symbol) : headingChord(symbol, minorNotation);
-  const subheading = (symbol: string) => chordNames === "both" ? degreeOf(symbol) : undefined;
+  const displaySymbols = $derived(sourceChords.map(chord => chordNames === "degrees" ? chord.degree! : chord.symbol));
+  const displaySublabels = $derived(chordNames === "both" ? sourceChords.map(chord => chord.degree!) : undefined);
+  const heading = (chord: AnnotatedChord) => chordNames === "degrees" ? chord.degree! : headingChord(chord.symbol, minorNotation);
+  const subheading = (chord: AnnotatedChord) => chordNames === "both" ? chord.degree : undefined;
   // A chart with an editor shows its own text there.
   const editableChart = $derived(importedById.get(selectedSong.id)?.customText !== undefined);
   const listChords = $derived(uniqueAnnotatedChords(songChords, uniqueBySection ? sectionStarts(songChords) : []));
@@ -533,7 +532,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChordMetadata annotation={current.annotation} />
       {#if !fullChartOpen}<ChordSource {songId} onselect={selectScore} indices={[index]} symbols={displaySymbols} sublabels={displaySublabels} originalKey={selectedSong.originalKey} {targetKey} />{/if}
       <div class="question-heading">
-        <h2>{heading(current.symbol)}{#if subheading(current.symbol)}<span class="chord-name">{subheading(current.symbol)}</span>{/if}</h2>
+        <h2>{heading(current)}{#if subheading(current)}<span class="chord-name">{subheading(current)}</span>{/if}</h2>
         {#if lyric}<p class="lyric" aria-label="Lyrics">{lyric}</p>{/if}
         <label class="progress">
           <input
@@ -567,7 +566,7 @@ SPDX-License-Identifier: Apache-2.0
         {/if}
         <p class="next-chord">
           {#if nextChord}
-            Next: <strong>{heading(nextChord.symbol)}</strong>
+            Next: <strong>{heading(nextChord)}</strong>
           {:else}
             Last chord
           {/if}

@@ -6,7 +6,7 @@ import type { ChordDescription } from "./chords";
 import type { IrealSong } from "@web-music/ireal";
 
 export type ChordAnnotation = Readonly<{ section?: string; comments: readonly string[] }>;
-export type AnnotatedChord = ChordDescription & { annotation?: ChordAnnotation; sourceIndices?: number[]; sourceSymbol?: string };
+export type AnnotatedChord = ChordDescription & { annotation?: ChordAnnotation; sourceIndices?: number[]; degree?: string; sourceSymbol?: string };
 export type SourceScore = IrealSong["score"];
 export type ScoreToken = SourceScore["blocks"][number][number] & { name?: string };
 export type SongMetadata = Pick<IrealSong, "comments" | "annotations" | "score">;
@@ -89,7 +89,7 @@ export function uniqueAnnotatedChords(chords: AnnotatedChord[], sections: readon
   const unique = new Map<string, AnnotatedChord>();
   for (const chord of chords) {
     const section = sections.filter(start => start <= (chord.sourceIndices?.[0] ?? 0)).length;
-    const key = `${section}:${chord.symbol}`;
+    const key = `${section}:${chord.symbol}:${chord.degree ?? ""}`;
     const existing = unique.get(key);
     if (existing) existing.sourceIndices!.push(...chord.sourceIndices ?? []);
     else unique.set(key, { ...chord, sourceIndices: [...chord.sourceIndices ?? []] });
