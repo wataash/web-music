@@ -145,9 +145,19 @@ export const WEB_DIAGRAM_SCRIPT = `
       ellipse(160, y, 13, 8, 0) + " " + ellipse(160, y, 8.6, 3.4, -22) +
       '"/></g>';
     svg.insertAdjacentHTML("beforeend", lines + note);
+    const showPitch = host.hasAttribute("data-show-pitch");
+    if (showPitch) {
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("class", "staff__pitch");
+      label.setAttribute("x", "187");
+      label.setAttribute("y", String(y));
+      label.setAttribute("dy", ".34em");
+      label.textContent = pitch;
+      svg.append(label);
+    }
     const description = svg.querySelector("desc");
     if (description) description.textContent =
-      "A " + clef + " clef staff with a single whole note.";
+      "A " + clef + " clef staff with a single whole note" + (showPitch ? ", " + pitch : "") + ".";
   }
 
   for (const host of document.querySelectorAll("[data-keyboard]")) {
@@ -244,7 +254,7 @@ ${WEB_DIAGRAM_SCRIPT}
 export const WEB_BACK_TEMPLATE = `
 <main class="staff-card">
   <div class="prompt" data-card-part="text">{{Prompt}}</div>
-  <div class="diagram" data-card-part="staff" data-staff="{{AnswerImage}}"></div>
+  <div class="diagram" data-card-part="staff" data-staff="{{AnswerImage}}"{{^Prompt}} data-show-pitch{{/Prompt}}></div>
   <div class="diagram keyboard" data-card-part="keyboard" data-keyboard="{{KeyboardImage}}"></div>
 </main>
 ${WEB_DIAGRAM_SCRIPT}
@@ -323,6 +333,15 @@ export const CARD_CSS = `
   --staff-clip-bottom-length: calc(var(--staff-width) * var(--staff-clip-bottom, 0));
   clip-path: inset(var(--staff-clip-top-length) 0 var(--staff-clip-bottom-length));
   margin-block: calc(-1 * var(--staff-clip-top-length)) calc(-1 * var(--staff-clip-bottom-length));
+}
+
+.staff__pitch {
+  fill: #f3f4f6;
+  font: 17px serif;
+  stroke: #111827;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
 }
 
 .diagram.keyboard img {
