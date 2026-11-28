@@ -105,6 +105,7 @@ export function buildCardDocument(options: {
   referenceKeyboardKeys?: number;
   pianoKeys?: number;
   showKeyboard?: boolean;
+  showCircleNotes?: boolean;
   // What an interval keyboard marks on the front. The root is marked unless
   // the reader turned it off; the answer note is handed over only when they
   // asked for it, the front template having no field for it.
@@ -123,6 +124,7 @@ export function buildCardDocument(options: {
     ["reference-keyboard-keys", options.referenceKeyboardKeys],
     ["piano-keys", options.pianoKeys],
     ["show-keyboard", options.showKeyboard === true ? "on" : undefined],
+    ["show-circle-notes", options.showCircleNotes ? "on" : undefined],
     ["interval-root", options.intervalRoot === false ? "off" : undefined],
     ["interval-answer-note", options.intervalAnswerNote],
   ]

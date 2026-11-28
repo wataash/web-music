@@ -202,6 +202,7 @@ export type DeckCardSettings = Readonly<{
   // Whether the card sounds what it answers with and what a finger lands on.
   sound: boolean;
   showKeyboard: boolean;
+  showCircleNotes: boolean;
   frontRoot: boolean;
   frontAnswer: boolean;
 }>;
@@ -217,6 +218,7 @@ export const DEFAULT_DECK_CARD_SETTINGS: DeckCardSettings = {
   answerAnchor: "bottom",
   sound: true,
   showKeyboard: false,
+  showCircleNotes: false,
   frontRoot: true,
   frontAnswer: false,
 };
@@ -396,6 +398,7 @@ export function parseDeckCardSettings(
     answerAnchor: clampAnswerAnchor(values.answerAnchor),
     sound: readSwitch(values.sound, fallback.sound),
     showKeyboard: readSwitch(values.showKeyboard, fallback.showKeyboard),
+    showCircleNotes: readSwitch(values.showCircleNotes, fallback.showCircleNotes),
     frontRoot: readSwitch(values.frontRoot, true),
     frontAnswer: readSwitch(values.frontAnswer, false),
   };

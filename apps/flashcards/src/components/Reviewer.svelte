@@ -596,6 +596,15 @@ SPDX-License-Identifier: Apache-2.0
           }]
         : []),
     ];
+    if (item && isCircleNoteToCellCard(item.note)) {
+      appBar.push({
+        label: "Show all notes on the back",
+        modified: deckSettings.showCircleNotes !== settingsDefaults.showCircleNotes,
+        onreset: () => setDeckSettings({ showCircleNotes: settingsDefaults.showCircleNotes }),
+        on: deckSettings.showCircleNotes,
+        ontoggle: () => setDeckSettings({ showCircleNotes: !deckSettings.showCircleNotes }),
+      });
+    }
     if (item === null || !isIntervalCard(item.note)) return appBar;
     return [
       ...appBar,
@@ -640,6 +649,7 @@ SPDX-License-Identifier: Apache-2.0
       referenceKeyboardKeys: deckSettings.referenceKeyboardKeys,
       pianoKeys: cardScales.pianoKeys,
       showKeyboard: deckSettings.showKeyboard,
+      showCircleNotes: deckSettings.showCircleNotes,
       // Only the question is the reader's to strip down or fill in; the answer
       // marks what it always marks.
       intervalRoot: phase === "question" ? deckSettings.frontRoot : true,

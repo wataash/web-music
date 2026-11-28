@@ -54,8 +54,8 @@ export function cardLayoutSettings(card: LayoutCard, layout: CardLayout): DeckCa
 }
 export function resetCardLayout(layout: CardLayout, family: string): CardLayout {
   const defaults = defaultCardLayout(family);
-  const { sound, showKeyboard, frontRoot, frontAnswer } = layout.settings;
-  return { ...defaults, settings: { ...defaults.settings, sound, showKeyboard, frontRoot, frontAnswer } };
+  const { sound, showKeyboard, showCircleNotes, frontRoot, frontAnswer } = layout.settings;
+  return { ...defaults, settings: { ...defaults.settings, sound, showKeyboard, showCircleNotes, frontRoot, frontAnswer } };
 }
 export function loadCardLayouts(storage: StorageLike = localStorage): CardLayouts {
   try {

@@ -11,7 +11,7 @@ const artifacts = createWebDeckArtifacts();
 const model = createWebDeckData(artifacts.notes, artifacts.media).models[0];
 const notes = new Map(artifacts.notes.map((note) => [note.id, note]));
 
-async function show(page: Page, card: CardDefinition, back: boolean, showKeyboard?: boolean) {
+async function show(page: Page, card: CardDefinition, back: boolean, showKeyboard?: boolean, showCircleNotes?: boolean) {
   const note = notes.get(card.id)!;
   const fields = Object.fromEntries(model.fieldNames.map((name, index) => [name, note.fields[index]]));
   await page.setContent(buildCardDocument({
@@ -19,6 +19,7 @@ async function show(page: Page, card: CardDefinition, back: boolean, showKeyboar
     css: model.css,
     nightMode: true,
     showKeyboard,
+    showCircleNotes,
   }));
 }
 
@@ -172,70 +173,28 @@ for (const tag of new Set(CARDS.map((card) => card.tag))) {
   });
 }
 
-test("note-to-cell backs show two dimmed fifths on each side, with answer-only keyboard", async ({ page }, testInfo) => {
-  for (const { note, ring, left, right } of [
-    { note: "C", ring: "outer", left: ["Bb", "F"], right: ["G", "D"] },
-    { note: "a", ring: "inner", left: ["g", "d"], right: ["e", "b"] },
-    { note: "C#", ring: "outer", left: ["B", "F#"], right: ["G#", "D#"] },
-    { note: "Db", ring: "outer", left: ["Cb", "Gb"], right: ["Ab", "Eb"] },
-    { note: "F", ring: "outer", left: ["Eb", "Bb"], right: ["C", "G"] },
-  ]) {
-    const card = CARDS.find((candidate) => candidate.kind === "note-to-cell" && candidate.note === note && candidate.ring === ring)!;
+test("note-to-cell backs highlight the answer among all spellings", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const card of CARDS) {
+    if (card.kind !== "note-to-cell") continue;
+    const visible = page.locator('.circle-of-fifths__note:not([display="none"])');
     await show(page, card, false, true);
-    await expect(page.locator('.circle-of-fifths__note:not([display="none"])')).toHaveCount(0);
+    await expect(visible).toHaveCount(0);
     await show(page, card, true, true);
-    const chart = page.locator('[data-card-part="board"]');
-    const labels = await chart.locator('.circle-of-fifths__sector').evaluateAll((sectors) => sectors.flatMap((sector) =>
-      [...sector.querySelectorAll('.circle-of-fifths__note:not([display="none"])')].map((node) => ({
-        hour: Number(sector.getAttribute("data-hour")),
-        note: node.getAttribute("data-note"),
-        opacity: node.getAttribute("opacity"),
-      })),
-    ));
-    const answer = labels.find((label) => label.note === note)!;
-    expect(answer.opacity).toBeNull();
-    expect(labels.filter((label) => label.opacity === "0.35")).toHaveLength(4);
-    for (const [index, offset] of [-2, -1, 1, 2].entries()) {
-      const hour = ((answer.hour - 1 + offset + 12) % 12) + 1;
-      expect(labels.find((label) => label.hour === hour && label.note === [...left, ...right][index])?.opacity)
-        .toBe("0.35");
-    }
-    await expectNoteLabels(page, [note]);
-    expect(await markedPitches(page)).toEqual(pitches([note]));
-    if (note === "C") await page.screenshot({ path: testInfo.outputPath("circle-note-cell-neighbors.png"), fullPage: true });
-  }
-});
-
-test("double-sharp major note-to-cell backs add only their same-hour inner flat", async ({ page }, testInfo) => {
-  const innerFlats: Record<string, string> = {
-    "F##": "fb", "C##": "cb", "G##": "gb", "D##": "db",
-    "A##": "ab", "E##": "eb", "B##": "bb",
-  };
-  const nonmatches = ["F#", "C", "Fb", "f##", "c##"];
-  for (const note of [...Object.keys(innerFlats), ...nonmatches]) {
-    const card = CARDS.find((candidate) => candidate.kind === "note-to-cell" && candidate.note === note);
-    if (!card || card.kind !== "note-to-cell") throw new Error(`missing note-to-cell card: ${note}`);
-    await show(page, card, true, true);
-    const chart = page.locator('[data-card-part="board"]');
-    const answer = chart.locator(`.circle-of-fifths__note[data-note="${note}"]:not([opacity])`);
+    await expect(visible).toHaveCount(1);
+    await expect(visible).toHaveAttribute("data-note", card.note);
+    await show(page, card, true, true, true);
+    await expect(visible).toHaveCount(CARDS.filter(candidate => candidate.kind === "note-to-cell").length);
+    const answer = page.locator('.circle-of-fifths__note:not([opacity]):not([display="none"])');
     await expect(answer).toHaveCount(1);
-    const answerHour = await answer.evaluate((node) => node.closest(".circle-of-fifths__sector")?.getAttribute("data-hour"));
-    const dimmed = chart.locator('.circle-of-fifths__note[opacity="0.35"]');
-    await expect(dimmed).toHaveCount(innerFlats[note] ? 5 : 4);
-    const inner = chart.locator('.circle-of-fifths__label[data-role="minor"] .circle-of-fifths__note:not([display="none"])');
-    if (innerFlats[note]) {
-      await expect(inner).toHaveCount(1);
-      await expect(inner).toHaveAttribute("data-note", innerFlats[note]);
-      await expect(inner).toHaveAttribute("opacity", "0.35");
-      expect(await inner.evaluate((node) => node.closest(".circle-of-fifths__sector")?.getAttribute("data-hour"))).toBe(answerHour);
-    } else {
-      const oppositeRole = card.ring === "outer" ? "minor" : "major";
-      await expect(chart.locator(`.circle-of-fifths__label[data-role="${oppositeRole}"] .circle-of-fifths__note:not([display="none"])`)).toHaveCount(0);
-    }
-    await expectNoteLabels(page, [note]);
-    expect(await markedPitches(page)).toEqual(pitches([note]));
-    if (note === "F##") {
-      await page.screenshot({ path: testInfo.outputPath("circle-double-sharp-back.png"), fullPage: true });
+    await expect(answer).toHaveAttribute("data-note", card.note);
+    const role = card.ring === "outer" ? "major" : "minor";
+    await expect(page.locator(`[data-role="${role}"]`).locator(answer)).toHaveCount(1);
+    await expectNoteLabels(page, [card.note]);
+    expect(await markedPitches(page)).toEqual(pitches([card.note]));
+    if (card.note === "G#") {
+      await show(page, card, true, false, true);
+      await page.screenshot({ path: testInfo.outputPath("circle-g-sharp.png") });
     }
   }
 });
